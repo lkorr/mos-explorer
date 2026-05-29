@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOS / Temperament Finder</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px;
+  background: #16213e;
+  border-bottom: 1px solid #0f3460;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+#controls label { font-size: 13px; color: #a0a0c0; }
+#controls input[type="range"] { width: 120px; accent-color: #e94560; }
+#controls .ctrl-group { display: flex; align-items: center; gap: 6px; }
+#controls .value-display { font-size: 13px; color: #e94560; min-width: 30px; }
+
+#info-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 5px 20px;
+  background: #1a1a3e;
+  border-bottom: 1px solid #0f3460;
+  font-size: 12px;
+  color: #8888aa;
+  flex-shrink: 0;
+}
+
+#info-bar .hl { color: #e94560; font-weight: 600; }
+
+#canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+canvas { display: block; width: 100%; height: 100%; }
+
+#tooltip {
+  position: fixed;
+  background: #16213ef0;
+  border: 1px solid #e94560;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  pointer-events: none;
+  display: none;
+  z-index: 100;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+#tooltip .tt-title { font-weight: 700; color: #e94560; font-size: 14px; }
+#tooltip .tt-sub { color: #a0a0c0; }
+#tooltip .tt-temp { color: #50c878; margin-top: 4px; }
+#tooltip .tt-edo { color: #6eb5ff; margin-top: 2px; }
+#tooltip .tt-hard { color: #f5a623; }
+
+#selected-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #16213ef0;
+  border: 1px solid #0f3460;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+  max-width: 280px;
+  display: none;
+  z-index: 50;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+#selected-panel .sp-title { font-weight: 700; color: #e94560; font-size: 15px; margin-bottom: 6px; }
+#selected-panel .sp-close { position: absolute; top: 6px; right: 10px; cursor: pointer; color: #888; font-size: 16px; }
+#selected-panel .sp-close:hover { color: #e94560; }
+
+.help-text {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: #16213ecc;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #555;
+  z-index: 50;
+}
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <div class="ctrl-group">
+    <label>Size N:</label>
+    <input type="range" id="min-size" min="3" max="30" value="3">
+    <span class="value-display" id="min-size-val">3</span>
+    <span style="color:#556;font-size:11px">—</span>
+    <input type="range" id="max-mos-size" min="3" max="30" value="14">
+    <span class="value-display" id="max-mos-val">14</span>
+  </div>
+  <div class="ctrl-group">
+    <label>Max EDO:</label>
+    <input type="range" id="max-edo" min="5" max="72" value="60">
+    <span class="value-display" id="max-edo-val">60</span>
+  </div>
+  <div class="ctrl-group">
+    <label style="color:#e94560;cursor:pointer;" id="reset-zoom">[ Reset Zoom ]</label>
+  </div>
+</div>
+
+<div id="info-bar">
+  <span>View: <span class="hl" id="range-display">0.00¢ — 1200.00¢</span></span>
+  <span>|</span>
+  <span>Cursor: <span class="hl" id="cursor-display">—</span></span>
+  <span>|</span>
+  <span>Scroll: zoom &middot; Drag: pan &middot; Click: select MOS</span>
+</div>
+
+<div id="canvas-container">
+  <canvas id="main-canvas"></canvas>
+</div>
+
+<div id="tooltip"></div>
+<div id="selected-panel">
+  <span class="sp-close" id="sp-close">&times;</span>
+  <div id="sp-content"></div>
+</div>
+<div class="help-text">Scroll to zoom &middot; Drag to pan &middot; Click region to select</div>
+
+<script>
+// ============================================================
+// TEMPERAMENT DATABASE — easily extensible
+// Each: { name, mos: "nL_ms", genRange: [low, high] cents, description }
+// ============================================================
+const TEMPERAMENTS = [
+  { name: "Meantone", mos: "5L_2s", genRange: [690.0, 700.0], description: "Tempers out 81/80. Quarter-comma ~696.6¢." },
+  { name: "Pythagorean", mos: "5L_2s", genRange: [701.5, 703.0], description: "Pure 3/2 at 701.955¢." },
+  { name: "Superpyth", mos: "5L_2s", genRange: [704.0, 714.0], description: "Tempers out 64/63. Sharp fifths." },
+  { name: "Schismatic", mos: "5L_2s", genRange: [700.0, 701.5], description: "Tempers out 32805/32768." },
+  { name: "Mavila", mos: "2L_5s", genRange: [521.0, 535.0], description: "Anti-diatonic. Tempers out 135/128." },
+  { name: "Mohajira", mos: "3L_4s", genRange: [342.0, 353.0], description: "Neutral thirds. ~350¢ generator." },
+  { name: "Porcupine", mos: "3L_5s", genRange: [158.0, 165.0], description: "Tempers out 250/243. ~163¢ gen." },
+  { name: "Augmented", mos: "3L_3s", genRange: [395.0, 405.0], description: "Major third generator. Tempers out 128/125." },
+  { name: "Slendric", mos: "3L_2s", genRange: [232.0, 240.0], description: "~233¢ gen. Tempers out 1029/1024." },
+  { name: "Chromatic Pyth.", mos: "7L_5s", genRange: [698.0, 704.0], description: "12-note chromatic from stacked fifths." },
+  { name: "Pajara", mos: "2L_8s", genRange: [105.0, 115.0], description: "Half-octave period. Tempers out 2048/2025." },
+  { name: "Blackwood", mos: "5L_5s", genRange: [238.0, 242.0], description: "1/5-octave period. Tempers out 256/243." },
+  { name: "Bug", mos: "2L_1s", genRange: [370.0, 400.0], description: "Large third generator. Simple temperament." },
+  { name: "Father", mos: "3L_2s", genRange: [440.0, 465.0], description: "Tempers out 16/15. ~460¢ gen." },
+];
+
+// ============================================================
+// COLOR PALETTE
+// ============================================================
+const PALETTE = [
+  '#e94560','#6eb5ff','#50c878','#f5a623','#bb86fc',
+  '#ff6f91','#00c9a7','#ffc75f','#845ec2','#d65db1',
+  '#ff9671','#2ec4b6','#e0aaff','#c9184a','#588157',
+  '#a7c957','#f4845f','#277da1','#f94144','#43aa8b',
+  '#577590','#f8961e','#90be6d','#f9844a','#4cc9f0',
+  '#7209b7','#3a0ca3','#4361ee','#4895ef','#560bad',
+];
+
+const MOS_NAMES = {
+  '1L_1s':'Trivial','2L_1s':'Tritonic','1L_2s':'Antritonic',
+  '3L_1s':'Tetric','1L_3s':'Tetric',
+  '2L_3s':'Pentatonic','3L_2s':'Anti-pentatonic',
+  '4L_1s':'Pentoid','1L_4s':'Pentoid',
+  '5L_1s':'Machinoid','1L_5s':'Hexoid',
+  '2L_4s':'Hexoid','4L_2s':'Hexoid',
+  '3L_4s':'Mosh','4L_3s':'Smitonic',
+  '6L_1s':'Archeotonic','1L_6s':'Heptoid',
+  '5L_2s':'Diatonic','2L_5s':'Anti-diatonic',
+  '3L_5s':'Sensoid','5L_3s':'Oneirotonic',
+  '4L_5s':'Orwelloid','5L_4s':'Anti-orwelloid',
+  '7L_2s':'Superdiatonic','2L_7s':'Balzanoid',
+  '6L_3s':'Hyrulic','3L_6s':'Tcherepninoid',
+  '7L_3s':'Decoid','3L_7s':'Decoid',
+  '5L_5s':'Decanoid',
+  '7L_4s':'Undecoid','4L_7s':'Undecoid',
+  '6L_5s':'Undecoid','5L_6s':'Undecoid',
+  '7L_5s':'Chromatic','5L_7s':'Chromatic',
+  '8L_3s':'Sephiroid','3L_8s':'Sephiroid',
+  '8L_5s':'Triskaidecoid','5L_8s':'Triskaidecoid',
+};
+
+// ============================================================
+// MATH
+// ============================================================
+
+function gcd(a, b) {
+  a = Math.abs(a); b = Math.abs(b);
+  while (b) { [a, b] = [b, a % b]; }
+  return a;
+}
+
+function findParentMOS(nL, nS) {
+  if (nL === nS || (nL <= 1 && nS <= 1)) return null;
+  if (nL > nS) return `${nL - nS}L_${nS}s`;
+  return `${nL}L_${nS - nL}s`;
+}
+
+function getChildMOSes(key) {
+  const m = key.match(/(\d+)L_(\d+)s/);
+  if (!m) return [];
+  const nL = +m[1], nS = +m[2];
+  return [`${nL + nS}L_${nS}s`, `${nL}L_${nL + nS}s`];
+}
+
+// Build MOS regions via Stern-Brocot tree traversal over [0, 1/2],
+// then mirror each to [1/2, 1] (complement generators).
+function buildMOSRegions(maxSize, maxDepth) {
+  const regions = [];
+  const edoColorMap = {};
+  let ci = 0;
+  function color(nL) {
+    if (!(nL in edoColorMap)) { edoColorMap[nL] = PALETTE[ci++ % PALETTE.length]; }
+    return edoColorMap[nL];
+  }
+
+  function traverse(lp, lq, rp, rq, depth) {
+    if (depth <= 0) return;
+    const mp = lp + rp, mq = lq + rq;
+    if (mq > maxSize) return;
+
+    // Left sub-region: (lp/lq, mp/mq) — pattern lqL rqs
+    addRegion(lq, rq, mq, lp, lq, mp, mq, maxDepth - depth + 1);
+    // Right sub-region: (mp/mq, rp/rq) — pattern rqL lqs
+    addRegion(rq, lq, mq, mp, mq, rp, rq, maxDepth - depth + 1);
+
+    traverse(lp, lq, mp, mq, depth - 1);
+    traverse(mp, mq, rp, rq, depth - 1);
+  }
+
+  function addRegion(nL, nS, size, fp1, fq1, fp2, fq2, depth) {
+    const lowCents = (fp1 / fq1) * 1200;
+    const highCents = (fp2 / fq2) * 1200;
+    if (highCents - lowCents < 0.001) return;
+
+    const key = `${nL}L_${nS}s`;
+    const collapsedColor = color(nL);
+    const equalizedColor = color(size);
+    regions.push({
+      key, nL, nS, size,
+      lowCents, highCents,
+      lowFrac: [fp1, fq1], highFrac: [fp2, fq2],
+      color: collapsedColor,
+      collapsedColor, equalizedColor,
+      depth,
+      parent: findParentMOS(nL, nS),
+    });
+
+    regions.push({
+      key, nL, nS, size,
+      lowCents: 1200 - highCents,
+      highCents: 1200 - lowCents,
+      lowFrac: [fq2 - fp2, fq2], highFrac: [fq1 - fp1, fq1],
+      color: collapsedColor,
+      collapsedColor, equalizedColor,
+      depth,
+      parent: findParentMOS(nL, nS),
+      isMirror: true,
+    });
+  }
+
+  traverse(0, 1, 1, 2, maxDepth);
+  return { regions: regions.filter(r => r.size >= 3 && r.size <= maxSize), colorMap: edoColorMap };
+}
+
+// Compute L and s step sizes by actually stacking the generator
+function computeHardness(genCents, mosSize) {
+  const P = 1200, N = mosSize;
+  const pos = [];
+  for (let i = 0; i < N; i++) pos.push(((i * genCents) % P + P) % P);
+  pos.sort((a, b) => a - b);
+
+  const steps = [];
+  for (let i = 0; i < N; i++) {
+    steps.push(i < N - 1 ? pos[i + 1] - pos[i] : P - pos[N - 1] + pos[0]);
+  }
+
+  const sorted = [...new Set(steps.map(x => Math.round(x * 100) / 100))].sort((a, b) => b - a);
+  if (sorted.length < 2) return { L: sorted[0] || 0, s: 0, ratio: Infinity, str: '∞:1' };
+
+  const L = sorted[0], s = sorted[sorted.length - 1];
+  if (s < 0.01) return { L, s: 0, ratio: Infinity, str: '∞:1' };
+
+  const ratio = L / s;
+  let bestN = 1, bestD = 1, bestErr = Infinity;
+  for (let d = 1; d <= 12; d++) {
+    const n = Math.round(ratio * d);
+    if (n < 1) continue;
+    const err = Math.abs(ratio - n / d);
+    if (err < bestErr) { bestErr = err; bestN = n; bestD = d; }
+  }
+  const g = gcd(bestN, bestD);
+  bestN /= g; bestD /= g;
+  const str = bestErr < 0.04 ? `${bestN}:${bestD}` : ratio.toFixed(2) + ':1';
+  return { L, s, ratio, str };
+}
+
+// EDO generators: all coprime m/n for n up to maxEDO
+function buildEDOGenerators(maxEDO) {
+  const gens = [];
+  for (let n = 2; n <= maxEDO; n++) {
+    for (let m = 1; m < n; m++) {
+      if (gcd(m, n) !== 1) continue;
+      gens.push({ step: m, edo: n, cents: (m / n) * 1200 });
+    }
+  }
+  return gens;
+}
+
+// ============================================================
+// STATE
+// ============================================================
+
+const S = {
+  viewMin: 0, viewMax: 1200,
+  maxSize: 14, maxEDO: 60, minSize: 3,
+  regions: [], colorMap: {}, edos: [],
+  hovered: null, selected: null,
+  generatorCents: null,
+  dragging: false, dragX0: 0, dragMin0: 0, dragMax0: 0,
+  genDragging: false,
+  sliderDragging: false,
+  canvas: null, ctx: null, dpr: 1, W: 0, H: 0,
+};
+
+function recalc() {
+  const oldSel = S.selected;
+  const { regions, colorMap } = buildMOSRegions(S.maxSize, 12);
+  S.regions = regions;
+  S.colorMap = colorMap;
+  S.edos = buildEDOGenerators(S.maxEDO);
+  if (oldSel) {
+    S.selected = regions.find(r =>
+      r.key === oldSel.key &&
+      Math.abs(r.lowCents - oldSel.lowCents) < 0.01 &&
+      Math.abs(r.highCents - oldSel.highCents) < 0.01
+    ) || null;
+  }
+  updatePanel();
+  render();
+}
+
+// ============================================================
+// COORDINATE HELPERS
+// ============================================================
+
+const MARGIN = 24;
+function c2x(c) { return MARGIN + ((c - S.viewMin) / (S.viewMax - S.viewMin)) * (S.W - 2 * MARGIN); }
+function x2c(x) { return S.viewMin + ((x - MARGIN) / (S.W - 2 * MARGIN)) * (S.viewMax - S.viewMin); }
+function hexA(hex, a) {
+  return `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${a})`;
+}
+function hexToRGB(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+function rgbToHex(r, g, b) {
+  return '#' + [r,g,b].map(v => Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+}
+function lerpColor(hex1, hex2, t) {
+  const [r1,g1,b1] = hexToRGB(hex1);
+  const [r2,g2,b2] = hexToRGB(hex2);
+  return rgbToHex(r1+(r2-r1)*t, g1+(g2-g1)*t, b1+(b2-b1)*t);
+}
+
+// ============================================================
+// MOS SCALE BUILDER
+// ============================================================
+
+function buildMOSScale(genCents, n, period) {
+  period = period || 1200;
+  const pitches = [0];
+  for (let i = 1; i < n; i++) {
+    pitches.push(((i * genCents) % period + period) % period);
+  }
+  pitches.sort((a, b) => a - b);
+
+  const steps = [];
+  for (let i = 0; i < n; i++) {
+    const next = (i + 1) % n;
+    const diff = next === 0 ? period - pitches[n - 1] + pitches[0] : pitches[next] - pitches[i];
+    steps.push(diff);
+  }
+
+  const sorted = [...new Set(steps.map(x => Math.round(x * 100) / 100))].sort((a, b) => b - a);
+  const L = sorted[0] || 0;
+  const s = sorted.length > 1 ? sorted[sorted.length - 1] : 0;
+
+  return { pitches, steps, L, s };
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+
+function render() {
+  const { ctx, W, H, dpr } = S;
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, W, H);
+
+  const vr = S.viewMax - S.viewMin;
+
+  drawAxis(ctx, W, H, vr);
+  drawEDOs(ctx, W, H, vr);
+  if (S.selected) drawTemperaments(ctx, W, H);
+  drawMOS(ctx, W, H, vr);
+  if (S.selected && S.generatorCents !== null) drawGeneratorMarker(ctx, W, H);
+  if (S.selected) drawMOSCircle(ctx, W, H);
+
+  ctx.restore();
+}
+
+function drawAxis(ctx, W, H, vr) {
+  const Y = 44;
+  let tick;
+  if (vr > 800) tick = 100;
+  else if (vr > 400) tick = 50;
+  else if (vr > 200) tick = 20;
+  else if (vr > 80) tick = 10;
+  else if (vr > 30) tick = 5;
+  else if (vr > 10) tick = 2;
+  else if (vr > 3) tick = 1;
+  else tick = 0.5;
+
+  // Grid lines
+  const start = Math.ceil(S.viewMin / tick) * tick;
+  for (let c = start; c <= S.viewMax; c += tick) {
+    const x = c2x(c);
+    ctx.strokeStyle = '#1f1f3a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, Y); ctx.lineTo(x, H); ctx.stroke();
+  }
+
+  // Axis bar (thick)
+  const barH = 8;
+  ctx.fillStyle = '#3a3a5c';
+  ctx.fillRect(0, Y - barH/2, W, barH);
+  ctx.strokeStyle = '#556';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0, Y - barH/2, W, barH);
+
+  // Ticks + labels
+  ctx.fillStyle = '#8888aa';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  for (let c = start; c <= S.viewMax; c += tick) {
+    const x = c2x(c);
+    if (x < -20 || x > W + 20) continue;
+    ctx.strokeStyle = '#667';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, Y - barH/2 - 6); ctx.lineTo(x, Y + barH/2 + 6); ctx.stroke();
+    ctx.fillText(vr > 30 ? Math.round(c) + '¢' : c.toFixed(1) + '¢', x, Y - barH/2 - 10);
+  }
+
+  // Sub-ticks
+  const sub = tick / 5;
+  if (sub > 0.005) {
+    const ss = Math.ceil(S.viewMin / sub) * sub;
+    for (let c = ss; c <= S.viewMax; c += sub) {
+      const x = c2x(c);
+      if (x < 0 || x > W) continue;
+      ctx.strokeStyle = '#4a4a6a';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, Y - barH/2 - 2); ctx.lineTo(x, Y + barH/2 + 2); ctx.stroke();
+    }
+  }
+}
+
+function drawMOS(ctx, W, H, vr) {
+  const startY = S.selected ? 140 : 64;
+  const rowH = 20;
+  const gap = 2;
+
+  // Fixed row per scale size N — minSize at top, maxSize at bottom.
+  // Every size always occupies the same Y regardless of zoom/visibility.
+  const allSizes = [];
+  for (let n = S.minSize; n <= S.maxSize; n++) allSizes.push(n);
+  const sizeToRow = {};
+  allSizes.forEach((n, i) => { sizeToRow[n] = i; });
+
+  const visible = S.regions
+    .filter(r => r.highCents > S.viewMin && r.lowCents < S.viewMax && r.size >= S.minSize);
+
+  for (const r of visible) {
+    const ri = sizeToRow[r.size];
+    if (ri === undefined) continue;
+    const y = startY + ri * (rowH + gap);
+    if (y > H - 80) continue;
+
+    const x1 = Math.max(0, c2x(r.lowCents));
+    const x2 = Math.min(W, c2x(r.highCents));
+    const w = x2 - x1;
+    if (w < 1) continue;
+
+    const isSel = S.selected && S.selected.key === r.key &&
+      Math.abs(S.selected.lowCents - r.lowCents) < 0.01 &&
+      Math.abs(S.selected.highCents - r.highCents) < 0.01;
+    const isHov = !S.selected && S.hovered === r;
+
+    const grayed = S.selected && !isSel;
+
+    let alpha = 0.5;
+    if (isSel) alpha = 0.85;
+    else if (grayed) alpha = 0.12;
+    else if (isHov) alpha = 0.7;
+
+    let baseColor = r.color;
+    if (isSel && S.generatorCents !== null && r.collapsedColor && r.equalizedColor) {
+      const eqEnd = getEqualizedEnd(r);
+      const genT = eqEnd === 'low'
+        ? (S.generatorCents - r.lowCents) / (r.highCents - r.lowCents)
+        : (r.highCents - S.generatorCents) / (r.highCents - r.lowCents);
+      const soft = Math.max(0, Math.min(1, 1 - genT));
+      baseColor = lerpColor(r.collapsedColor, r.equalizedColor, soft);
+    }
+    const drawColor = grayed ? '#555555' : baseColor;
+    ctx.fillStyle = hexA(drawColor, alpha);
+    ctx.fillRect(x1, y, w, rowH);
+
+    const active = isSel || (isHov && !grayed);
+    ctx.strokeStyle = active ? '#fff' : hexA(drawColor, grayed ? 0.2 : 0.7);
+    ctx.lineWidth = active ? 2 : 1;
+    ctx.strokeRect(x1 + 0.5, y + 0.5, w - 1, rowH - 1);
+
+    if (w > 24 && (!grayed || w > 50)) {
+      const label = r.key.replace('_', ' ');
+      const fname = MOS_NAMES[r.key];
+      ctx.fillStyle = grayed ? '#444' : '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      if (w > 110 && fname && !grayed) {
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText(`${label} (${fname})`, x1 + w/2, y + rowH/2 - 4);
+        ctx.font = '8px monospace';
+        ctx.fillStyle = '#bbb';
+        ctx.fillText(`${r.lowCents.toFixed(1)}¢–${r.highCents.toFixed(1)}¢`, x1 + w/2, y + rowH/2 + 7);
+      } else if (w > 50) {
+        ctx.font = grayed ? '9px monospace' : 'bold 10px monospace';
+        ctx.fillText(label, x1 + w/2, y + rowH/2);
+      } else {
+        ctx.font = '8px monospace';
+        ctx.fillText(label, x1 + w/2, y + rowH/2);
+      }
+    }
+
+    r._y = y;
+    r._h = rowH;
+  }
+
+  // Draw size labels on the left margin
+  ctx.fillStyle = '#556';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (const n of allSizes) {
+    const y = startY + sizeToRow[n] * (rowH + gap);
+    if (y > H - 80) break;
+    ctx.fillText(n + '', 16, y + rowH / 2);
+  }
+
+  return startY + allSizes.length * (rowH + gap) + 8;
+}
+
+function drawEDOs(ctx, W, H, vr) {
+  if (!S.selected) return;
+
+  const baseY = 56;
+
+  const sel = S.selected;
+
+  // Only show EDOs that fall within the selected region's range
+  const vis = S.edos.filter(g =>
+    g.cents >= S.viewMin && g.cents <= S.viewMax &&
+    g.cents >= sel.lowCents && g.cents <= sel.highCents
+  );
+  if (!vis.length) return;
+
+  vis.sort((a, b) => a.edo - b.edo || a.step - b.step);
+
+  const minPx = 48;
+  const slots = [];
+
+  const selSize = sel.size;
+
+  for (const g of vis) {
+    const x = c2x(g.cents);
+    if (slots.some(s => Math.abs(x - s) < minPx * 0.65)) continue;
+    slots.push(x);
+
+    // Tick line
+    ctx.strokeStyle = '#6eb5ff44';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, baseY); ctx.lineTo(x, baseY + 22); ctx.stroke();
+
+    // Step\EDO label
+    ctx.fillStyle = '#6eb5ff';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${g.step}\\${g.edo}`, x, baseY + 34);
+
+    // Cents
+    ctx.fillStyle = '#556';
+    ctx.font = '9px monospace';
+    ctx.fillText(g.cents.toFixed(1) + '¢', x, baseY + 45);
+
+    // Hardness for the selected MOS
+    const hr = computeHardness(g.cents, selSize);
+    if (hr.ratio !== Infinity && hr.ratio > 0.5) {
+      ctx.fillStyle = '#f5a623';
+      ctx.font = '9px monospace';
+      ctx.fillText(hr.str, x, baseY + 56);
+    }
+  }
+}
+
+function drawTemperaments(ctx, W, H) {
+  const sel = S.selected;
+  const temps = TEMPERAMENTS.filter(t => t.mos === sel.key);
+  if (!temps.length) return;
+
+  const selLo = sel.lowCents, selHi = sel.highCents;
+  const selRange = selHi - selLo;
+
+  // Compute the selected region's row Y using the same layout as drawMOS
+  const startY = 140;
+  const rowH = 20;
+  const gap = 2;
+  const ri = sel.size - S.minSize;
+  const selY = startY + ri * (rowH + gap);
+
+  const h = 14;
+  const y = selY - h - 2;
+
+  ctx.fillStyle = '#50c87888';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('Temperaments for ' + sel.key.replace('_',' '), 4, y - 2);
+
+  const tempColors = {
+    'Meantone':'#50c878','Pythagorean':'#ffd700','Superpyth':'#ff6347',
+    'Schismatic':'#da70d6','Mavila':'#20b2aa','Mohajira':'#dda0dd',
+    'Porcupine':'#98fb98','Augmented':'#87ceeb','Slendric':'#deb887',
+    'Chromatic Pyth.':'#ffd700','Pajara':'#ff8c00','Blackwood':'#ba55d3',
+    'Bug':'#cd853f','Father':'#f0e68c',
+  };
+
+  for (const t of temps) {
+    // Map temperament range into the selected region's cent span
+    const lo = Math.max(t.genRange[0], selLo);
+    const hi = Math.min(t.genRange[1], selHi);
+    if (hi <= lo) continue;
+
+    const x1 = Math.max(0, c2x(lo));
+    const x2 = Math.min(W, c2x(hi));
+    const w = x2 - x1;
+    if (w < 1) continue;
+
+    const col = tempColors[t.name] || '#888';
+    ctx.fillStyle = hexA(col, 0.5);
+    ctx.fillRect(x1, y, w, h);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x1, y, w, h);
+
+    if (w > 35) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(t.name, x1 + w/2, y + h/2);
+    }
+  }
+}
+
+function drawGeneratorMarker(ctx, W, H) {
+  const x = c2x(S.generatorCents);
+  if (x < 0 || x > W) return;
+
+  ctx.strokeStyle = '#e94560';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(x, 40);
+  ctx.lineTo(x, H - 10);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#e94560';
+  ctx.beginPath();
+  ctx.moveTo(x - 5, 40);
+  ctx.lineTo(x + 5, 40);
+  ctx.lineTo(x, 48);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#e94560';
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(S.generatorCents.toFixed(1) + '¢', x, 36);
+}
+
+function getMOSCircleLayout(W, H) {
+  const radius = Math.min(140, Math.min(W, H) * 0.18);
+  const cx = 20 + radius + 10;
+  const cy = H - 20 - radius - 10;
+  const sliderW = radius * 2 + 16;
+  const sliderH = 12;
+  const sliderX = cx - sliderW / 2;
+  const sliderY = cy - radius - 40;
+  return { radius, cx, cy, sliderW, sliderH, sliderX, sliderY };
+}
+
+function drawMOSCircle(ctx, W, H) {
+  const sel = S.selected;
+  const n = sel.size;
+  const gen = S.generatorCents;
+  const P = 1200;
+
+  const { radius, cx, cy, sliderW, sliderH, sliderX, sliderY } = getMOSCircleLayout(W, H);
+
+  // Background panel behind circle + slider
+  const panelPad = 12;
+  const panelTop = sliderY - 18;
+  const panelBot = cy + radius + 24;
+  const panelLeft = cx - radius - panelPad;
+  const panelRight = cx + radius + panelPad;
+  ctx.fillStyle = '#16213ef0';
+  ctx.strokeStyle = '#0f3460';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(panelLeft, panelTop, panelRight - panelLeft, panelBot - panelTop, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  // Title with parent/child arrows
+  const titleY = sliderY - 8;
+  const titleText = sel.key.replace('_', ' ');
+  ctx.font = 'bold 11px monospace';
+  const titleW = ctx.measureText(titleText).width;
+
+  // Parent arrow (up) — left of title
+  const arrowSize = 10;
+  const arrowPad = 6;
+  const parentArrowX = cx - titleW / 2 - arrowPad - arrowSize / 2;
+  const parentKey = findParentMOS(sel.nL, sel.nS);
+  const parentExists = parentKey && S.regions.some(r =>
+    r.key === parentKey && r.size >= S.minSize && r.size <= S.maxSize);
+
+  ctx.fillStyle = parentExists ? '#aaa' : '#333';
+  ctx.beginPath();
+  ctx.moveTo(parentArrowX, titleY - arrowSize / 2);
+  ctx.lineTo(parentArrowX - arrowSize / 2, titleY + arrowSize / 2);
+  ctx.lineTo(parentArrowX + arrowSize / 2, titleY + arrowSize / 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Child arrow (down) — right of title
+  const childKeys = getChildMOSes(sel.key);
+  const childArrowX = cx + titleW / 2 + arrowPad + arrowSize / 2;
+  const childExists = childKeys.some(ck => S.regions.some(r =>
+    r.key === ck && r.size >= S.minSize && r.size <= S.maxSize));
+
+  ctx.fillStyle = childExists ? '#aaa' : '#333';
+  ctx.beginPath();
+  ctx.moveTo(childArrowX, titleY + arrowSize / 2);
+  ctx.lineTo(childArrowX - arrowSize / 2, titleY - arrowSize / 2);
+  ctx.lineTo(childArrowX + arrowSize / 2, titleY - arrowSize / 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Store arrow hit areas for click handling
+  S._parentArrow = parentExists ? { x: parentArrowX, y: titleY, r: arrowSize } : null;
+  S._childArrow = childExists ? { x: childArrowX, y: titleY, r: arrowSize } : null;
+
+  // Title text
+  ctx.fillStyle = '#e94560';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(titleText, cx, titleY);
+
+  // --- Hardness slider ---
+  // Track
+  ctx.fillStyle = '#2a2a4a';
+  ctx.beginPath();
+  ctx.roundRect(sliderX, sliderY, sliderW, sliderH, sliderH / 2);
+  ctx.fill();
+
+  // Labels
+  ctx.fillStyle = '#556';
+  ctx.font = '8px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('equalized', sliderX + sliderW * 0.15, sliderY + sliderH + 10);
+  ctx.fillText('collapsed', sliderX + sliderW * 0.85, sliderY + sliderH + 10);
+
+  // Thumb position: map generator cents to 0..1 (equalized=0, collapsed=1)
+  if (gen !== null) {
+    const eqEnd = getEqualizedEnd(sel);
+    const t = eqEnd === 'low'
+      ? (gen - sel.lowCents) / (sel.highCents - sel.lowCents)
+      : (sel.highCents - gen) / (sel.highCents - sel.lowCents);
+    const thumbX = sliderX + t * sliderW;
+    const thumbR = sliderH / 2 + 2;
+
+    // Slider color blends between equalized and collapsed EDO colors
+    const sliderColor = lerpColor(sel.equalizedColor, sel.collapsedColor, Math.max(0, Math.min(1, t)));
+
+    // Filled portion
+    const fillW = thumbX - sliderX;
+    if (fillW > 1) {
+      ctx.fillStyle = hexA(sliderColor, 0.4);
+      ctx.beginPath();
+      ctx.roundRect(sliderX, sliderY, fillW, sliderH, sliderH / 2);
+      ctx.fill();
+    }
+
+    // Thumb
+    ctx.beginPath();
+    ctx.arc(thumbX, sliderY + sliderH / 2, thumbR, 0, Math.PI * 2);
+    ctx.fillStyle = sliderColor;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = '#3a3a5c';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  if (gen === null) {
+    ctx.fillStyle = '#556';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Click cent axis or', cx, cy - 6);
+    ctx.fillText('drag slider above', cx, cy + 8);
+    return;
+  }
+
+  const scale = buildMOSScale(gen, n, P);
+  const { pitches, steps, L, s } = scale;
+
+  function c2a(cents) {
+    return (cents / P) * Math.PI * 2 - Math.PI / 2;
+  }
+
+  // Blend region color between collapsed and equalized EDO colors
+  const ratio = s > 0.01 ? L / s : 20;
+  const softness = Math.max(0, Math.min(1, 1 - (ratio - 1) / 2));
+  const regionColor = lerpColor(sel.collapsedColor, sel.equalizedColor, softness);
+
+  const LcolorBase = regionColor;
+  const sColorBase = '#6eb5ff';
+
+  // Blend L and s step colors toward each other as ratio approaches 1:1
+  const midColor = lerpColor(LcolorBase, sColorBase, 0.5);
+  const Lcolor = lerpColor(LcolorBase, midColor, softness);
+  const sColor = lerpColor(sColorBase, midColor, softness);
+
+  // Draw filled pie slices
+  for (let i = 0; i < n; i++) {
+    const startC = pitches[i];
+    const step = steps[i];
+    const a1 = c2a(startC);
+    const a2 = c2a(startC + step);
+
+    const isL = Math.abs(step - L) < 0.5;
+    const col = isL ? Lcolor : sColor;
+
+    // Filled wedge
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, a1, a2);
+    ctx.closePath();
+    ctx.fillStyle = hexA(col, 0.25);
+    ctx.fill();
+
+    // Wedge border
+    ctx.strokeStyle = hexA(col, 0.6);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Colored arc on the rim
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, a1, a2);
+    ctx.strokeStyle = hexA(col, 0.9);
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Step size label
+    const midAngle = c2a(startC + step / 2);
+    const labelR = radius * 0.6;
+    const lx = cx + Math.cos(midAngle) * labelR;
+    const ly = cy + Math.sin(midAngle) * labelR;
+
+    ctx.fillStyle = col;
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(step.toFixed(0) + '¢', lx, ly);
+  }
+
+  // Divider lines + pitch dots + labels
+  for (let i = 0; i < n; i++) {
+    const angle = c2a(pitches[i]);
+
+    // Divider line from center to rim
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+    ctx.strokeStyle = '#8888aa88';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Dot on the rim
+    const px = cx + Math.cos(angle) * radius;
+    const py = cy + Math.sin(angle) * radius;
+    ctx.beginPath();
+    ctx.arc(px, py, 4, 0, Math.PI * 2);
+    ctx.fillStyle = i === 0 ? '#e94560' : '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Pitch label outside
+    const outR = radius + 16;
+    const ox = cx + Math.cos(angle) * outR;
+    const oy = cy + Math.sin(angle) * outR;
+
+    ctx.fillStyle = i === 0 ? '#e94560' : '#aaa';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(pitches[i].toFixed(0), ox, oy);
+  }
+
+  // Center info
+  ctx.fillStyle = '#aaa';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('gen=' + gen.toFixed(1) + '¢', cx, cy - 10);
+
+  if (s > 0.01) {
+    const ratio = L / s;
+    let bestN = 1, bestD = 1, bestErr = Infinity;
+    for (let d = 1; d <= 12; d++) {
+      const num = Math.round(ratio * d);
+      if (num < 1) continue;
+      const err = Math.abs(ratio - num / d);
+      if (err < bestErr) { bestErr = err; bestN = num; bestD = d; }
+    }
+    const g = gcd(bestN, bestD);
+    bestN /= g; bestD /= g;
+    const str = bestErr < 0.04 ? `${bestN}:${bestD}` : ratio.toFixed(2) + ':1';
+    ctx.fillStyle = '#f5a623';
+    ctx.fillText('L:s = ' + str, cx, cy + 4);
+    ctx.fillStyle = '#888';
+    ctx.font = '9px monospace';
+    ctx.fillText(`L=${L.toFixed(1)}¢  s=${s.toFixed(1)}¢`, cx, cy + 16);
+  } else {
+    ctx.fillStyle = '#f5a623';
+    ctx.fillText('L:s = ∞:1', cx, cy + 4);
+  }
+}
+
+// ============================================================
+// INTERACTION
+// ============================================================
+
+function hitCircleArrow(mx, my) {
+  if (!S.selected) return null;
+  const pad = 10;
+  if (S._parentArrow) {
+    const a = S._parentArrow;
+    if (Math.abs(mx - a.x) < a.r + pad && Math.abs(my - a.y) < a.r + pad) return 'parent';
+  }
+  if (S._childArrow) {
+    const a = S._childArrow;
+    if (Math.abs(mx - a.x) < a.r + pad && Math.abs(my - a.y) < a.r + pad) return 'child';
+  }
+  return null;
+}
+
+function navigateToParent() {
+  const sel = S.selected;
+  const parentKey = findParentMOS(sel.nL, sel.nS);
+  if (!parentKey) return;
+
+  const gen = S.generatorCents;
+  const candidate = S.regions.find(r =>
+    r.key === parentKey &&
+    r.size >= S.minSize && r.size <= S.maxSize &&
+    (gen === null || (gen >= r.lowCents && gen <= r.highCents)) &&
+    r.lowCents < sel.highCents && r.highCents > sel.lowCents
+  );
+  if (!candidate) return;
+
+  S.selected = candidate;
+  if (gen !== null && (gen < candidate.lowCents || gen > candidate.highCents)) {
+    S.generatorCents = null;
+  }
+  updatePanel();
+  render();
+}
+
+function navigateToChild() {
+  const sel = S.selected;
+  const childKeys = getChildMOSes(sel.key);
+  const gen = S.generatorCents;
+
+  // If generator is set, pick the child whose range contains it
+  // Otherwise pick the child whose range overlaps the selected region
+  let candidate = null;
+  for (const ck of childKeys) {
+    const match = S.regions.find(r =>
+      r.key === ck &&
+      r.size >= S.minSize && r.size <= S.maxSize &&
+      (gen !== null
+        ? (gen >= r.lowCents && gen <= r.highCents)
+        : (r.lowCents < sel.highCents && r.highCents > sel.lowCents))
+    );
+    if (match) { candidate = match; break; }
+  }
+  if (!candidate) return;
+
+  S.selected = candidate;
+  if (gen !== null && (gen < candidate.lowCents || gen > candidate.highCents)) {
+    S.generatorCents = null;
+  }
+  updatePanel();
+  render();
+}
+
+function isOnAxisBar(my) {
+  return my <= 55;
+}
+
+function hitSlider(mx, my) {
+  if (!S.selected) return false;
+  const lay = getMOSCircleLayout(S.W, S.H);
+  const pad = 6;
+  return mx >= lay.sliderX - pad && mx <= lay.sliderX + lay.sliderW + pad &&
+         my >= lay.sliderY - pad && my <= lay.sliderY + lay.sliderH + pad;
+}
+
+function getEqualizedEnd(region) {
+  const lo = region.lowCents + 0.01;
+  const hi = region.highCents - 0.01;
+  const hrLo = computeHardness(lo, region.size);
+  const hrHi = computeHardness(hi, region.size);
+  return hrLo.ratio < hrHi.ratio ? 'low' : 'high';
+}
+
+function findAdjacentRegion(sel, cents) {
+  // Find the best region that contains the target cents value,
+  // respecting current size filters. Prefer same size, then nearest size.
+  const candidates = S.regions.filter(r =>
+    r.size >= S.minSize && r.size <= S.maxSize &&
+    cents >= r.lowCents - 0.5 && cents <= r.highCents + 0.5 &&
+    !(r.key === sel.key &&
+      Math.abs(r.lowCents - sel.lowCents) < 0.01 &&
+      Math.abs(r.highCents - sel.highCents) < 0.01)
+  );
+  if (!candidates.length) return null;
+
+  // Prefer same size, then closest size
+  candidates.sort((a, b) => {
+    const da = Math.abs(a.size - sel.size);
+    const db = Math.abs(b.size - sel.size);
+    if (da !== db) return da - db;
+    // Among same size, prefer the one whose range center is closest
+    const ma = (a.lowCents + a.highCents) / 2;
+    const mb = (b.lowCents + b.highCents) / 2;
+    return Math.abs(ma - cents) - Math.abs(mb - cents);
+  });
+  return candidates[0];
+}
+
+function sliderXToGen(mx) {
+  const sel = S.selected;
+  const lay = getMOSCircleLayout(S.W, S.H);
+  const t = (mx - lay.sliderX) / lay.sliderW;
+  const eqEnd = getEqualizedEnd(sel);
+  const range = sel.highCents - sel.lowCents;
+
+  // Map t to cents: 0 = equalized end, 1 = collapsed end
+  let cents;
+  if (eqEnd === 'low') {
+    cents = sel.lowCents + t * range;
+  } else {
+    cents = sel.highCents - t * range;
+  }
+
+  if (t < 0 || t > 1) {
+    const targetCents = Math.max(0, Math.min(1200, cents));
+    const adj = findAdjacentRegion(sel, targetCents);
+    if (adj) {
+      S.selected = adj;
+      updatePanel();
+      return Math.max(adj.lowCents, Math.min(adj.highCents, targetCents));
+    }
+    // Clamp to current region
+    if (eqEnd === 'low') {
+      return t < 0 ? sel.lowCents : sel.highCents;
+    } else {
+      return t < 0 ? sel.highCents : sel.lowCents;
+    }
+  }
+  return cents;
+}
+
+function setGenFromScreenX(mx) {
+  const cc = x2c(mx);
+  const sel = S.selected;
+
+  if (cc < sel.lowCents || cc > sel.highCents) {
+    const clamped = Math.max(0, Math.min(1200, cc));
+    const adj = findAdjacentRegion(sel, clamped);
+    if (adj) {
+      S.selected = adj;
+      S.generatorCents = Math.max(adj.lowCents, Math.min(adj.highCents, clamped));
+      updatePanel();
+      render();
+      return;
+    }
+  }
+
+  S.generatorCents = Math.max(sel.lowCents, Math.min(sel.highCents, cc));
+  render();
+}
+
+function setup() {
+  const cntr = document.getElementById('canvas-container');
+  const cvs = S.canvas;
+  const tip = document.getElementById('tooltip');
+
+  // Zoom
+  cntr.addEventListener('wheel', e => {
+    e.preventDefault();
+    if (S.genDragging || S.sliderDragging) return;
+    const rect = cvs.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const mc = x2c(mx);
+    const zf = e.deltaY > 0 ? 1.15 : 1/1.15;
+    const range = S.viewMax - S.viewMin;
+    const nr = Math.min(1200, Math.max(0.3, range * zf));
+    const ratio = mx / S.W;
+    S.viewMin = mc - ratio * nr;
+    S.viewMax = mc + (1 - ratio) * nr;
+    clampView();
+    updateInfo();
+    render();
+  }, { passive: false });
+
+  cntr.addEventListener('mousedown', e => {
+    const rect = cvs.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    // Check arrow hits first
+    const arrow = hitCircleArrow(mx, my);
+    if (arrow === 'parent') { navigateToParent(); return; }
+    if (arrow === 'child') { navigateToChild(); return; }
+
+    // Check slider hit first
+    if (S.selected && hitSlider(mx, my)) {
+      S.sliderDragging = true;
+      S.generatorCents = sliderXToGen(mx);
+      cvs.style.cursor = 'ew-resize';
+      render();
+      return;
+    }
+
+    // Check axis bar click when MOS is selected
+    if (S.selected && isOnAxisBar(my)) {
+      const cc = x2c(mx);
+      if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
+        S.genDragging = true;
+        S.generatorCents = cc;
+        cvs.style.cursor = 'ew-resize';
+        render();
+        return;
+      }
+    }
+
+    // Default: pan drag
+    S.dragging = true;
+    S.dragX0 = e.clientX;
+    S.dragMin0 = S.viewMin;
+    S.dragMax0 = S.viewMax;
+    cvs.style.cursor = 'grabbing';
+  });
+
+  window.addEventListener('mousemove', e => {
+    const rect = cvs.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    if (S.sliderDragging) {
+      S.generatorCents = sliderXToGen(mx);
+      render();
+      return;
+    }
+
+    if (S.genDragging) {
+      setGenFromScreenX(mx);
+      return;
+    }
+
+    if (S.dragging) {
+      const dx = e.clientX - S.dragX0;
+      const cpp = (S.dragMax0 - S.dragMin0) / S.W;
+      S.viewMin = S.dragMin0 - dx * cpp;
+      S.viewMax = S.dragMax0 - dx * cpp;
+      clampView();
+      updateInfo();
+      render();
+    } else {
+      hitTest(mx, my, e);
+      // Override cursor for interactive zones
+      if (hitCircleArrow(mx, my)) {
+        cvs.style.cursor = 'pointer';
+      } else if (S.selected && hitSlider(mx, my)) {
+        cvs.style.cursor = 'ew-resize';
+      } else if (S.selected && isOnAxisBar(my)) {
+        const cc = x2c(mx);
+        if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
+          cvs.style.cursor = 'crosshair';
+        }
+      }
+    }
+
+    if (mx >= 0 && mx <= S.W) {
+      document.getElementById('cursor-display').textContent = x2c(mx).toFixed(2) + '¢';
+    }
+  });
+
+  window.addEventListener('mouseup', e => {
+    if (S.sliderDragging) {
+      S.sliderDragging = false;
+      cvs.style.cursor = '';
+      return;
+    }
+    if (S.genDragging) {
+      S.genDragging = false;
+      cvs.style.cursor = '';
+      return;
+    }
+    if (S.dragging) {
+      S.dragging = false;
+      cvs.style.cursor = '';
+      if (Math.abs(e.clientX - S.dragX0) < 3) {
+        const rect = cvs.getBoundingClientRect();
+        S._lastClickX = e.clientX - rect.left;
+        handleClick();
+      }
+    }
+  });
+
+  // Touch
+  let t0x = 0, t0y = 0, pinchD0 = 0, pinchMin0 = 0, pinchMax0 = 0;
+  cntr.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      const rect = cvs.getBoundingClientRect();
+      const mx = e.touches[0].clientX - rect.left;
+      const my = e.touches[0].clientY - rect.top;
+      t0x = e.touches[0].clientX;
+      t0y = e.touches[0].clientY;
+
+      if (S.selected && hitSlider(mx, my)) {
+        S.sliderDragging = true;
+        S.generatorCents = sliderXToGen(mx);
+        render();
+      } else if (S.selected && isOnAxisBar(my)) {
+        const cc = x2c(mx);
+        if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
+          S.genDragging = true;
+          S.generatorCents = cc;
+          render();
+        } else {
+          S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax;
+        }
+      } else {
+        S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax;
+      }
+    } else if (e.touches.length === 2) {
+      S.sliderDragging = false;
+      S.genDragging = false;
+      pinchD0 = Math.hypot(e.touches[1].clientX-e.touches[0].clientX, e.touches[1].clientY-e.touches[0].clientY);
+      pinchMin0 = S.viewMin; pinchMax0 = S.viewMax;
+    }
+    e.preventDefault();
+  }, { passive: false });
+  cntr.addEventListener('touchmove', e => {
+    if (e.touches.length === 1) {
+      const rect = cvs.getBoundingClientRect();
+      const mx = e.touches[0].clientX - rect.left;
+      if (S.sliderDragging) {
+        S.generatorCents = sliderXToGen(mx);
+        render();
+      } else if (S.genDragging) {
+        setGenFromScreenX(mx);
+      } else {
+        const dx = e.touches[0].clientX - t0x;
+        const cpp = (S.dragMax0 - S.dragMin0) / S.W;
+        S.viewMin = S.dragMin0 - dx * cpp;
+        S.viewMax = S.dragMax0 - dx * cpp;
+        clampView(); updateInfo(); render();
+      }
+    } else if (e.touches.length === 2) {
+      const d = Math.hypot(e.touches[1].clientX-e.touches[0].clientX, e.touches[1].clientY-e.touches[0].clientY);
+      const sc = pinchD0 / d;
+      const mid = (pinchMin0 + pinchMax0) / 2;
+      const half = ((pinchMax0 - pinchMin0) / 2) * sc;
+      S.viewMin = Math.max(0, mid - half);
+      S.viewMax = Math.min(1200, mid + half);
+      updateInfo(); render();
+    }
+    e.preventDefault();
+  }, { passive: false });
+  cntr.addEventListener('touchend', e => {
+    if (S.sliderDragging) S.sliderDragging = false;
+    if (S.genDragging) S.genDragging = false;
+  });
+
+  // Resize
+  window.addEventListener('resize', () => { resizeCanvas(); render(); });
+
+  // Controls
+  document.getElementById('min-size').addEventListener('input', e => {
+    S.minSize = +e.target.value;
+    document.getElementById('min-size-val').textContent = S.minSize;
+    if (S.minSize > S.maxSize) {
+      S.maxSize = S.minSize;
+      document.getElementById('max-mos-size').value = S.maxSize;
+      document.getElementById('max-mos-val').textContent = S.maxSize;
+      recalc();
+    } else {
+      render();
+    }
+  });
+  document.getElementById('max-mos-size').addEventListener('input', e => {
+    S.maxSize = +e.target.value;
+    document.getElementById('max-mos-val').textContent = S.maxSize;
+    if (S.maxSize < S.minSize) {
+      S.minSize = S.maxSize;
+      document.getElementById('min-size').value = S.minSize;
+      document.getElementById('min-size-val').textContent = S.minSize;
+    }
+    recalc();
+  });
+  document.getElementById('max-edo').addEventListener('input', e => {
+    S.maxEDO = +e.target.value;
+    document.getElementById('max-edo-val').textContent = S.maxEDO;
+    S.edos = buildEDOGenerators(S.maxEDO);
+    render();
+  });
+  document.getElementById('reset-zoom').addEventListener('click', () => {
+    S.viewMin = 0; S.viewMax = 1200;
+    updateInfo(); render();
+  });
+  document.getElementById('sp-close').addEventListener('click', () => {
+    S.selected = null;
+    S.generatorCents = null;
+    updatePanel(); render();
+  });
+}
+
+function clampView() {
+  const range = S.viewMax - S.viewMin;
+  if (S.viewMin < 0) { S.viewMin = 0; S.viewMax = range; }
+  if (S.viewMax > 1200) { S.viewMax = 1200; S.viewMin = 1200 - range; }
+  S.viewMin = Math.max(0, S.viewMin);
+  S.viewMax = Math.min(1200, S.viewMax);
+}
+
+function hitTest(mx, my, e) {
+  const tip = document.getElementById('tooltip');
+  let found = null;
+
+  // Prefer smaller (more specific) regions when overlapping
+  // Scan all rendered regions, pick the smallest that contains the mouse
+  for (const r of S.regions) {
+    if (r._y === undefined) continue;
+    const x1 = c2x(r.lowCents), x2 = c2x(r.highCents);
+    if (mx >= x1 && mx <= x2 && my >= r._y && my <= r._y + r._h) {
+      if (!found || r.size > found.size) found = r;
+    }
+  }
+
+  if (found !== S.hovered) {
+    S.hovered = found;
+    render();
+  }
+
+  if (found) {
+    const cc = x2c(mx);
+    const hr = computeHardness(cc, found.size);
+    const label = found.key.replace('_', ' ');
+    const fname = MOS_NAMES[found.key];
+
+    let html = `<div class="tt-title">${label}${fname ? ' — ' + fname : ''}</div>`;
+    html += `<div class="tt-sub">${found.lowCents.toFixed(2)}¢ — ${found.highCents.toFixed(2)}¢ &middot; ${found.size} notes</div>`;
+
+    if (found.parent) {
+      const pn = MOS_NAMES[found.parent];
+      html += `<div class="tt-sub">Parent: ${found.parent.replace('_',' ')}${pn ? ' ('+pn+')' : ''}</div>`;
+    }
+
+    if (hr.ratio !== Infinity) {
+      html += `<div class="tt-hard">L:s = ${hr.str} &nbsp; (L=${hr.L.toFixed(1)}¢, s=${hr.s.toFixed(1)}¢)</div>`;
+    }
+
+    const temps = TEMPERAMENTS.filter(t => t.mos === found.key && cc >= t.genRange[0] && cc <= t.genRange[1]);
+    for (const t of temps) {
+      html += `<div class="tt-temp">${t.name}: ${t.description}</div>`;
+    }
+
+    let nearest = null, nd = Infinity;
+    for (const g of S.edos) {
+      const d = Math.abs(g.cents - cc);
+      if (d < nd && g.cents >= found.lowCents && g.cents <= found.highCents) {
+        nd = d; nearest = g;
+      }
+    }
+    if (nearest && nd < (S.viewMax - S.viewMin) * 0.02) {
+      html += `<div class="tt-edo">Nearest: ${nearest.step}\\${nearest.edo} = ${nearest.cents.toFixed(2)}¢</div>`;
+    }
+
+    const isSelRegion = S.selected &&
+      S.selected.key === found.key &&
+      Math.abs(S.selected.lowCents - found.lowCents) < 0.01 &&
+      Math.abs(S.selected.highCents - found.highCents) < 0.01;
+    html += `<div style="color:#444;font-size:10px;margin-top:3px">${isSelRegion ? 'Click/drag to set generator' : 'Click to select'}</div>`;
+    tip.innerHTML = html;
+    tip.style.display = 'block';
+
+    let tx = e.clientX + 15, ty = e.clientY + 15;
+    if (tx + 330 > window.innerWidth) tx = e.clientX - 340;
+    if (ty + 200 > window.innerHeight) ty = e.clientY - 210;
+    tip.style.left = tx + 'px';
+    tip.style.top = ty + 'px';
+
+    S.canvas.style.cursor = 'pointer';
+  } else {
+    tip.style.display = 'none';
+    S.canvas.style.cursor = '';
+  }
+}
+
+function handleClick() {
+  const mx = S._lastClickX !== undefined ? S._lastClickX : 0;
+
+  if (S.hovered) {
+    const clickedSameRegion = S.selected &&
+      S.selected.key === S.hovered.key &&
+      Math.abs(S.selected.lowCents - S.hovered.lowCents) < 0.01 &&
+      Math.abs(S.selected.highCents - S.hovered.highCents) < 0.01;
+
+    if (clickedSameRegion) {
+      const cc = x2c(mx);
+      S.generatorCents = Math.max(S.selected.lowCents, Math.min(S.selected.highCents, cc));
+      render();
+    } else {
+      const prevGen = S.generatorCents;
+      S.selected = S.hovered;
+      if (prevGen !== null &&
+          prevGen >= S.hovered.lowCents && prevGen <= S.hovered.highCents) {
+        S.generatorCents = prevGen;
+      } else {
+        S.generatorCents = null;
+      }
+      updatePanel();
+      render();
+    }
+  } else if (S.selected) {
+    // Click on empty space — check if it's on the axis within selected range
+    const cc = x2c(mx);
+    if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
+      S.generatorCents = cc;
+      render();
+    } else {
+      S.selected = null;
+      S.generatorCents = null;
+      updatePanel();
+      render();
+    }
+  }
+}
+
+function updatePanel() {
+  const panel = document.getElementById('selected-panel');
+  const cont = document.getElementById('sp-content');
+  if (!S.selected) { panel.style.display = 'none'; return; }
+
+  const sel = S.selected;
+  const key = sel.key;
+  const label = key.replace('_', ' ');
+  const fname = MOS_NAMES[key];
+  const nL = sel.nL, nS = sel.nS;
+  const parent = findParentMOS(nL, nS);
+  const children = getChildMOSes(key);
+  const regions = [sel];
+  const temps = TEMPERAMENTS.filter(t => t.mos === key);
+
+  let h = `<div class="sp-title">${label}${fname ? ' — '+fname : ''}</div>`;
+  h += `<div style="color:#aaa;margin-bottom:4px">${nL+nS} notes (${nL} large + ${nS} small)</div>`;
+
+  if (parent) {
+    const pn = MOS_NAMES[parent];
+    h += `<div style="margin-bottom:3px">Parent: <span style="color:#f5a623">${parent.replace('_',' ')}${pn ? ' ('+pn+')' : ''}</span></div>`;
+  }
+
+  h += `<div style="margin-bottom:3px">Children: `;
+  h += children.map(c => {
+    const cn = MOS_NAMES[c];
+    return `<span style="color:#6eb5ff">${c.replace('_',' ')}${cn ? ' ('+cn+')' : ''}</span>`;
+  }).join(', ');
+  h += '</div>';
+
+  if (regions.length) {
+    h += '<div style="margin-top:6px;font-weight:600;color:#e94560">Generator Ranges:</div>';
+    for (const r of regions) {
+      h += `<div style="color:#ccc;font-size:11px">${r.lowCents.toFixed(2)}¢ — ${r.highCents.toFixed(2)}¢`;
+      h += ` <span style="color:#666">(${r.lowFrac[0]}/${r.lowFrac[1]} — ${r.highFrac[0]}/${r.highFrac[1]})</span></div>`;
+    }
+  }
+
+  // EDOs in this MOS's range
+  const edosInRange = [];
+  for (const r of regions) {
+    for (const g of S.edos) {
+      if (g.cents >= r.lowCents && g.cents <= r.highCents) {
+        const hr = computeHardness(g.cents, nL + nS);
+        edosInRange.push({ ...g, hr, region: r });
+      }
+    }
+  }
+  if (edosInRange.length) {
+    h += '<div style="margin-top:6px;font-weight:600;color:#6eb5ff">EDOs in range:</div>';
+    edosInRange.sort((a, b) => a.edo - b.edo);
+    const shown = edosInRange.slice(0, 20);
+    for (const e of shown) {
+      h += `<div style="color:#ccc;font-size:11px">${e.step}\\${e.edo} = ${e.cents.toFixed(1)}¢ <span style="color:#f5a623">L:s=${e.hr.str}</span></div>`;
+    }
+    if (edosInRange.length > 20) h += `<div style="color:#666;font-size:10px">+${edosInRange.length-20} more...</div>`;
+  }
+
+  if (temps.length) {
+    h += '<div style="margin-top:6px;font-weight:600;color:#50c878">Temperaments:</div>';
+    for (const t of temps) {
+      h += `<div style="color:#ccc;font-size:11px"><span style="color:#50c878">${t.name}</span> ${t.genRange[0]}–${t.genRange[1]}¢</div>`;
+      h += `<div style="color:#777;font-size:10px;margin-left:8px">${t.description}</div>`;
+    }
+  }
+
+  cont.innerHTML = h;
+  panel.style.display = 'block';
+}
+
+function updateInfo() {
+  document.getElementById('range-display').textContent =
+    `${S.viewMin.toFixed(2)}¢ — ${S.viewMax.toFixed(2)}¢`;
+}
+
+function resizeCanvas() {
+  const cntr = document.getElementById('canvas-container');
+  S.dpr = window.devicePixelRatio || 1;
+  S.W = cntr.clientWidth;
+  S.H = cntr.clientHeight;
+  S.canvas.width = S.W * S.dpr;
+  S.canvas.height = S.H * S.dpr;
+  S.canvas.style.width = S.W + 'px';
+  S.canvas.style.height = S.H + 'px';
+}
+
+// ============================================================
+// INIT
+// ============================================================
+
+window.addEventListener('DOMContentLoaded', () => {
+  S.canvas = document.getElementById('main-canvas');
+  S.ctx = S.canvas.getContext('2d');
+  resizeCanvas();
+  recalc();
+  setup();
+});
+</script>
+</body>
+</html>
