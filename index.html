@@ -289,7 +289,7 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 
 #selected-panel .sp-title { font-weight: 700; color: #e94560; font-size: 14px; margin-bottom: 4px; }
-#selected-panel .sp-title a:hover { text-decoration: underline !important; }
+#selected-panel a:hover { text-decoration: underline !important; }
 #selected-panel .sp-close { position: absolute; top: 6px; right: 10px; cursor: pointer; color: #888; font-size: 16px; z-index: 61; }
 #selected-panel .sp-close:hover { color: #e94560; }
 
@@ -309,6 +309,23 @@ canvas { display: block; width: 100%; height: 100%; }
   gap: 10px;
   margin-bottom: 4px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.edo-ruler-temps {
+  font-size: 11px;
+  color: #dda0dd;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  text-align: center;
+}
+.edo-ruler-temps:empty {
+  display: none;
+}
+.edo-ruler-temps a {
+  color: inherit;
+  text-decoration: none;
+}
+.edo-ruler-temps a:hover {
+  text-decoration: underline;
 }
 .edo-ruler-cents {
   font-size: 15px;
@@ -761,12 +778,13 @@ const S = {
   hovered: null, selected: null,
   generatorCents: null,
   modeRotation: 0,
-  dragging: false, dragX0: 0, dragMin0: 0, dragMax0: 0,
+  dragging: false, dragX0: 0, dragY0: 0, dragMin0: 0, dragMax0: 0, dragMinSize0: 0,
   genDragging: false,
   sliderDragging: false,
   sizeSbDragging: false,
   canvas: null, ctx: null, dpr: 1, W: 0, H: 0,
-  _parentArrow: null, _childArrow: null, _lastClickX: undefined,
+  _parentArrow: null, _childArrow: null, _lastClickX: undefined, _lastClickY: undefined,
+  _tempBars: [],
 };
 
 function recalc() {
@@ -1130,6 +1148,7 @@ function drawTemperaments(ctx, W, H) {
   const selLo = sel.lowCents, selHi = sel.highCents;
   const temps = getTemperamentsForMOS(sel.key, selLo, selHi);
   S._tempRows = 0;
+  S._tempBars = [];
   if (!temps.length) return;
 
   const barH = 14;
@@ -1175,6 +1194,7 @@ function drawTemperaments(ctx, W, H) {
   ctx.textAlign = 'left';
   ctx.fillText('Temperaments for ' + sel.key.replace('_',' '), 4, baseY - 4);
 
+  S._tempBars = [];
   for (const bar of bars) {
     const y = baseY + bar.row * (barH + barGap);
     const col = TEMP_COLORS[bar.t.name] || '#888';
@@ -1184,12 +1204,20 @@ function drawTemperaments(ctx, W, H) {
     ctx.lineWidth = 1;
     ctx.strokeRect(bar.x1, y, bar.w, barH);
 
+    S._tempBars.push({ x1: bar.x1, x2: bar.x2, y, h: barH, url: bar.t.wikiUrl });
+
     if (bar.w > 35) {
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(bar.t.name, bar.x1 + bar.w / 2, y + barH / 2);
+      const name = bar.t.name;
+      if (bar.t.wikiUrl) {
+        ctx.fillStyle = '#aaddff';
+        ctx.fillText(name, bar.x1 + bar.w / 2, y + barH / 2);
+      } else {
+        ctx.fillText(name, bar.x1 + bar.w / 2, y + barH / 2);
+      }
     }
   }
 }
@@ -1608,8 +1636,24 @@ function hitTest(mx, my, e) {
   }
 }
 
+function hitTempBar(mx, my) {
+  for (const bar of S._tempBars) {
+    if (mx >= bar.x1 && mx <= bar.x2 && my >= bar.y && my <= bar.y + bar.h && bar.url) {
+      return bar;
+    }
+  }
+  return null;
+}
+
 function handleClick() {
   const mx = S._lastClickX !== undefined ? S._lastClickX : 0;
+  const my = S._lastClickY !== undefined ? S._lastClickY : 0;
+
+  const tempBar = hitTempBar(mx, my);
+  if (tempBar) {
+    window.open(tempBar.url, '_blank');
+    return;
+  }
 
   if (S.hovered) {
     const clickedSameRegion = S.selected &&
@@ -1962,7 +2006,10 @@ function renderPlaybackControls() {
       h += '<div class="temp-info">';
       for (const t of activeTemps) {
         const col = TEMP_COLORS[t.name] || '#50c878';
-        h += `<div class="temp-info-name" style="color:${col}">${t.name}</div>`;
+        const tempNameHtml = t.wikiUrl
+          ? `<a href="${t.wikiUrl}" target="_blank" style="color:${col};text-decoration:none">${t.name}</a>`
+          : t.name;
+        h += `<div class="temp-info-name" style="color:${col}">${tempNameHtml}</div>`;
         h += `<div class="temp-info-desc">${t.description}</div>`;
         if (t.commas && t.commas.length) {
           h += '<div class="temp-info-commas">Commas: ';
@@ -2107,7 +2154,10 @@ function updatePanel() {
       const commaStr = t.commas && t.commas.length ? ' — ' + t.commas.join(', ') : '';
       const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
       const mosStr = mosList.length > 1 ? ' [' + mosList.map(m => m.replace('_',' ')).join(' → ') + ']' : '';
-      h += `<div style="color:#ccc;font-size:10px"><span style="color:${col}">${t.name}</span> ${t.effectiveRange[0].toFixed(0)}–${t.effectiveRange[1].toFixed(0)}¢<span style="color:#f5a623">${commaStr}</span><span style="color:#667">${mosStr}</span></div>`;
+      const nameHtml = t.wikiUrl
+        ? `<a href="${t.wikiUrl}" target="_blank" style="color:${col};text-decoration:none">${t.name}</a>`
+        : `<span style="color:${col}">${t.name}</span>`;
+      h += `<div style="color:#ccc;font-size:10px">${nameHtml} ${t.effectiveRange[0].toFixed(0)}–${t.effectiveRange[1].toFixed(0)}¢<span style="color:#f5a623">${commaStr}</span><span style="color:#667">${mosStr}</span></div>`;
     }
   }
 
@@ -2254,6 +2304,7 @@ function renderEDOGrid() {
     h += '<span class="edo-ruler-cents"></span>';
     h += '<span class="edo-ruler-hardness"></span>';
     h += '</div>';
+    h += '<div class="edo-ruler-temps"></div>';
 
     h += '<div class="interval-ruler" data-ruler="gen">';
     h += '<div class="interval-ruler-label"><span class="degree-name">Generator</span> <span class="degree-ratio"></span></div>';
@@ -2280,6 +2331,21 @@ function renderEDOGrid() {
 
   edoEl.querySelector('.edo-ruler-cents').textContent = genCents.toFixed(2) + '¢';
   edoEl.querySelector('.edo-ruler-hardness').textContent = hardnessStr;
+
+  const tempsSpan = edoEl.querySelector('.edo-ruler-temps');
+  if (tempsSpan) {
+    const matchedTemps = getTemperamentsAtCursor(sel.key, genCents, sel.lowCents, sel.highCents);
+    if (matchedTemps.length > 0) {
+      tempsSpan.innerHTML = matchedTemps.map(t => {
+        const color = TEMP_COLORS[t.name] || '#dda0dd';
+        return t.wikiUrl
+          ? `<a href="${t.wikiUrl}" target="_blank" style="color:${color}">${t.name}</a>`
+          : `<span style="color:${color}">${t.name}</span>`;
+      }).join(', ');
+    } else {
+      tempsSpan.innerHTML = '';
+    }
+  }
 
   // Draw generator ruler
   const genRuler = edoEl.querySelector('[data-ruler="gen"]');
@@ -2454,8 +2520,10 @@ function setup() {
 
     S.dragging = true;
     S.dragX0 = e.clientX;
+    S.dragY0 = e.clientY;
     S.dragMin0 = S.viewMin;
     S.dragMax0 = S.viewMax;
+    S.dragMinSize0 = S.minSize;
     cvs.style.cursor = 'grabbing';
   });
 
@@ -2482,17 +2550,41 @@ function setup() {
 
     if (S.dragging) {
       const dx = e.clientX - S.dragX0;
+      const dy = e.clientY - S.dragY0;
       const cpp = (S.dragMax0 - S.dragMin0) / S.W;
       S.viewMin = S.dragMin0 - dx * cpp;
       S.viewMax = S.dragMax0 - dx * cpp;
       clampView();
-      updateInfo();
-      render();
+      const sizeSensitivity = 0.05;
+      const newMin = Math.round(Math.max(2, Math.min(30, S.dragMinSize0 - dy * sizeSensitivity)));
+      if (newMin !== S.minSize) {
+        S.minSize = newMin;
+        document.getElementById('min-size').value = S.minSize;
+        document.getElementById('min-size-val').textContent = S.minSize;
+        if (S.minSize > S.maxSize) {
+          S.maxSize = S.minSize;
+          document.getElementById('max-mos-size').value = S.maxSize;
+          document.getElementById('max-mos-val').textContent = S.maxSize;
+        }
+        recalc();
+      } else {
+        updateInfo();
+        render();
+      }
+    } else if (e.target.closest('#selected-panel')) {
+      if (S.hovered) {
+        S.hovered = null;
+        document.getElementById('tooltip').style.display = 'none';
+        cvs.style.cursor = '';
+        render();
+      }
     } else {
       hitTest(mx, my, e);
       if (hitSizeScrollbar(mx, my)) {
         cvs.style.cursor = 'ns-resize';
       } else if (hitCircleArrow(mx, my)) {
+        cvs.style.cursor = 'pointer';
+      } else if (hitTempBar(mx, my)) {
         cvs.style.cursor = 'pointer';
       } else if (S.selected && hitSlider(mx, my)) {
         cvs.style.cursor = 'ew-resize';
@@ -2529,9 +2621,10 @@ function setup() {
     if (S.dragging) {
       S.dragging = false;
       cvs.style.cursor = '';
-      if (Math.abs(e.clientX - S.dragX0) < 3) {
+      if (Math.abs(e.clientX - S.dragX0) < 3 && Math.abs(e.clientY - S.dragY0) < 3) {
         const rect = cvs.getBoundingClientRect();
         S._lastClickX = e.clientX - rect.left;
+        S._lastClickY = e.clientY - rect.top;
         handleClick();
       }
     }
@@ -2561,10 +2654,10 @@ function setup() {
           S.generatorCents = cc;
           render();
         } else {
-          S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax;
+          S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax; S.dragMinSize0 = S.minSize;
         }
       } else {
-        S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax;
+        S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax; S.dragMinSize0 = S.minSize;
       }
     } else if (e.touches.length === 2) {
       S.sliderDragging = false;
@@ -2588,10 +2681,25 @@ function setup() {
         setGenFromScreenX(mx);
       } else {
         const dx = e.touches[0].clientX - t0x;
+        const dy = e.touches[0].clientY - t0y;
         const cpp = (S.dragMax0 - S.dragMin0) / S.W;
         S.viewMin = S.dragMin0 - dx * cpp;
         S.viewMax = S.dragMax0 - dx * cpp;
-        clampView(); updateInfo(); render();
+        clampView();
+        const newMin = Math.round(Math.max(2, Math.min(30, S.dragMinSize0 - dy * 0.05)));
+        if (newMin !== S.minSize) {
+          S.minSize = newMin;
+          document.getElementById('min-size').value = S.minSize;
+          document.getElementById('min-size-val').textContent = S.minSize;
+          if (S.minSize > S.maxSize) {
+            S.maxSize = S.minSize;
+            document.getElementById('max-mos-size').value = S.maxSize;
+            document.getElementById('max-mos-val').textContent = S.maxSize;
+          }
+          recalc();
+        } else {
+          updateInfo(); render();
+        }
       }
     } else if (e.touches.length === 2) {
       const d = Math.hypot(e.touches[1].clientX-e.touches[0].clientX, e.touches[1].clientY-e.touches[0].clientY);
