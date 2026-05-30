@@ -194,6 +194,12 @@ canvas { display: block; width: 100%; height: 100%; }
   font-family: monospace;
   margin-bottom: 3px;
 }
+#selected-panel .sp-playback .step-pattern {
+  color: #aaa;
+  font-family: monospace;
+  font-weight: 400;
+  font-size: 11px;
+}
 #selected-panel .sp-playback .mode-name {
   color: #6eb5ff;
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -231,6 +237,49 @@ canvas { display: block; width: 100%; height: 100%; }
   background: #263456;
   border-color: #4a6a9a;
   color: #dde;
+}
+#selected-panel .sp-playback .temp-info {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid #2a3a5a;
+}
+#selected-panel .sp-playback .temp-info-name {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+#selected-panel .sp-playback .temp-info-desc {
+  font-size: 10px;
+  color: #aaa;
+  margin-bottom: 3px;
+  line-height: 1.3;
+}
+#selected-panel .sp-playback .temp-info-commas {
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 2px;
+}
+#selected-panel .sp-playback .temp-comma {
+  color: #f5a623;
+  font-family: monospace;
+  font-weight: 600;
+}
+#selected-panel .sp-playback .temp-comma-name {
+  color: #777;
+  font-style: italic;
+}
+#selected-panel .sp-playback .temp-info-mos {
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 2px;
+}
+#selected-panel .sp-playback .temp-mos {
+  color: #667;
+  font-family: monospace;
+}
+#selected-panel .sp-playback .temp-mos-active {
+  color: #6eb5ff;
+  font-weight: 600;
 }
 
 #selected-panel .sp-info {
@@ -382,10 +431,10 @@ canvas { display: block; width: 100%; height: 100%; }
 <div id="controls">
   <div class="ctrl-group">
     <label>Size N:</label>
-    <input type="range" id="min-size" min="3" max="30" value="3">
+    <input type="range" id="min-size" min="2" max="30" value="3">
     <span class="value-display" id="min-size-val">3</span>
     <span style="color:#556;font-size:11px">—</span>
-    <input type="range" id="max-mos-size" min="3" max="30" value="14">
+    <input type="range" id="max-mos-size" min="2" max="30" value="14">
     <span class="value-display" id="max-mos-val">14</span>
   </div>
   <div class="ctrl-group">
@@ -430,19 +479,31 @@ canvas { display: block; width: 100%; height: 100%; }
 
 function getTemperamentsForMOS(key, regionLow, regionHigh) {
   const results = [];
-  for (const t of TEMPERAMENTS) {
-    if (t.mos !== key) continue;
-    const mirror = [1200 - t.genRange[1], 1200 - t.genRange[0]];
-    const directOverlap = regionLow === undefined ||
-      (t.genRange[0] < regionHigh && t.genRange[1] > regionLow);
-    const mirrorOverlap = regionLow !== undefined &&
-      mirror[0] < regionHigh && mirror[1] > regionLow;
+  for (let i = 0; i < TEMPERAMENTS.length; i++) {
+    const t = TEMPERAMENTS[i];
+    if (t.disabled) continue;
+    const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
+    const directMatch = mosList.includes(key) || mosList.some(m => isDescendantMOS(key, m));
+    const ancestorMatch = !directMatch && mosList.some(m => isDescendantMOS(m, key));
+    if (!directMatch && !ancestorMatch) continue;
+    const period = t.period || 1200;
+    const mirror = [period - t.genRange[1], period - t.genRange[0]];
 
-    if (directOverlap) {
-      results.push({ ...t, effectiveRange: t.genRange });
-    }
-    if (mirrorOverlap) {
-      results.push({ ...t, effectiveRange: mirror });
+    if (ancestorMatch) {
+      const directIn = t.genRange[0] < regionHigh && t.genRange[1] > regionLow;
+      const mirrorIn = mirror[0] < regionHigh && mirror[1] > regionLow;
+      results.push({ ...t, effectiveRange: directIn ? t.genRange : mirror, _idx: i });
+    } else {
+      const directOverlap = regionLow === undefined ||
+        (t.genRange[0] < regionHigh && t.genRange[1] > regionLow);
+      const mirrorOverlap = regionLow !== undefined &&
+        mirror[0] < regionHigh && mirror[1] > regionLow;
+      if (directOverlap) {
+        results.push({ ...t, effectiveRange: t.genRange, _idx: i });
+      }
+      if (mirrorOverlap) {
+        results.push({ ...t, effectiveRange: mirror, _idx: i });
+      }
     }
   }
   return results;
@@ -499,6 +560,19 @@ function getChildMOSes(key) {
   return [`${nL + nS}L_${nS}s`, `${nL}L_${nL + nS}s`];
 }
 
+function isDescendantMOS(childKey, ancestorKey) {
+  let cur = childKey;
+  for (let i = 0; i < 30; i++) {
+    const m = cur.match(/(\d+)L_(\d+)s/);
+    if (!m) return false;
+    const parent = findParentMOS(+m[1], +m[2]);
+    if (!parent) return false;
+    if (parent === ancestorKey) return true;
+    cur = parent;
+  }
+  return false;
+}
+
 function buildMOSRegions(maxSize, maxDepth) {
   const regions = [];
   const edoColorMap = {};
@@ -549,8 +623,9 @@ function buildMOSRegions(maxSize, maxDepth) {
     traverse(mp, mq, rp, rq, depth - 1);
   }
 
+  if (maxSize >= 2) addRegion(1, 1, 2, 0, 1, 1, 2, 0);
   traverse(0, 1, 1, 2, maxDepth);
-  return { regions: regions.filter(r => r.size >= 3 && r.size <= maxSize), colorMap: edoColorMap };
+  return { regions: regions.filter(r => r.size >= 2 && r.size <= maxSize), colorMap: edoColorMap };
 }
 
 function computeHardness(genCents, mosSize) {
@@ -625,6 +700,13 @@ function computeUDP(genCents, n, modeRotation, period) {
   return `${n - 1 - rootGenIndex}|${rootGenIndex}`;
 }
 
+function computeStepPattern(genCents, n, modeRotation, period) {
+  period = period || 1200;
+  const baseScale = buildMOSScale(genCents, n, period);
+  const scale = rotateMOSScale(baseScale, modeRotation, period);
+  return scale.steps.map(st => Math.abs(st - scale.L) < 0.5 ? 'L' : 's').join('');
+}
+
 function rotateByGenerator(genCents, n, currentRotation, direction, period) {
   period = period || 1200;
   const chain = getGeneratorChain(genCents, n, period);
@@ -682,6 +764,7 @@ const S = {
   dragging: false, dragX0: 0, dragMin0: 0, dragMax0: 0,
   genDragging: false,
   sliderDragging: false,
+  sizeSbDragging: false,
   canvas: null, ctx: null, dpr: 1, W: 0, H: 0,
   _parentArrow: null, _childArrow: null, _lastClickX: undefined,
 };
@@ -746,6 +829,7 @@ function render() {
 
   drawAxis(ctx, W, H, vr);
   drawEDOs(ctx, W, H, vr);
+  S._tempRows = 0;
   if (S.selected) drawTemperaments(ctx, W, H);
   drawMOS(ctx, W, H, vr);
   if (S.selected && S.generatorCents !== null) drawGeneratorMarker(ctx, W, H);
@@ -754,8 +838,85 @@ function render() {
     positionPanel();
     renderEDOGrid();
   }
+  drawSizeScrollbar(ctx, W, H);
 
   ctx.restore();
+}
+
+// ================================================================
+//  RENDER — Left Size Scrollbar
+// ================================================================
+
+const SIZE_SB_WIDTH = 14;
+const SIZE_SB_MARGIN_TOP = 64;
+const SIZE_SB_MARGIN_BOTTOM = 40;
+
+function getSizeScrollbarGeometry(H) {
+  const x = 3;
+  const trackTop = SIZE_SB_MARGIN_TOP;
+  const trackBottom = H - SIZE_SB_MARGIN_BOTTOM;
+  const trackH = trackBottom - trackTop;
+  const minVal = 2, maxVal = 30;
+  const range = maxVal - minVal;
+  const t = (S.minSize - minVal) / range;
+  const thumbY = trackTop + t * (trackH - 20);
+  return { x, trackTop, trackBottom, trackH, thumbY, thumbH: 20 };
+}
+
+function drawSizeScrollbar(ctx, W, H) {
+  const { x, trackTop, trackBottom, trackH, thumbY, thumbH } = getSizeScrollbarGeometry(H);
+
+  ctx.fillStyle = '#0d1b2a';
+  ctx.fillRect(x, trackTop, SIZE_SB_WIDTH, trackH);
+  ctx.strokeStyle = '#2a3a5a';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, trackTop + 0.5, SIZE_SB_WIDTH - 1, trackH - 1);
+
+  ctx.fillStyle = S.sizeSbDragging ? '#e94560' : '#5a6a8a';
+  const r = 3;
+  const tx = x, ty = thumbY, tw = SIZE_SB_WIDTH, th = thumbH;
+  ctx.beginPath();
+  ctx.moveTo(tx + r, ty);
+  ctx.lineTo(tx + tw - r, ty);
+  ctx.quadraticCurveTo(tx + tw, ty, tx + tw, ty + r);
+  ctx.lineTo(tx + tw, ty + th - r);
+  ctx.quadraticCurveTo(tx + tw, ty + th, tx + tw - r, ty + th);
+  ctx.lineTo(tx + r, ty + th);
+  ctx.quadraticCurveTo(tx, ty + th, tx, ty + th - r);
+  ctx.lineTo(tx, ty + r);
+  ctx.quadraticCurveTo(tx, ty, tx + r, ty);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#aab';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(S.minSize, x + SIZE_SB_WIDTH / 2, thumbY + thumbH / 2 + 3);
+}
+
+function hitSizeScrollbar(mx, my) {
+  const geo = getSizeScrollbarGeometry(S.H);
+  return mx >= geo.x && mx <= geo.x + SIZE_SB_WIDTH &&
+         my >= geo.trackTop && my <= geo.trackBottom;
+}
+
+function setSizeFromScrollbarY(my) {
+  const geo = getSizeScrollbarGeometry(S.H);
+  const t = Math.max(0, Math.min(1, (my - geo.trackTop - 10) / (geo.trackH - 20)));
+  const newMin = Math.round(2 + t * 28);
+  if (newMin !== S.minSize) {
+    S.minSize = newMin;
+    document.getElementById('min-size').value = S.minSize;
+    document.getElementById('min-size-val').textContent = S.minSize;
+    if (S.minSize > S.maxSize) {
+      S.maxSize = S.minSize;
+      document.getElementById('max-mos-size').value = S.maxSize;
+      document.getElementById('max-mos-val').textContent = S.maxSize;
+      recalc();
+    } else {
+      render();
+    }
+  }
 }
 
 // ================================================================
@@ -819,7 +980,8 @@ function drawAxis(ctx, W, H, vr) {
 // ================================================================
 
 function drawMOS(ctx, W, H, vr) {
-  const startY = S.selected ? 140 : 64;
+  const tempSpace = S.selected && S._tempRows ? S._tempRows * 16 + 8 : 0;
+  const startY = S.selected ? 120 + tempSpace : 64;
   const rowH = 20;
   const gap = 2;
 
@@ -967,45 +1129,67 @@ function drawTemperaments(ctx, W, H) {
   const sel = S.selected;
   const selLo = sel.lowCents, selHi = sel.highCents;
   const temps = getTemperamentsForMOS(sel.key, selLo, selHi);
+  S._tempRows = 0;
   if (!temps.length) return;
 
-  const startY = 140;
-  const rowH = 20;
-  const gap = 2;
-  const ri = sel.size - S.minSize;
-  const selY = startY + ri * (rowH + gap);
+  const barH = 14;
+  const barGap = 2;
+  const baseY = 120;
 
-  const h = 14;
-  const y = selY - h - 2;
-
-  ctx.fillStyle = '#50c87888';
-  ctx.font = '9px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText('Temperaments for ' + sel.key.replace('_',' '), 4, y - 2);
-
+  const bars = [];
   for (const t of temps) {
     const lo = Math.max(t.effectiveRange[0], selLo);
     const hi = Math.min(t.effectiveRange[1], selHi);
     if (hi <= lo) continue;
-
     const x1 = Math.max(0, c2x(lo));
     const x2 = Math.min(W, c2x(hi));
     const w = x2 - x1;
     if (w < 1) continue;
+    bars.push({ t, x1, x2, w, centsW: t.effectiveRange[1] - t.effectiveRange[0] });
+  }
+  if (!bars.length) return;
 
-    const col = TEMP_COLORS[t.name] || '#888';
+  bars.sort((a, b) => b.centsW - a.centsW || a.t._idx - b.t._idx);
+
+  const rows = [];
+  for (const bar of bars) {
+    let placed = false;
+    for (let r = 0; r < rows.length; r++) {
+      if (!rows[r].some(b => b.x1 < bar.x2 && b.x2 > bar.x1)) {
+        rows[r].push(bar);
+        bar.row = r;
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      bar.row = rows.length;
+      rows.push([bar]);
+    }
+  }
+
+  S._tempRows = rows.length;
+
+  ctx.fillStyle = '#50c87888';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('Temperaments for ' + sel.key.replace('_',' '), 4, baseY - 4);
+
+  for (const bar of bars) {
+    const y = baseY + bar.row * (barH + barGap);
+    const col = TEMP_COLORS[bar.t.name] || '#888';
     ctx.fillStyle = hexA(col, 0.5);
-    ctx.fillRect(x1, y, w, h);
+    ctx.fillRect(bar.x1, y, bar.w, barH);
     ctx.strokeStyle = col;
     ctx.lineWidth = 1;
-    ctx.strokeRect(x1, y, w, h);
+    ctx.strokeRect(bar.x1, y, bar.w, barH);
 
-    if (w > 35) {
+    if (bar.w > 35) {
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(t.name, x1 + w/2, y + h/2);
+      ctx.fillText(bar.t.name, bar.x1 + bar.w / 2, y + barH / 2);
     }
   }
 }
@@ -1305,6 +1489,7 @@ function drawMOSCircle(ctx, W, H) {
   }
 
   const udp = computeUDP(gen, n, S.modeRotation);
+  const stepPattern = computeStepPattern(gen, n, S.modeRotation, P);
   const modeName = getModeName(sel.key, gen, S.modeRotation);
   ctx.fillStyle = S.modeRotation !== 0 ? '#6eb5ff' : '#556';
   ctx.font = 'bold 10px monospace';
@@ -1312,9 +1497,20 @@ function drawMOSCircle(ctx, W, H) {
   if (modeName) {
     ctx.fillText(modeName, cx, cy + 22);
     ctx.font = '9px monospace';
-    ctx.fillText(udp, cx, cy + 34);
+    ctx.fillText(udp + '  ' + stepPattern, cx, cy + 34);
   } else {
     ctx.fillText(udp, cx, cy + 22);
+    ctx.font = '9px monospace';
+    ctx.fillText(stepPattern, cx, cy + 34);
+  }
+
+  const activeTemps = getTemperamentsAtCursor(sel.key, gen, sel.lowCents, sel.highCents);
+  if (activeTemps.length) {
+    const t = activeTemps[0];
+    const col = TEMP_COLORS[t.name] || '#50c878';
+    ctx.fillStyle = col;
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText(t.name, cx, cy + 46);
   }
 }
 
@@ -1373,7 +1569,11 @@ function hitTest(mx, my, e) {
 
     const temps = getTemperamentsAtCursor(found.key, cc, found.lowCents, found.highCents);
     for (const t of temps) {
-      html += `<div class="tt-temp">${t.name}: ${t.description}</div>`;
+      const col = TEMP_COLORS[t.name] || '#50c878';
+      html += `<div class="tt-temp"><span style="color:${col};font-weight:700">${t.name}</span> — ${t.description}</div>`;
+      if (t.commas && t.commas.length) {
+        html += `<div class="tt-temp" style="color:#999;font-size:10px">Commas: ${t.commas.map((c, i) => `<span style="color:#f5a623">${c}</span>${t.commaNames[i] ? ' ('+t.commaNames[i]+')' : ''}`).join(', ')}</div>`;
+      }
     }
 
     let nearest = null, nd = Infinity;
@@ -1408,15 +1608,6 @@ function hitTest(mx, my, e) {
   }
 }
 
-function autoFilterMinSize(n) {
-  if (n <= 10) return;
-  const newMin = n - 3;
-  if (S.minSize >= newMin) return;
-  S.minSize = newMin;
-  document.getElementById('min-size').value = newMin;
-  document.getElementById('min-size-val').textContent = newMin;
-}
-
 function handleClick() {
   const mx = S._lastClickX !== undefined ? S._lastClickX : 0;
 
@@ -1439,7 +1630,6 @@ function handleClick() {
       } else {
         S.generatorCents = null;
       }
-      autoFilterMinSize(S.hovered.size);
       updatePanel();
       render();
     }
@@ -1479,7 +1669,6 @@ function navigateToParent() {
   if (gen !== null && (gen < candidate.lowCents || gen > candidate.highCents)) {
     S.generatorCents = null;
   }
-  autoFilterMinSize(candidate.size);
   updatePanel();
   render();
 }
@@ -1506,7 +1695,6 @@ function navigateToChild() {
   if (gen !== null && (gen < candidate.lowCents || gen > candidate.highCents)) {
     S.generatorCents = null;
   }
-  autoFilterMinSize(candidate.size);
   updatePanel();
   render();
 }
@@ -1785,9 +1973,10 @@ function renderPlaybackControls() {
 
   // Mode rotation controls
   const udp = S.generatorCents !== null ? computeUDP(S.generatorCents, n, S.modeRotation) : '—';
+  const stepPattern = S.generatorCents !== null ? computeStepPattern(S.generatorCents, n, S.modeRotation) : null;
   const modeName = S.generatorCents !== null ? getModeName(S.selected.key, S.generatorCents, S.modeRotation) : null;
   h += '<div class="mode-section">';
-  h += `<div class="mode-udp">${udp}${modeName ? ` <span class="mode-name">${modeName}</span>` : ''}</div>`;
+  h += `<div class="mode-udp">${udp}${stepPattern ? ` <span class="step-pattern">${stepPattern}</span>` : ''}${modeName ? ` <span class="mode-name">${modeName}</span>` : ''}</div>`;
   h += '<div class="mode-row">';
   h += '<span class="mode-row-label">gen</span>';
   h += '<button class="mode-btn" data-action="gen-down" title="Darker (rotate by generator)">&#x25C0;</button>';
@@ -1799,6 +1988,29 @@ function renderPlaybackControls() {
   h += '<button class="mode-btn" data-action="step-up" title="Next mode (rotate by step)">&#x25B6;</button>';
   h += '</div>';
   h += '</div>';
+
+  // Active temperament info
+  if (S.generatorCents !== null && S.selected) {
+    const activeTemps = getTemperamentsAtCursor(S.selected.key, S.generatorCents, S.selected.lowCents, S.selected.highCents);
+    if (activeTemps.length) {
+      h += '<div class="temp-info">';
+      for (const t of activeTemps) {
+        const col = TEMP_COLORS[t.name] || '#50c878';
+        h += `<div class="temp-info-name" style="color:${col}">${t.name}</div>`;
+        h += `<div class="temp-info-desc">${t.description}</div>`;
+        if (t.commas && t.commas.length) {
+          h += '<div class="temp-info-commas">Commas: ';
+          h += t.commas.map((c, i) => `<span class="temp-comma">${c}</span>${t.commaNames[i] ? ' <span class="temp-comma-name">(' + t.commaNames[i] + ')</span>' : ''}`).join(', ');
+          h += '</div>';
+        }
+        const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
+        if (mosList.length > 1) {
+          h += '<div class="temp-info-mos">MOS: ' + mosList.map(m => `<span class="temp-mos${m === S.selected.key ? ' temp-mos-active' : ''}">${m.replace('_', ' ')}</span>`).join(' → ') + '</div>';
+        }
+      }
+      h += '</div>';
+    }
+  }
 
   el.innerHTML = h;
 
@@ -1890,7 +2102,11 @@ function updatePanel() {
   if (temps.length) {
     h += '<div style="margin-top:4px;font-weight:600;color:#50c878;font-size:10px">Temperaments:</div>';
     for (const t of temps) {
-      h += `<div style="color:#ccc;font-size:10px"><span style="color:#50c878">${t.name}</span> ${t.effectiveRange[0].toFixed(0)}–${t.effectiveRange[1].toFixed(0)}¢</div>`;
+      const col = TEMP_COLORS[t.name] || '#50c878';
+      const commaStr = t.commas && t.commas.length ? ' — ' + t.commas.join(', ') : '';
+      const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
+      const mosStr = mosList.length > 1 ? ' [' + mosList.map(m => m.replace('_',' ')).join(' → ') + ']' : '';
+      h += `<div style="color:#ccc;font-size:10px"><span style="color:${col}">${t.name}</span> ${t.effectiveRange[0].toFixed(0)}–${t.effectiveRange[1].toFixed(0)}¢<span style="color:#f5a623">${commaStr}</span><span style="color:#667">${mosStr}</span></div>`;
     }
   }
 
@@ -2122,7 +2338,6 @@ function rulerSetGenFromCents(cents) {
     if (adj) {
       S.selected = adj;
       S.generatorCents = Math.max(adj.lowCents, Math.min(adj.highCents, clamped));
-      autoFilterMinSize(adj.size);
       updatePanel();
       render();
       return;
@@ -2206,6 +2421,13 @@ function setup() {
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
 
+    if (hitSizeScrollbar(mx, my)) {
+      S.sizeSbDragging = true;
+      setSizeFromScrollbarY(my);
+      cvs.style.cursor = 'ns-resize';
+      return;
+    }
+
     const arrow = hitCircleArrow(mx, my);
     if (arrow === 'parent') { navigateToParent(); return; }
     if (arrow === 'child') { navigateToChild(); return; }
@@ -2241,6 +2463,11 @@ function setup() {
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
 
+    if (S.sizeSbDragging) {
+      setSizeFromScrollbarY(my);
+      return;
+    }
+
     if (S.sliderDragging) {
       S.generatorCents = sliderXToGen(mx);
       render();
@@ -2262,7 +2489,9 @@ function setup() {
       render();
     } else {
       hitTest(mx, my, e);
-      if (hitCircleArrow(mx, my)) {
+      if (hitSizeScrollbar(mx, my)) {
+        cvs.style.cursor = 'ns-resize';
+      } else if (hitCircleArrow(mx, my)) {
         cvs.style.cursor = 'pointer';
       } else if (S.selected && hitSlider(mx, my)) {
         cvs.style.cursor = 'ew-resize';
@@ -2280,6 +2509,12 @@ function setup() {
   });
 
   window.addEventListener('mouseup', e => {
+    if (S.sizeSbDragging) {
+      S.sizeSbDragging = false;
+      cvs.style.cursor = '';
+      render();
+      return;
+    }
     if (S.sliderDragging) {
       S.sliderDragging = false;
       cvs.style.cursor = '';
@@ -2311,7 +2546,10 @@ function setup() {
       t0x = e.touches[0].clientX;
       t0y = e.touches[0].clientY;
 
-      if (S.selected && hitSlider(mx, my)) {
+      if (hitSizeScrollbar(mx, my)) {
+        S.sizeSbDragging = true;
+        setSizeFromScrollbarY(my);
+      } else if (S.selected && hitSlider(mx, my)) {
         S.sliderDragging = true;
         S.generatorCents = sliderXToGen(mx);
         render();
@@ -2339,7 +2577,10 @@ function setup() {
     if (e.touches.length === 1) {
       const rect = cvs.getBoundingClientRect();
       const mx = e.touches[0].clientX - rect.left;
-      if (S.sliderDragging) {
+      const my = e.touches[0].clientY - rect.top;
+      if (S.sizeSbDragging) {
+        setSizeFromScrollbarY(my);
+      } else if (S.sliderDragging) {
         S.generatorCents = sliderXToGen(mx);
         render();
       } else if (S.genDragging) {
@@ -2363,6 +2604,7 @@ function setup() {
     e.preventDefault();
   }, { passive: false });
   cntr.addEventListener('touchend', () => {
+    if (S.sizeSbDragging) S.sizeSbDragging = false;
     if (S.sliderDragging) S.sliderDragging = false;
     if (S.genDragging) S.genDragging = false;
   });
