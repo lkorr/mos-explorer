@@ -239,9 +239,9 @@ canvas { display: block; width: 100%; height: 100%; }
   color: #dde;
 }
 #selected-panel .sp-playback .temp-info {
-  margin-top: 6px;
-  padding-top: 5px;
-  border-top: 1px solid #2a3a5a;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #2a3a5a;
 }
 #selected-panel .sp-playback .temp-info-name {
   font-size: 12px;
@@ -431,11 +431,11 @@ canvas { display: block; width: 100%; height: 100%; }
 <div id="controls">
   <div class="ctrl-group">
     <label>Size N:</label>
-    <input type="range" id="min-size" min="2" max="30" value="3">
-    <span class="value-display" id="min-size-val">3</span>
+    <input type="range" id="min-size" min="2" max="30" value="2">
+    <span class="value-display" id="min-size-val">2</span>
     <span style="color:#556;font-size:11px">—</span>
-    <input type="range" id="max-mos-size" min="2" max="30" value="14">
-    <span class="value-display" id="max-mos-val">14</span>
+    <input type="range" id="max-mos-size" min="2" max="30" value="30">
+    <span class="value-display" id="max-mos-val">30</span>
   </div>
   <div class="ctrl-group">
     <label>Max EDO:</label>
@@ -756,7 +756,7 @@ function getEqualizedEnd(region) {
 
 const S = {
   viewMin: 0, viewMax: 1200,
-  maxSize: 14, maxEDO: 60, minSize: 3,
+  maxSize: 30, maxEDO: 60, minSize: 2,
   regions: [], colorMap: {}, edos: [],
   hovered: null, selected: null,
   generatorCents: null,
@@ -1954,7 +1954,31 @@ function renderPlaybackControls() {
     return i + 'ths';
   };
 
-  let h = `<select class="synth-select" title="Waveform">`;
+  // Active temperament info (above controls)
+  let h = '';
+  if (S.generatorCents !== null && S.selected) {
+    const activeTemps = getTemperamentsAtCursor(S.selected.key, S.generatorCents, S.selected.lowCents, S.selected.highCents);
+    if (activeTemps.length) {
+      h += '<div class="temp-info">';
+      for (const t of activeTemps) {
+        const col = TEMP_COLORS[t.name] || '#50c878';
+        h += `<div class="temp-info-name" style="color:${col}">${t.name}</div>`;
+        h += `<div class="temp-info-desc">${t.description}</div>`;
+        if (t.commas && t.commas.length) {
+          h += '<div class="temp-info-commas">Commas: ';
+          h += t.commas.map((c, i) => `<span class="temp-comma">${c}</span>${t.commaNames[i] ? ' <span class="temp-comma-name">(' + t.commaNames[i] + ')</span>' : ''}`).join(', ');
+          h += '</div>';
+        }
+        const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
+        if (mosList.length > 1) {
+          h += '<div class="temp-info-mos">MOS: ' + mosList.map(m => `<span class="temp-mos${m === S.selected.key ? ' temp-mos-active' : ''}">${m.replace('_', ' ')}</span>`).join(' → ') + '</div>';
+        }
+      }
+      h += '</div>';
+    }
+  }
+
+  h += `<select class="synth-select" title="Waveform">`;
   for (const w of ['sine', 'triangle', 'sawtooth', 'square']) {
     const sel = w === SYNTH.waveform ? ' selected' : '';
     h += `<option value="${w}"${sel}>${w}</option>`;
@@ -1988,29 +2012,6 @@ function renderPlaybackControls() {
   h += '<button class="mode-btn" data-action="step-up" title="Next mode (rotate by step)">&#x25B6;</button>';
   h += '</div>';
   h += '</div>';
-
-  // Active temperament info
-  if (S.generatorCents !== null && S.selected) {
-    const activeTemps = getTemperamentsAtCursor(S.selected.key, S.generatorCents, S.selected.lowCents, S.selected.highCents);
-    if (activeTemps.length) {
-      h += '<div class="temp-info">';
-      for (const t of activeTemps) {
-        const col = TEMP_COLORS[t.name] || '#50c878';
-        h += `<div class="temp-info-name" style="color:${col}">${t.name}</div>`;
-        h += `<div class="temp-info-desc">${t.description}</div>`;
-        if (t.commas && t.commas.length) {
-          h += '<div class="temp-info-commas">Commas: ';
-          h += t.commas.map((c, i) => `<span class="temp-comma">${c}</span>${t.commaNames[i] ? ' <span class="temp-comma-name">(' + t.commaNames[i] + ')</span>' : ''}`).join(', ');
-          h += '</div>';
-        }
-        const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
-        if (mosList.length > 1) {
-          h += '<div class="temp-info-mos">MOS: ' + mosList.map(m => `<span class="temp-mos${m === S.selected.key ? ' temp-mos-active' : ''}">${m.replace('_', ' ')}</span>`).join(' → ') + '</div>';
-        }
-      }
-      h += '</div>';
-    }
-  }
 
   el.innerHTML = h;
 

@@ -92,11 +92,12 @@ const TEMPERAMENTS = [
     commas: ['49/48'], commaNames: ['slendro diesis'],
     description: 'Semi-fourth: two generators = 4/3. Equates 7/6 and 8/7.' },
 
-  // === TRIVIAL / SMALL ===
-  { name: 'Trivial', mos: ['1L_1s'], genRange: [0.1, 600.0],
-    commas: [], commaNames: [],
-    description: 'Any generator produces a 2-note scale. The universal parent of all MOS.' },
+  // === ARCHEOTONIC (6L 1s) ===
+  { name: 'Tetracot', mos: ['6L_1s', '7L_6s', '7L_13s'], genRange: [174.0, 178.0],
+    commas: ['20000/19683'], commaNames: ['tetracot comma'],
+    description: 'Four generators = 3/2. Generator is a sub-major second (~176¢). EDOs: 27, 34, 41.' },
 
+  // === TRIVIAL / SMALL ===
   { name: 'Bug', mos: ['4L_1s', '4L_5s'], genRange: [240.0, 260.0],
     commas: ['27/25'], commaNames: ['large limma'],
     description: 'Equates 10/9 and 6/5. Exotemperament.' },
@@ -154,7 +155,7 @@ const TEMP_COLORS = {
   'Porcupine': '#7fff00', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
   'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
-  'Trivial': '#888899',
+  'Tetracot': '#66cdaa',
   'Slendric': '#deb887', 'Father': '#f0e68c', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
