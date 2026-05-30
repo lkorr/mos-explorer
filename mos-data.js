@@ -1,47 +1,47 @@
 const TEMPERAMENTS = [
   // === DIATONIC FAMILY (5L 2s) ===
-  { name: 'Meantone', mos: ['5L_2s', '7L_5s', '12L_7s'], genRange: [690.0, 700.0],
+  { name: 'Meantone', mos: ['5L_2s', '7L_5s', '12L_7s'], genRange: [694.77, 700.0],
     commas: ['81/80'], commaNames: ['syntonic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Meantone',
     description: 'Tempers out 81/80. Quarter-comma ~696.6¢. Four fifths = major third (5/4).' },
 
-  { name: 'Flattone', mos: ['5L_2s', '7L_5s', '12L_7s'], genRange: [691.0, 696.5],
+  { name: 'Flattone', mos: ['5L_2s', '7L_5s', '12L_7s'], genRange: [690.9, 694.77],
     commas: ['81/80', '525/512'], commaNames: ['syntonic comma', 'avicennma'],
     wikiUrl: 'https://en.xen.wiki/w/Meantone_family#Flattone',
     description: 'Very flat meantone. 7/4 maps to diminished seventh. ~695¢ fifth.' },
 
-  { name: 'Flattertone', mos: ['5L_2s', '7L_5s'], genRange: [688.0, 694.0],
+  { name: 'Deeptone', mos: ['5L_2s', '7L_5s'], genRange: [685.7, 690.9],
     commas: ['81/80'], commaNames: ['syntonic comma'],
-    wikiUrl: 'https://en.xen.wiki/w/Meantone_family#Flattertone',
-    description: 'Even flatter than flattone. Near 1/2-comma meantone.' },
+    wikiUrl: 'https://en.xen.wiki/w/Deeptone',
+    description: 'Very flat meantone. Near 1/2-comma meantone, between flattone and mavila.' },
 
   { name: 'Pythagorean', mos: ['5L_2s'], genRange: [701.5, 703.0],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Pythagorean_tuning',
     description: 'Pure 3/2 at 701.955¢. No commas tempered — just intonation of 3-limit.' },
 
-  { name: 'Superpyth', mos: ['5L_2s', '5L_7s'], genRange: [704.0, 714.0],
+  { name: 'Superpyth', mos: ['5L_2s', '5L_7s'], genRange: [703.0, 713.08],
     commas: ['64/63', '245/243'], commaNames: ['Archytas comma', 'sensamagic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Superpyth',
     description: 'Sharp fifths. Two fifths = 8/7. Opposite of meantone.' },
 
-  { name: 'Ultrapyth', mos: ['5L_2s', '5L_7s'], genRange: [713.0, 720.0],
+  { name: 'Ultrapyth', mos: ['5L_2s', '5L_7s'], genRange: [713.08, 720.0],
     commas: ['64/63'], commaNames: ['Archytas comma'],
     wikiUrl: 'https://en.xen.wiki/w/Archytas_clan#Ultrapyth',
     description: 'Very sharp fifths near 5edo. Extends oceanfront (2.3.7.13/5). 5/4 mapped to +14 fifths.' },
 
-  { name: 'Schismatic', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [700.0, 702.0],
+  { name: 'Schismatic', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [700.0, 701.5],
     commas: ['32805/32768'], commaNames: ['schisma'],
     wikiUrl: 'https://en.xen.wiki/w/Schismic',
     description: 'Tempers out the schisma. Nearly pure fifths. Eight fourths = 10/1.' },
 
   // === ANTI-DIATONIC (2L 5s) ===
-  { name: 'Mavila', mos: ['2L_5s', '7L_2s', '7L_9s'], genRange: [670.0, 686.0],
+  { name: 'Mavila', mos: ['2L_5s', '7L_2s', '7L_9s'], genRange: [670.0, 685.7],
     commas: ['135/128'], commaNames: ['major chroma'],
     wikiUrl: 'https://en.xen.wiki/w/Mavila',
     description: 'Anti-diatonic. Very flat fifths, four fifths = 6/5 instead of 5/4.' },
 
-  { name: 'Mabila', mos: ['2L_5s', '2L_7s', '9L_7s'], genRange: [666.0, 672.0],
+  { name: 'Mabila', mos: ['2L_5s', '2L_7s', '9L_7s'], genRange: [666.0, 670.0],
     commas: ['268435456/263671875'], commaNames: ['mabila comma'],
     wikiUrl: 'https://en.xen.wiki/w/Mabila_family',
     description: 'Flat fifths like mavila but three generators = 5/2. Ten bad fifths reach a good one. 9L 7s MOS has good triads.' },
@@ -103,6 +103,11 @@ const TEMPERAMENTS = [
     description: 'Pentacot tuning (divides 3/2 into 5 steps). Generator ~137–144¢.' },
 
 
+  { name: 'Tritonic', mos: ['2L_1s', '2L_3s', '2L_5s'], genRange: [617.0, 624.0],
+    commas: ['225/224'], commaNames: ['marvel comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Marvel_temperaments#Tritonic',
+    description: 'Marvel family. Generator is a 10/7 tritone (~617.5¢). 5 generators = 6th harmonic.' },
+
   { name: 'Alpha Tricot', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [628.5, 640.0],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Alphatricot_family#Alphatricot',
@@ -156,6 +161,36 @@ const TEMPERAMENTS = [
     commas: ['20000/19683'], commaNames: ['tetracot comma'],
     wikiUrl: 'https://en.xen.wiki/w/Tetracot_family',
     description: 'Four generators = 3/2. Generator is a sub-major second (~176¢). EDOs: 27, 34, 41.' },
+
+  { name: 'Didacus', mos: ['6L_1s', '7L_6s', '13L_7s'], genRange: [171.5, 200.0],
+    commas: ['3136/3125'], commaNames: ['hemimean comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Didacus',
+    description: 'Tempers out 3136/3125. Generator is half a major third (half of 5/4).' },
+
+  { name: 'Emka', mos: ['2L_9s', '2L_11s', '13L_2s'], genRange: [550.0, 553.8],
+    commas: ['3136/3125', '5120/5103'], commaNames: ['hemimean comma', 'hemimean'],
+    wikiUrl: 'https://en.xen.wiki/w/Hemimean_clan#Emka',
+    description: 'Hemimean clan. Generator is near 11/8. 11 and 13 note MOS scales.' },
+
+  { name: 'Octacot', mos: ['1L_13s', '14L_1s', '14L_13s'], genRange: [85.7, 90.0],
+    commas: ['20000/19683'], commaNames: ['tetracot comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Tetracot_family#Octacot',
+    description: 'Tetracot family. Eight generators = 3/2. Half of a tetracot generator.' },
+
+  { name: 'Passion', mos: ['1L_11s', '12L_1s', '12L_13s'], genRange: [96.0, 103.0],
+    commas: ['262144/253125'], commaNames: ['passion comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Passion_family#Passion',
+    description: 'Near-12edo generator (~98¢). Twelve generators = octave minus a comma. Chromatic 13-note MOS.' },
+
+  { name: 'Escape', mos: ['1L_20s', '21L_1s', '21L_22s'], genRange: [55.33, 57.2],
+    commas: ['4294967296/4271484375'], commaNames: ['escapade comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Escapade_family#2.3.5.11_subgroup',
+    description: 'Escapade family. Twenty-one generators = octave. Very small generator ~56¢.' },
+
+  { name: 'Valentine', mos: ['1L_14s', '15L_1s', '15L_16s'], genRange: [75.0, 80.0],
+    commas: ['6144/6125'], commaNames: ['porwell comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Valentine',
+    description: 'Generator is ~77.1¢. Fifteen generators = 3/2. Excellent 11-limit accuracy.' },
 
   // === TRIVIAL / SMALL ===
   { name: 'Bug', mos: ['4L_1s', '4L_5s'], genRange: [240.0, 264.0],
@@ -211,14 +246,14 @@ const TEMPERAMENTS = [
     description: 'Large semitone generator. Four generators = 4/3.' },
 
   // === CHROMATIC (7L 5s / 5L 7s) ===
-  { name: 'Chromatic Pyth.', mos: ['7L_5s'], genRange: [698.0, 704.0],
-    commas: [], commaNames: [],
-    wikiUrl: 'https://en.xen.wiki/w/Pythagorean_tuning',
-    description: '12-note chromatic from stacked fifths.' },
+  //{ name: 'Chromatic Pyth.', mos: ['7L_5s'], genRange: [698.0, 704.0],
+  //  commas: [], commaNames: [],
+   // wikiUrl: 'https://en.xen.wiki/w/Pythagorean_tuning',
+   // description: '12-note chromatic from stacked fifths.' },
 ];
 
 const TEMP_COLORS = {
-  'Meantone': '#50c878', 'Flattone': '#3da86a', 'Flattertone': '#2d8a55',
+  'Meantone': '#50c878', 'Flattone': '#3da86a', 'Deeptone': '#2d8a55',
   'Pythagorean': '#ffd700', 'Superpyth': '#ff6347', 'Ultrapyth': '#ff8247',
   'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84',
   'Mohajira': '#dda0dd',
@@ -227,13 +262,13 @@ const TEMP_COLORS = {
   'Porcupine': '#7fff00', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
-  'Tetracot': '#66cdaa',
-  'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
+  'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
+  'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
   'Father': '#f0e68c', 'Squares': '#e0825a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
   'Blackwood': '#ba55d3', 'Lemba': '#d2691e', 'Hedgehog': '#8fbc8f',
-  'Miracle': '#ff4500', 'Negri': '#9370db',
+  'Escape': '#a8d8ea', 'Octacot': '#56c9a0', 'Passion': '#d4637a', 'Valentine': '#ff6b81', 'Miracle': '#ff4500', 'Negri': '#9370db',
 };
 
 const MOS_NAMES = {

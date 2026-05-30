@@ -238,46 +238,46 @@ canvas { display: block; width: 100%; height: 100%; }
   border-color: #4a6a9a;
   color: #dde;
 }
-#selected-panel .sp-playback .temp-info {
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #2a3a5a;
+#selected-panel .sp-info .temp-info {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #2a3a5a;
 }
-#selected-panel .sp-playback .temp-info-name {
+#selected-panel .sp-info .temp-info-name {
   font-size: 12px;
   font-weight: 700;
   margin-bottom: 2px;
 }
-#selected-panel .sp-playback .temp-info-desc {
+#selected-panel .sp-info .temp-info-desc {
   font-size: 10px;
   color: #aaa;
   margin-bottom: 3px;
   line-height: 1.3;
 }
-#selected-panel .sp-playback .temp-info-commas {
+#selected-panel .sp-info .temp-info-commas {
   font-size: 10px;
   color: #888;
   margin-bottom: 2px;
 }
-#selected-panel .sp-playback .temp-comma {
+#selected-panel .sp-info .temp-comma {
   color: #f5a623;
   font-family: monospace;
   font-weight: 600;
 }
-#selected-panel .sp-playback .temp-comma-name {
+#selected-panel .sp-info .temp-comma-name {
   color: #777;
   font-style: italic;
 }
-#selected-panel .sp-playback .temp-info-mos {
+#selected-panel .sp-info .temp-info-mos {
   font-size: 10px;
   color: #888;
   margin-bottom: 2px;
 }
-#selected-panel .sp-playback .temp-mos {
+#selected-panel .sp-info .temp-mos {
   color: #667;
   font-family: monospace;
 }
-#selected-panel .sp-playback .temp-mos-active {
+#selected-panel .sp-info .temp-mos-active {
   color: #6eb5ff;
   font-weight: 600;
 }
@@ -285,7 +285,10 @@ canvas { display: block; width: 100%; height: 100%; }
 #selected-panel .sp-info {
   flex-shrink: 0;
   min-width: 180px;
-  align-self: flex-start;
+  align-self: stretch;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #2a3a5a transparent;
 }
 
 #selected-panel .sp-title { font-weight: 700; color: #e94560; font-size: 17px; margin-bottom: 4px; }
@@ -310,6 +313,27 @@ canvas { display: block; width: 100%; height: 100%; }
   margin-bottom: 4px;
   flex-shrink: 0;
   flex-wrap: wrap;
+}
+.ruler-sort-btn {
+  font-size: 10px;
+  color: #8899bb;
+  background: #1a2744;
+  border: 1px solid #2a3a5a;
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.ruler-sort-btn:hover {
+  background: #263456;
+  border-color: #4a6a9a;
+  color: #dde;
+}
+.ruler-sort-btn .sort-active {
+  color: #6eb5ff;
+  font-weight: 700;
 }
 .edo-ruler-temps {
   font-size: 11px;
@@ -785,6 +809,7 @@ const S = {
   canvas: null, ctx: null, dpr: 1, W: 0, H: 0,
   _parentArrow: null, _childArrow: null, _lastClickX: undefined, _lastClickY: undefined,
   _tempBars: [],
+  rulerSort: 'degree',
 };
 
 function recalc() {
@@ -1194,9 +1219,10 @@ function drawTemperaments(ctx, W, H) {
   ctx.textAlign = 'left';
   ctx.fillText('Temperaments for ' + sel.key.replace('_',' '), 4, baseY - 4);
 
+  const maxRow = rows.length - 1;
   S._tempBars = [];
   for (const bar of bars) {
-    const y = baseY + bar.row * (barH + barGap);
+    const y = baseY + (maxRow - bar.row) * (barH + barGap);
     const col = TEMP_COLORS[bar.t.name] || '#888';
     ctx.fillStyle = hexA(col, 0.5);
     ctx.fillRect(bar.x1, y, bar.w, barH);
@@ -1967,33 +1993,7 @@ function renderPlaybackControls() {
     return i + 'ths';
   };
 
-  // Active temperament info (above controls)
   let h = '';
-  if (S.generatorCents !== null && S.selected) {
-    const activeTemps = getTemperamentsAtCursor(S.selected.key, S.generatorCents, S.selected.lowCents, S.selected.highCents);
-    if (activeTemps.length) {
-      h += '<div class="temp-info">';
-      for (const t of activeTemps) {
-        const col = TEMP_COLORS[t.name] || '#50c878';
-        const tempNameHtml = t.wikiUrl
-          ? `<a href="${t.wikiUrl}" target="_blank" style="color:${col};text-decoration:none">${t.name}</a>`
-          : t.name;
-        h += `<div class="temp-info-name" style="color:${col}">${tempNameHtml}</div>`;
-        h += `<div class="temp-info-desc">${t.description}</div>`;
-        if (t.commas && t.commas.length) {
-          h += '<div class="temp-info-commas">Commas: ';
-          h += t.commas.map((c, i) => `<span class="temp-comma">${c}</span>${t.commaNames[i] ? ' <span class="temp-comma-name">(' + t.commaNames[i] + ')</span>' : ''}`).join(', ');
-          h += '</div>';
-        }
-        const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
-        if (mosList.length > 1) {
-          h += '<div class="temp-info-mos">MOS: ' + mosList.map(m => `<span class="temp-mos${m === S.selected.key ? ' temp-mos-active' : ''}">${m.replace('_', ' ')}</span>`).join(' → ') + '</div>';
-        }
-      }
-      h += '</div>';
-    }
-  }
-
   h += `<select class="synth-select" title="Waveform">`;
   for (const w of ['sine', 'triangle', 'sawtooth', 'square']) {
     const sel = w === SYNTH.waveform ? ' selected' : '';
@@ -2131,15 +2131,25 @@ function updatePanel() {
   if (gen !== null) {
     const activeTemps = getTemperamentsAtCursor(key, gen, sel.lowCents, sel.highCents);
     if (activeTemps.length) {
-      h += '<div style="margin-top:4px;font-weight:600;color:#50c878;font-size:12px">Temperaments:</div>';
+      h += '<div class="temp-info">';
       for (const t of activeTemps) {
         const col = TEMP_COLORS[t.name] || '#50c878';
-        const commaStr = t.commas && t.commas.length ? ' — ' + t.commas.join(', ') : '';
-        const nameHtml = t.wikiUrl
+        const tempNameHtml = t.wikiUrl
           ? `<a href="${t.wikiUrl}" target="_blank" style="color:${col};text-decoration:none">${t.name}</a>`
-          : `<span style="color:${col}">${t.name}</span>`;
-        h += `<div style="color:#ccc;font-size:12px">${nameHtml} ${t.effectiveRange[0].toFixed(0)}–${t.effectiveRange[1].toFixed(0)}¢<span style="color:#f5a623">${commaStr}</span></div>`;
+          : t.name;
+        h += `<div class="temp-info-name" style="color:${col}">${tempNameHtml}</div>`;
+        h += `<div class="temp-info-desc">${t.description}</div>`;
+        if (t.commas && t.commas.length) {
+          h += '<div class="temp-info-commas">Commas: ';
+          h += t.commas.map((c, i) => `<span class="temp-comma">${c}</span>${t.commaNames[i] ? ' <span class="temp-comma-name">(' + t.commaNames[i] + ')</span>' : ''}`).join(', ');
+          h += '</div>';
+        }
+        const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
+        if (mosList.length > 1) {
+          h += '<div class="temp-info-mos">MOS: ' + mosList.map(m => `<span class="temp-mos${m === sel.key ? ' temp-mos-active' : ''}">${m.replace('_', ' ')}</span>`).join(' → ') + '</div>';
+        }
       }
+      h += '</div>';
     }
   }
 
@@ -2280,11 +2290,48 @@ function renderEDOGrid() {
   const scale = rotateMOSScale(baseScale, S.modeRotation || 0, 1200);
   const intervals = scale.pitches.slice(1);
 
-  const rulerKey = sel.key + '|' + intervals.length;
+  const rulerKey = sel.key + '|' + intervals.length + '|' + S.rulerSort + (S.rulerSort === 'generator' ? '|' + (S.modeRotation || 0) : '');
   if (S._rulerBuiltKey !== rulerKey) {
+    const n = intervals.length + 1;
+    const chain = getGeneratorChain(genCents, n, 1200);
+    const rot = S.modeRotation || 0;
+    const rootGenIdx = chain[rot];
+    const byGen = S.rulerSort === 'generator';
+
+    const rotatedPitches = scale.pitches;
+    const origPitches = baseScale.pitches;
+
+    const genDistances = [];
+    for (let i = 1; i < n; i++) {
+      const rotCents = rotatedPitches[i];
+      let origPos = -1;
+      for (let j = 0; j < n; j++) {
+        const shifted = ((origPitches[j] - origPitches[rot]) % 1200 + 1200) % 1200;
+        if (Math.abs(shifted - rotCents) < 0.01) { origPos = j; break; }
+      }
+      const genIdx = origPos >= 0 ? chain[origPos] : 0;
+      const dist = ((genIdx - rootGenIdx) % n + n) % n;
+      genDistances.push({ intervalIdx: i - 1, genDist: dist });
+    }
+
+    let sortOrder;
+    if (byGen) {
+      sortOrder = genDistances.slice().sort((a, b) => a.genDist - b.genDist).map(d => d.intervalIdx);
+    } else {
+      sortOrder = Array.from({length: intervals.length}, (_, i) => i);
+    }
+
+    const genDistMap = {};
+    for (const d of genDistances) genDistMap[d.intervalIdx] = d.genDist;
+
     let h = '<div class="edo-ruler-header">';
     h += '<span class="edo-ruler-cents"></span>';
     h += '<span class="edo-ruler-hardness"></span>';
+    h += `<button class="ruler-sort-btn" onclick="toggleRulerSort()" title="Toggle ruler ordering">`;
+    h += byGen
+      ? `<span class="sort-active">gen stack</span> / degree`
+      : `gen stack / <span class="sort-active">degree</span>`;
+    h += `</button>`;
     h += '</div>';
     h += '<div class="edo-ruler-temps"></div>';
 
@@ -2296,9 +2343,12 @@ function renderEDOGrid() {
     h += '</div></div>';
 
     h += '<div class="edo-rulers-scroll">';
-    for (let i = 0; i < intervals.length; i++) {
+    for (const i of sortOrder) {
+      const genDist = genDistMap[i];
       h += `<div class="interval-ruler" data-ruler="${i}">`;
-      h += `<div class="interval-ruler-label"><span class="degree-name">Degree ${i + 1}</span> <span class="degree-cents"></span> <span class="degree-ratio"></span></div>`;
+      h += `<div class="interval-ruler-label"><span class="degree-name">Degree ${i + 1}</span>`;
+      if (byGen) h += ` <span style="color:#f5a623;font-size:10px">(${genDist}g)</span>`;
+      h += ` <span class="degree-cents"></span> <span class="degree-ratio"></span></div>`;
       h += '<div class="interval-ruler-track">';
       h += '<div class="ruler-indicator"></div>';
       h += '<canvas class="ruler-canvas"></canvas>';
@@ -2378,6 +2428,11 @@ function renderEDOGrid() {
   }
 }
 
+function toggleRulerSort() {
+  S.rulerSort = S.rulerSort === 'degree' ? 'generator' : 'degree';
+  renderEDOGrid();
+}
+
 function rulerSetGenFromCents(cents) {
   const sel = S.selected;
   if (!sel) return;
@@ -2393,6 +2448,7 @@ function rulerSetGenFromCents(cents) {
     }
   }
   S.generatorCents = Math.max(sel.lowCents, Math.min(sel.highCents, cents));
+  updatePanel();
   render();
 }
 
