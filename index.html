@@ -77,23 +77,292 @@ canvas { display: block; width: 100%; height: 100%; }
 
 #selected-panel {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background: #16213ef0;
-  border: 1px solid #0f3460;
-  border-radius: 8px;
-  padding: 12px;
+  border-top: 1px solid #0f3460;
+  border-left: 1px solid #0f3460;
+  padding: 8px 12px;
+  padding-top: 12px;
   font-size: 12px;
-  max-width: 280px;
   display: none;
+  overflow: hidden;
   z-index: 50;
-  max-height: 80vh;
-  overflow-y: auto;
+  flex-direction: column;
+}
+#selected-panel .sp-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  z-index: 60;
+  background: transparent;
+}
+#selected-panel .sp-resize-handle:hover,
+#selected-panel .sp-resize-handle:active {
+  background: #e9456044;
 }
 
-#selected-panel .sp-title { font-weight: 700; color: #e94560; font-size: 15px; margin-bottom: 6px; }
-#selected-panel .sp-close { position: absolute; top: 6px; right: 10px; cursor: pointer; color: #888; font-size: 16px; }
+#selected-panel .sp-layout {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#selected-panel .sp-playback {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-right: 1px solid #2a2a4a;
+  padding-right: 12px;
+  align-self: flex-start;
+}
+
+#selected-panel .sp-playback select {
+  background: #1e2a4a;
+  color: #ccc;
+  border: 1px solid #2a3a5a;
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 10px;
+  outline: none;
+  cursor: pointer;
+}
+#selected-panel .sp-playback select:hover { border-color: #4a6a9a; }
+
+#selected-panel .sp-playback .arp-btns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+
+#selected-panel .sp-playback .arp-btn {
+  background: #1e2a4a;
+  border: 1px solid #2a3a5a;
+  border-radius: 4px;
+  color: #aac;
+  font-size: 10px;
+  padding: 3px 6px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+#selected-panel .sp-playback .arp-btn:hover {
+  background: #263456;
+  border-color: #4a6a9a;
+  color: #dde;
+}
+#selected-panel .sp-playback .arp-btn.playing {
+  background: #2a1a3a;
+  border-color: #e94560;
+  color: #e94560;
+}
+
+#selected-panel .sp-playback .stop-btn {
+  background: #3a1a1a;
+  border: 1px solid #e94560;
+  border-radius: 4px;
+  color: #e94560;
+  font-size: 10px;
+  padding: 3px 6px;
+  cursor: pointer;
+  display: none;
+}
+#selected-panel .sp-playback .stop-btn:hover { background: #4a1a1a; }
+
+#selected-panel .sp-playback .mode-section {
+  border-top: 1px solid #2a2a4a;
+  padding-top: 4px;
+  margin-top: 2px;
+}
+#selected-panel .sp-playback .mode-label {
+  font-size: 10px;
+  color: #556;
+  margin-bottom: 2px;
+}
+#selected-panel .sp-playback .mode-udp {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f5a623;
+  font-family: monospace;
+  margin-bottom: 3px;
+}
+#selected-panel .sp-playback .mode-name {
+  color: #6eb5ff;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+}
+#selected-panel .sp-playback .mode-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-bottom: 2px;
+}
+#selected-panel .sp-playback .mode-row .mode-row-label {
+  font-size: 9px;
+  color: #667;
+  width: 28px;
+  flex-shrink: 0;
+}
+#selected-panel .sp-playback .mode-btn {
+  background: #1e2a4a;
+  border: 1px solid #2a3a5a;
+  border-radius: 3px;
+  color: #aac;
+  font-size: 11px;
+  width: 20px;
+  height: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s;
+  padding: 0;
+}
+#selected-panel .sp-playback .mode-btn:hover {
+  background: #263456;
+  border-color: #4a6a9a;
+  color: #dde;
+}
+
+#selected-panel .sp-info {
+  flex-shrink: 0;
+  min-width: 180px;
+  align-self: flex-start;
+}
+
+#selected-panel .sp-title { font-weight: 700; color: #e94560; font-size: 14px; margin-bottom: 4px; }
+#selected-panel .sp-title a:hover { text-decoration: underline !important; }
+#selected-panel .sp-close { position: absolute; top: 6px; right: 10px; cursor: pointer; color: #888; font-size: 16px; z-index: 61; }
 #selected-panel .sp-close:hover { color: #e94560; }
+
+#selected-panel .sp-edo-container {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  user-select: none;
+  overflow: hidden;
+}
+
+.edo-ruler-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+.edo-ruler-cents {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e94560;
+  font-family: monospace;
+}
+.edo-ruler-hardness {
+  font-size: 12px;
+  color: #f5a623;
+  font-family: monospace;
+}
+
+.edo-rulers-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #2a3a5a transparent;
+}
+.edo-rulers-scroll::-webkit-scrollbar { width: 4px; }
+.edo-rulers-scroll::-webkit-scrollbar-track { background: transparent; }
+.edo-rulers-scroll::-webkit-scrollbar-thumb { background: #2a3a5a; border-radius: 2px; }
+
+.interval-ruler {
+  margin-bottom: 3px;
+}
+.interval-ruler-label {
+  font-size: 11px;
+  color: #8899bb;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  margin-bottom: 1px;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.interval-ruler-label .degree-name {
+  color: #6eb5ff;
+  font-weight: 700;
+}
+.interval-ruler-label .degree-cents {
+  color: #e0e0e0;
+}
+.interval-ruler-label .degree-ratio {
+  color: #50c878;
+  font-weight: 700;
+  font-family: monospace;
+}
+.interval-ruler-label .degree-ratio a {
+  color: inherit;
+  text-decoration: none;
+}
+.interval-ruler-label .degree-ratio a:hover {
+  text-decoration: underline;
+}
+
+.interval-ruler-track {
+  position: relative;
+  height: 36px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #0d1528;
+  border: 1px solid #1e2a4a;
+}
+
+.interval-ruler-track.gen-track {
+  height: 44px;
+  cursor: grab;
+  border-color: #2a3a5a;
+}
+.interval-ruler-track.gen-track:active { cursor: grabbing; }
+
+.ruler-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: #e94560;
+  transform: translateX(-1px);
+  z-index: 2;
+  pointer-events: none;
+}
+.ruler-indicator::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #e94560;
+}
+
+.ruler-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
 
 .help-text {
   position: absolute;
@@ -139,40 +408,65 @@ canvas { display: block; width: 100%; height: 100%; }
 
 <div id="canvas-container">
   <canvas id="main-canvas"></canvas>
+  <div id="selected-panel">
+    <div class="sp-resize-handle" id="sp-resize-handle"></div>
+    <span class="sp-close" id="sp-close">&times;</span>
+    <div class="sp-layout">
+      <div class="sp-playback" id="sp-playback"></div>
+      <div class="sp-info" id="sp-info"></div>
+      <div class="sp-edo-container" id="sp-edo-container"></div>
+    </div>
+  </div>
 </div>
 
 <div id="tooltip"></div>
-<div id="selected-panel">
-  <span class="sp-close" id="sp-close">&times;</span>
-  <div id="sp-content"></div>
-</div>
 <div class="help-text">Scroll to zoom &middot; Drag to pan &middot; Click region to select</div>
 
+<script src="mos-data.js"></script>
 <script>
-// ============================================================
-// TEMPERAMENT DATABASE — easily extensible
-// Each: { name, mos: "nL_ms", genRange: [low, high] cents, description }
-// ============================================================
-const TEMPERAMENTS = [
-  { name: "Meantone", mos: "5L_2s", genRange: [690.0, 700.0], description: "Tempers out 81/80. Quarter-comma ~696.6¢." },
-  { name: "Pythagorean", mos: "5L_2s", genRange: [701.5, 703.0], description: "Pure 3/2 at 701.955¢." },
-  { name: "Superpyth", mos: "5L_2s", genRange: [704.0, 714.0], description: "Tempers out 64/63. Sharp fifths." },
-  { name: "Schismatic", mos: "5L_2s", genRange: [700.0, 701.5], description: "Tempers out 32805/32768." },
-  { name: "Mavila", mos: "2L_5s", genRange: [521.0, 535.0], description: "Anti-diatonic. Tempers out 135/128." },
-  { name: "Mohajira", mos: "3L_4s", genRange: [342.0, 353.0], description: "Neutral thirds. ~350¢ generator." },
-  { name: "Porcupine", mos: "3L_5s", genRange: [158.0, 165.0], description: "Tempers out 250/243. ~163¢ gen." },
-  { name: "Augmented", mos: "3L_3s", genRange: [395.0, 405.0], description: "Major third generator. Tempers out 128/125." },
-  { name: "Slendric", mos: "3L_2s", genRange: [232.0, 240.0], description: "~233¢ gen. Tempers out 1029/1024." },
-  { name: "Chromatic Pyth.", mos: "7L_5s", genRange: [698.0, 704.0], description: "12-note chromatic from stacked fifths." },
-  { name: "Pajara", mos: "2L_8s", genRange: [105.0, 115.0], description: "Half-octave period. Tempers out 2048/2025." },
-  { name: "Blackwood", mos: "5L_5s", genRange: [238.0, 242.0], description: "1/5-octave period. Tempers out 256/243." },
-  { name: "Bug", mos: "2L_1s", genRange: [370.0, 400.0], description: "Large third generator. Simple temperament." },
-  { name: "Father", mos: "3L_2s", genRange: [440.0, 465.0], description: "Tempers out 16/15. ~460¢ gen." },
-];
+// ================================================================
+//  DATA — Temperament functions (data in mos-data.js)
+// ================================================================
 
-// ============================================================
-// COLOR PALETTE
-// ============================================================
+function getTemperamentsForMOS(key, regionLow, regionHigh) {
+  const results = [];
+  for (const t of TEMPERAMENTS) {
+    if (t.mos !== key) continue;
+    const mirror = [1200 - t.genRange[1], 1200 - t.genRange[0]];
+    const directOverlap = regionLow === undefined ||
+      (t.genRange[0] < regionHigh && t.genRange[1] > regionLow);
+    const mirrorOverlap = regionLow !== undefined &&
+      mirror[0] < regionHigh && mirror[1] > regionLow;
+
+    if (directOverlap) {
+      results.push({ ...t, effectiveRange: t.genRange });
+    }
+    if (mirrorOverlap) {
+      results.push({ ...t, effectiveRange: mirror });
+    }
+  }
+  return results;
+}
+
+function getTemperamentsAtCursor(key, cents, regionLow, regionHigh) {
+  return getTemperamentsForMOS(key, regionLow, regionHigh)
+    .filter(t => cents >= t.effectiveRange[0] && cents <= t.effectiveRange[1]);
+}
+
+function getModeName(key, genCents, modeRotation) {
+  const modes = MODE_NAMES[key];
+  if (!modes || genCents === null) return null;
+  const n = parseInt(key.split('L')[0]) + parseInt(key.split('_')[1]);
+  const chain = getGeneratorChain(genCents, n);
+  const rootGenIndex = chain[modeRotation];
+  if (rootGenIndex < modes.length) return modes[rootGenIndex];
+  return null;
+}
+
+// ================================================================
+//  DATA — Palette
+// ================================================================
+
 const PALETTE = [
   '#e94560','#6eb5ff','#50c878','#f5a623','#bb86fc',
   '#ff6f91','#00c9a7','#ffc75f','#845ec2','#d65db1',
@@ -182,32 +476,9 @@ const PALETTE = [
   '#7209b7','#3a0ca3','#4361ee','#4895ef','#560bad',
 ];
 
-const MOS_NAMES = {
-  '1L_1s':'Trivial','2L_1s':'Tritonic','1L_2s':'Antritonic',
-  '3L_1s':'Tetric','1L_3s':'Tetric',
-  '2L_3s':'Pentatonic','3L_2s':'Anti-pentatonic',
-  '4L_1s':'Pentoid','1L_4s':'Pentoid',
-  '5L_1s':'Machinoid','1L_5s':'Hexoid',
-  '2L_4s':'Hexoid','4L_2s':'Hexoid',
-  '3L_4s':'Mosh','4L_3s':'Smitonic',
-  '6L_1s':'Archeotonic','1L_6s':'Heptoid',
-  '5L_2s':'Diatonic','2L_5s':'Anti-diatonic',
-  '3L_5s':'Sensoid','5L_3s':'Oneirotonic',
-  '4L_5s':'Orwelloid','5L_4s':'Anti-orwelloid',
-  '7L_2s':'Superdiatonic','2L_7s':'Balzanoid',
-  '6L_3s':'Hyrulic','3L_6s':'Tcherepninoid',
-  '7L_3s':'Decoid','3L_7s':'Decoid',
-  '5L_5s':'Decanoid',
-  '7L_4s':'Undecoid','4L_7s':'Undecoid',
-  '6L_5s':'Undecoid','5L_6s':'Undecoid',
-  '7L_5s':'Chromatic','5L_7s':'Chromatic',
-  '8L_3s':'Sephiroid','3L_8s':'Sephiroid',
-  '8L_5s':'Triskaidecoid','5L_8s':'Triskaidecoid',
-};
-
-// ============================================================
-// MATH
-// ============================================================
+// ================================================================
+//  MATH — MOS core
+// ================================================================
 
 function gcd(a, b) {
   a = Math.abs(a); b = Math.abs(b);
@@ -228,8 +499,6 @@ function getChildMOSes(key) {
   return [`${nL + nS}L_${nS}s`, `${nL}L_${nL + nS}s`];
 }
 
-// Build MOS regions via Stern-Brocot tree traversal over [0, 1/2],
-// then mirror each to [1/2, 1] (complement generators).
 function buildMOSRegions(maxSize, maxDepth) {
   const regions = [];
   const edoColorMap = {};
@@ -237,20 +506,6 @@ function buildMOSRegions(maxSize, maxDepth) {
   function color(nL) {
     if (!(nL in edoColorMap)) { edoColorMap[nL] = PALETTE[ci++ % PALETTE.length]; }
     return edoColorMap[nL];
-  }
-
-  function traverse(lp, lq, rp, rq, depth) {
-    if (depth <= 0) return;
-    const mp = lp + rp, mq = lq + rq;
-    if (mq > maxSize) return;
-
-    // Left sub-region: (lp/lq, mp/mq) — pattern lqL rqs
-    addRegion(lq, rq, mq, lp, lq, mp, mq, maxDepth - depth + 1);
-    // Right sub-region: (mp/mq, rp/rq) — pattern rqL lqs
-    addRegion(rq, lq, mq, mp, mq, rp, rq, maxDepth - depth + 1);
-
-    traverse(lp, lq, mp, mq, depth - 1);
-    traverse(mp, mq, rp, rq, depth - 1);
   }
 
   function addRegion(nL, nS, size, fp1, fq1, fp2, fq2, depth) {
@@ -284,11 +539,20 @@ function buildMOSRegions(maxSize, maxDepth) {
     });
   }
 
+  function traverse(lp, lq, rp, rq, depth) {
+    if (depth <= 0) return;
+    const mp = lp + rp, mq = lq + rq;
+    if (mq > maxSize) return;
+    addRegion(lq, rq, mq, lp, lq, mp, mq, maxDepth - depth + 1);
+    addRegion(rq, lq, mq, mp, mq, rp, rq, maxDepth - depth + 1);
+    traverse(lp, lq, mp, mq, depth - 1);
+    traverse(mp, mq, rp, rq, depth - 1);
+  }
+
   traverse(0, 1, 1, 2, maxDepth);
   return { regions: regions.filter(r => r.size >= 3 && r.size <= maxSize), colorMap: edoColorMap };
 }
 
-// Compute L and s step sizes by actually stacking the generator
 function computeHardness(genCents, mosSize) {
   const P = 1200, N = mosSize;
   const pos = [];
@@ -307,20 +571,10 @@ function computeHardness(genCents, mosSize) {
   if (s < 0.01) return { L, s: 0, ratio: Infinity, str: '∞:1' };
 
   const ratio = L / s;
-  let bestN = 1, bestD = 1, bestErr = Infinity;
-  for (let d = 1; d <= 12; d++) {
-    const n = Math.round(ratio * d);
-    if (n < 1) continue;
-    const err = Math.abs(ratio - n / d);
-    if (err < bestErr) { bestErr = err; bestN = n; bestD = d; }
-  }
-  const g = gcd(bestN, bestD);
-  bestN /= g; bestD /= g;
-  const str = bestErr < 0.04 ? `${bestN}:${bestD}` : ratio.toFixed(2) + ':1';
+  const str = ratio.toFixed(2);
   return { L, s, ratio, str };
 }
 
-// EDO generators: all coprime m/n for n up to maxEDO
 function buildEDOGenerators(maxEDO) {
   const gens = [];
   for (let n = 2; n <= maxEDO; n++) {
@@ -331,65 +585,6 @@ function buildEDOGenerators(maxEDO) {
   }
   return gens;
 }
-
-// ============================================================
-// STATE
-// ============================================================
-
-const S = {
-  viewMin: 0, viewMax: 1200,
-  maxSize: 14, maxEDO: 60, minSize: 3,
-  regions: [], colorMap: {}, edos: [],
-  hovered: null, selected: null,
-  generatorCents: null,
-  dragging: false, dragX0: 0, dragMin0: 0, dragMax0: 0,
-  genDragging: false,
-  sliderDragging: false,
-  canvas: null, ctx: null, dpr: 1, W: 0, H: 0,
-};
-
-function recalc() {
-  const oldSel = S.selected;
-  const { regions, colorMap } = buildMOSRegions(S.maxSize, 12);
-  S.regions = regions;
-  S.colorMap = colorMap;
-  S.edos = buildEDOGenerators(S.maxEDO);
-  if (oldSel) {
-    S.selected = regions.find(r =>
-      r.key === oldSel.key &&
-      Math.abs(r.lowCents - oldSel.lowCents) < 0.01 &&
-      Math.abs(r.highCents - oldSel.highCents) < 0.01
-    ) || null;
-  }
-  updatePanel();
-  render();
-}
-
-// ============================================================
-// COORDINATE HELPERS
-// ============================================================
-
-const MARGIN = 24;
-function c2x(c) { return MARGIN + ((c - S.viewMin) / (S.viewMax - S.viewMin)) * (S.W - 2 * MARGIN); }
-function x2c(x) { return S.viewMin + ((x - MARGIN) / (S.W - 2 * MARGIN)) * (S.viewMax - S.viewMin); }
-function hexA(hex, a) {
-  return `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${a})`;
-}
-function hexToRGB(hex) {
-  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
-}
-function rgbToHex(r, g, b) {
-  return '#' + [r,g,b].map(v => Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
-}
-function lerpColor(hex1, hex2, t) {
-  const [r1,g1,b1] = hexToRGB(hex1);
-  const [r2,g2,b2] = hexToRGB(hex2);
-  return rgbToHex(r1+(r2-r1)*t, g1+(g2-g1)*t, b1+(b2-b1)*t);
-}
-
-// ============================================================
-// MOS SCALE BUILDER
-// ============================================================
 
 function buildMOSScale(genCents, n, period) {
   period = period || 1200;
@@ -413,9 +608,131 @@ function buildMOSScale(genCents, n, period) {
   return { pitches, steps, L, s };
 }
 
-// ============================================================
-// RENDERING
-// ============================================================
+function getGeneratorChain(genCents, n, period) {
+  period = period || 1200;
+  const raw = [];
+  for (let i = 0; i < n; i++) {
+    raw.push({ genIndex: i, cents: ((i * genCents) % period + period) % period });
+  }
+  raw.sort((a, b) => a.cents - b.cents);
+  return raw.map(r => r.genIndex);
+}
+
+function computeUDP(genCents, n, modeRotation, period) {
+  period = period || 1200;
+  const chain = getGeneratorChain(genCents, n, period);
+  const rootGenIndex = chain[modeRotation];
+  return `${n - 1 - rootGenIndex}|${rootGenIndex}`;
+}
+
+function rotateByGenerator(genCents, n, currentRotation, direction, period) {
+  period = period || 1200;
+  const chain = getGeneratorChain(genCents, n, period);
+  const currentGenIndex = chain[currentRotation];
+  const targetGenIndex = ((currentGenIndex - direction) % n + n) % n;
+  return chain.indexOf(targetGenIndex);
+}
+
+function rotateMOSScale(scale, rotation, period) {
+  period = period || 1200;
+  const n = scale.pitches.length;
+  if (rotation === 0) return scale;
+  const root = scale.pitches[rotation % n];
+  const pitches = [];
+  for (let i = 0; i < n; i++) {
+    const idx = (i + rotation) % n;
+    const p = ((scale.pitches[idx] - root) % period + period) % period;
+    pitches.push(p);
+  }
+  pitches.sort((a, b) => a - b);
+
+  const steps = [];
+  for (let i = 0; i < n; i++) {
+    const next = (i + 1) % n;
+    const diff = next === 0 ? period - pitches[n - 1] + pitches[0] : pitches[next] - pitches[i];
+    steps.push(diff);
+  }
+
+  const sorted = [...new Set(steps.map(x => Math.round(x * 100) / 100))].sort((a, b) => b - a);
+  const L = sorted[0] || 0;
+  const s = sorted.length > 1 ? sorted[sorted.length - 1] : 0;
+
+  return { pitches, steps, L, s };
+}
+
+function getEqualizedEnd(region) {
+  const lo = region.lowCents + 0.01;
+  const hi = region.highCents - 0.01;
+  const hrLo = computeHardness(lo, region.size);
+  const hrHi = computeHardness(hi, region.size);
+  return hrLo.ratio < hrHi.ratio ? 'low' : 'high';
+}
+
+// ================================================================
+//  STATE
+// ================================================================
+
+const S = {
+  viewMin: 0, viewMax: 1200,
+  maxSize: 14, maxEDO: 60, minSize: 3,
+  regions: [], colorMap: {}, edos: [],
+  hovered: null, selected: null,
+  generatorCents: null,
+  modeRotation: 0,
+  dragging: false, dragX0: 0, dragMin0: 0, dragMax0: 0,
+  genDragging: false,
+  sliderDragging: false,
+  canvas: null, ctx: null, dpr: 1, W: 0, H: 0,
+  _parentArrow: null, _childArrow: null, _lastClickX: undefined,
+};
+
+function recalc() {
+  const oldSel = S.selected;
+  const { regions, colorMap } = buildMOSRegions(S.maxSize, S.maxSize);
+  S.regions = regions;
+  S.colorMap = colorMap;
+  S.edos = buildEDOGenerators(S.maxEDO);
+  if (oldSel) {
+    S.selected = regions.find(r =>
+      r.key === oldSel.key &&
+      Math.abs(r.lowCents - oldSel.lowCents) < 0.01 &&
+      Math.abs(r.highCents - oldSel.highCents) < 0.01
+    ) || null;
+  }
+  updatePanel();
+  render();
+}
+
+// ================================================================
+//  UTIL — Coordinates & Color
+// ================================================================
+
+const MARGIN = 24;
+function c2x(c) { return MARGIN + ((c - S.viewMin) / (S.viewMax - S.viewMin)) * (S.W - 2 * MARGIN); }
+function x2c(x) { return S.viewMin + ((x - MARGIN) / (S.W - 2 * MARGIN)) * (S.viewMax - S.viewMin); }
+
+function hexA(hex, a) {
+  return `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${a})`;
+}
+function hexToRGB(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+function rgbToHex(r, g, b) {
+  return '#' + [r,g,b].map(v => Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+}
+function lerpColor(hex1, hex2, t) {
+  const [r1,g1,b1] = hexToRGB(hex1);
+  const [r2,g2,b2] = hexToRGB(hex2);
+  return rgbToHex(r1+(r2-r1)*t, g1+(g2-g1)*t, b1+(b2-b1)*t);
+}
+function complementaryColor(hex) {
+  const [r, g, b] = hexToRGB(hex);
+  return rgbToHex(255 - r, 255 - g, 255 - b);
+}
+
+// ================================================================
+//  RENDER — Main dispatcher
+// ================================================================
 
 function render() {
   const { ctx, W, H, dpr } = S;
@@ -432,10 +749,18 @@ function render() {
   if (S.selected) drawTemperaments(ctx, W, H);
   drawMOS(ctx, W, H, vr);
   if (S.selected && S.generatorCents !== null) drawGeneratorMarker(ctx, W, H);
-  if (S.selected) drawMOSCircle(ctx, W, H);
+  if (S.selected) {
+    drawMOSCircle(ctx, W, H);
+    positionPanel();
+    renderEDOGrid();
+  }
 
   ctx.restore();
 }
+
+// ================================================================
+//  RENDER — Axis
+// ================================================================
 
 function drawAxis(ctx, W, H, vr) {
   const Y = 44;
@@ -449,7 +774,6 @@ function drawAxis(ctx, W, H, vr) {
   else if (vr > 3) tick = 1;
   else tick = 0.5;
 
-  // Grid lines
   const start = Math.ceil(S.viewMin / tick) * tick;
   for (let c = start; c <= S.viewMax; c += tick) {
     const x = c2x(c);
@@ -458,15 +782,13 @@ function drawAxis(ctx, W, H, vr) {
     ctx.beginPath(); ctx.moveTo(x, Y); ctx.lineTo(x, H); ctx.stroke();
   }
 
-  // Axis bar (thick)
-  const barH = 8;
+  const barH = 16;
   ctx.fillStyle = '#3a3a5c';
   ctx.fillRect(0, Y - barH/2, W, barH);
   ctx.strokeStyle = '#556';
   ctx.lineWidth = 1;
   ctx.strokeRect(0, Y - barH/2, W, barH);
 
-  // Ticks + labels
   ctx.fillStyle = '#8888aa';
   ctx.font = '11px monospace';
   ctx.textAlign = 'center';
@@ -479,7 +801,6 @@ function drawAxis(ctx, W, H, vr) {
     ctx.fillText(vr > 30 ? Math.round(c) + '¢' : c.toFixed(1) + '¢', x, Y - barH/2 - 10);
   }
 
-  // Sub-ticks
   const sub = tick / 5;
   if (sub > 0.005) {
     const ss = Math.ceil(S.viewMin / sub) * sub;
@@ -493,13 +814,15 @@ function drawAxis(ctx, W, H, vr) {
   }
 }
 
+// ================================================================
+//  RENDER — MOS Regions (colored bands)
+// ================================================================
+
 function drawMOS(ctx, W, H, vr) {
   const startY = S.selected ? 140 : 64;
   const rowH = 20;
   const gap = 2;
 
-  // Fixed row per scale size N — minSize at top, maxSize at bottom.
-  // Every size always occupies the same Y regardless of zoom/visibility.
   const allSizes = [];
   for (let n = S.minSize; n <= S.maxSize; n++) allSizes.push(n);
   const sizeToRow = {};
@@ -523,7 +846,6 @@ function drawMOS(ctx, W, H, vr) {
       Math.abs(S.selected.lowCents - r.lowCents) < 0.01 &&
       Math.abs(S.selected.highCents - r.highCents) < 0.01;
     const isHov = !S.selected && S.hovered === r;
-
     const grayed = S.selected && !isSel;
 
     let alpha = 0.5;
@@ -575,7 +897,6 @@ function drawMOS(ctx, W, H, vr) {
     r._h = rowH;
   }
 
-  // Draw size labels on the left margin
   ctx.fillStyle = '#556';
   ctx.font = '9px monospace';
   ctx.textAlign = 'right';
@@ -589,14 +910,16 @@ function drawMOS(ctx, W, H, vr) {
   return startY + allSizes.length * (rowH + gap) + 8;
 }
 
+// ================================================================
+//  RENDER — EDOs
+// ================================================================
+
 function drawEDOs(ctx, W, H, vr) {
   if (!S.selected) return;
 
   const baseY = 56;
-
   const sel = S.selected;
 
-  // Only show EDOs that fall within the selected region's range
   const vis = S.edos.filter(g =>
     g.cents >= S.viewMin && g.cents <= S.viewMax &&
     g.cents >= sel.lowCents && g.cents <= sel.highCents
@@ -607,7 +930,6 @@ function drawEDOs(ctx, W, H, vr) {
 
   const minPx = 48;
   const slots = [];
-
   const selSize = sel.size;
 
   for (const g of vis) {
@@ -615,23 +937,19 @@ function drawEDOs(ctx, W, H, vr) {
     if (slots.some(s => Math.abs(x - s) < minPx * 0.65)) continue;
     slots.push(x);
 
-    // Tick line
     ctx.strokeStyle = '#6eb5ff44';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, baseY); ctx.lineTo(x, baseY + 22); ctx.stroke();
 
-    // Step\EDO label
     ctx.fillStyle = '#6eb5ff';
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(`${g.step}\\${g.edo}`, x, baseY + 34);
 
-    // Cents
     ctx.fillStyle = '#556';
     ctx.font = '9px monospace';
     ctx.fillText(g.cents.toFixed(1) + '¢', x, baseY + 45);
 
-    // Hardness for the selected MOS
     const hr = computeHardness(g.cents, selSize);
     if (hr.ratio !== Infinity && hr.ratio > 0.5) {
       ctx.fillStyle = '#f5a623';
@@ -641,15 +959,16 @@ function drawEDOs(ctx, W, H, vr) {
   }
 }
 
+// ================================================================
+//  RENDER — Temperament bars
+// ================================================================
+
 function drawTemperaments(ctx, W, H) {
   const sel = S.selected;
-  const temps = TEMPERAMENTS.filter(t => t.mos === sel.key);
+  const selLo = sel.lowCents, selHi = sel.highCents;
+  const temps = getTemperamentsForMOS(sel.key, selLo, selHi);
   if (!temps.length) return;
 
-  const selLo = sel.lowCents, selHi = sel.highCents;
-  const selRange = selHi - selLo;
-
-  // Compute the selected region's row Y using the same layout as drawMOS
   const startY = 140;
   const rowH = 20;
   const gap = 2;
@@ -664,18 +983,9 @@ function drawTemperaments(ctx, W, H) {
   ctx.textAlign = 'left';
   ctx.fillText('Temperaments for ' + sel.key.replace('_',' '), 4, y - 2);
 
-  const tempColors = {
-    'Meantone':'#50c878','Pythagorean':'#ffd700','Superpyth':'#ff6347',
-    'Schismatic':'#da70d6','Mavila':'#20b2aa','Mohajira':'#dda0dd',
-    'Porcupine':'#98fb98','Augmented':'#87ceeb','Slendric':'#deb887',
-    'Chromatic Pyth.':'#ffd700','Pajara':'#ff8c00','Blackwood':'#ba55d3',
-    'Bug':'#cd853f','Father':'#f0e68c',
-  };
-
   for (const t of temps) {
-    // Map temperament range into the selected region's cent span
-    const lo = Math.max(t.genRange[0], selLo);
-    const hi = Math.min(t.genRange[1], selHi);
+    const lo = Math.max(t.effectiveRange[0], selLo);
+    const hi = Math.min(t.effectiveRange[1], selHi);
     if (hi <= lo) continue;
 
     const x1 = Math.max(0, c2x(lo));
@@ -683,7 +993,7 @@ function drawTemperaments(ctx, W, H) {
     const w = x2 - x1;
     if (w < 1) continue;
 
-    const col = tempColors[t.name] || '#888';
+    const col = TEMP_COLORS[t.name] || '#888';
     ctx.fillStyle = hexA(col, 0.5);
     ctx.fillRect(x1, y, w, h);
     ctx.strokeStyle = col;
@@ -699,6 +1009,10 @@ function drawTemperaments(ctx, W, H) {
     }
   }
 }
+
+// ================================================================
+//  RENDER — Generator marker
+// ================================================================
 
 function drawGeneratorMarker(ctx, W, H) {
   const x = c2x(S.generatorCents);
@@ -727,6 +1041,10 @@ function drawGeneratorMarker(ctx, W, H) {
   ctx.fillText(S.generatorCents.toFixed(1) + '¢', x, 36);
 }
 
+// ================================================================
+//  RENDER — MOS Circle
+// ================================================================
+
 function getMOSCircleLayout(W, H) {
   const radius = Math.min(140, Math.min(W, H) * 0.18);
   const cx = 20 + radius + 10;
@@ -746,7 +1064,7 @@ function drawMOSCircle(ctx, W, H) {
 
   const { radius, cx, cy, sliderW, sliderH, sliderX, sliderY } = getMOSCircleLayout(W, H);
 
-  // Background panel behind circle + slider
+  // Background panel
   const panelPad = 12;
   const panelTop = sliderY - 18;
   const panelBot = cy + radius + 24;
@@ -766,7 +1084,6 @@ function drawMOSCircle(ctx, W, H) {
   ctx.font = 'bold 11px monospace';
   const titleW = ctx.measureText(titleText).width;
 
-  // Parent arrow (up) — left of title
   const arrowSize = 10;
   const arrowPad = 6;
   const parentArrowX = cx - titleW / 2 - arrowPad - arrowSize / 2;
@@ -782,7 +1099,6 @@ function drawMOSCircle(ctx, W, H) {
   ctx.closePath();
   ctx.fill();
 
-  // Child arrow (down) — right of title
   const childKeys = getChildMOSes(sel.key);
   const childArrowX = cx + titleW / 2 + arrowPad + arrowSize / 2;
   const childExists = childKeys.some(ck => S.regions.some(r =>
@@ -796,7 +1112,6 @@ function drawMOSCircle(ctx, W, H) {
   ctx.closePath();
   ctx.fill();
 
-  // Store arrow hit areas for click handling
   S._parentArrow = parentExists ? { x: parentArrowX, y: titleY, r: arrowSize } : null;
   S._childArrow = childExists ? { x: childArrowX, y: titleY, r: arrowSize } : null;
 
@@ -807,21 +1122,18 @@ function drawMOSCircle(ctx, W, H) {
   ctx.textBaseline = 'middle';
   ctx.fillText(titleText, cx, titleY);
 
-  // --- Hardness slider ---
-  // Track
+  // Hardness slider track
   ctx.fillStyle = '#2a2a4a';
   ctx.beginPath();
   ctx.roundRect(sliderX, sliderY, sliderW, sliderH, sliderH / 2);
   ctx.fill();
 
-  // Labels
   ctx.fillStyle = '#556';
   ctx.font = '8px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('equalized', sliderX + sliderW * 0.15, sliderY + sliderH + 10);
   ctx.fillText('collapsed', sliderX + sliderW * 0.85, sliderY + sliderH + 10);
 
-  // Thumb position: map generator cents to 0..1 (equalized=0, collapsed=1)
   if (gen !== null) {
     const eqEnd = getEqualizedEnd(sel);
     const t = eqEnd === 'low'
@@ -830,10 +1142,8 @@ function drawMOSCircle(ctx, W, H) {
     const thumbX = sliderX + t * sliderW;
     const thumbR = sliderH / 2 + 2;
 
-    // Slider color blends between equalized and collapsed EDO colors
     const sliderColor = lerpColor(sel.equalizedColor, sel.collapsedColor, Math.max(0, Math.min(1, t)));
 
-    // Filled portion
     const fillW = thumbX - sliderX;
     if (fillW > 1) {
       ctx.fillStyle = hexA(sliderColor, 0.4);
@@ -842,7 +1152,6 @@ function drawMOSCircle(ctx, W, H) {
       ctx.fill();
     }
 
-    // Thumb
     ctx.beginPath();
     ctx.arc(thumbX, sliderY + sliderH / 2, thumbR, 0, Math.PI * 2);
     ctx.fillStyle = sliderColor;
@@ -869,27 +1178,23 @@ function drawMOSCircle(ctx, W, H) {
     return;
   }
 
-  const scale = buildMOSScale(gen, n, P);
+  const baseScale = buildMOSScale(gen, n, P);
+  const scale = rotateMOSScale(baseScale, S.modeRotation, P);
   const { pitches, steps, L, s } = scale;
 
   function c2a(cents) {
     return (cents / P) * Math.PI * 2 - Math.PI / 2;
   }
 
-  // Blend region color between collapsed and equalized EDO colors
   const ratio = s > 0.01 ? L / s : 20;
   const softness = Math.max(0, Math.min(1, 1 - (ratio - 1) / 2));
   const regionColor = lerpColor(sel.collapsedColor, sel.equalizedColor, softness);
 
-  const LcolorBase = regionColor;
-  const sColorBase = '#6eb5ff';
+  const Lcolor = regionColor;
+  const compColor = complementaryColor(Lcolor);
+  const sColor = lerpColor(Lcolor, compColor, 1 - softness);
 
-  // Blend L and s step colors toward each other as ratio approaches 1:1
-  const midColor = lerpColor(LcolorBase, sColorBase, 0.5);
-  const Lcolor = lerpColor(LcolorBase, midColor, softness);
-  const sColor = lerpColor(sColorBase, midColor, softness);
-
-  // Draw filled pie slices
+  // Pie slices
   for (let i = 0; i < n; i++) {
     const startC = pitches[i];
     const step = steps[i];
@@ -899,7 +1204,6 @@ function drawMOSCircle(ctx, W, H) {
     const isL = Math.abs(step - L) < 0.5;
     const col = isL ? Lcolor : sColor;
 
-    // Filled wedge
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.arc(cx, cy, radius, a1, a2);
@@ -907,19 +1211,16 @@ function drawMOSCircle(ctx, W, H) {
     ctx.fillStyle = hexA(col, 0.25);
     ctx.fill();
 
-    // Wedge border
     ctx.strokeStyle = hexA(col, 0.6);
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Colored arc on the rim
     ctx.beginPath();
     ctx.arc(cx, cy, radius, a1, a2);
     ctx.strokeStyle = hexA(col, 0.9);
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // Step size label
     const midAngle = c2a(startC + step / 2);
     const labelR = radius * 0.6;
     const lx = cx + Math.cos(midAngle) * labelR;
@@ -936,7 +1237,6 @@ function drawMOSCircle(ctx, W, H) {
   for (let i = 0; i < n; i++) {
     const angle = c2a(pitches[i]);
 
-    // Divider line from center to rim
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
@@ -944,24 +1244,32 @@ function drawMOSCircle(ctx, W, H) {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Dot on the rim
+    const isActive = SYNTH.activeDegree === i;
+    const dotR = isActive ? 7 : 4;
     const px = cx + Math.cos(angle) * radius;
     const py = cy + Math.sin(angle) * radius;
+
+    if (isActive) {
+      ctx.beginPath();
+      ctx.arc(px, py, 12, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(233, 69, 96, 0.25)';
+      ctx.fill();
+    }
+
     ctx.beginPath();
-    ctx.arc(px, py, 4, 0, Math.PI * 2);
-    ctx.fillStyle = i === 0 ? '#e94560' : '#fff';
+    ctx.arc(px, py, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = isActive ? '#e94560' : (i === 0 ? '#e94560' : '#fff');
     ctx.fill();
     ctx.strokeStyle = '#1a1a2e';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Pitch label outside
     const outR = radius + 16;
     const ox = cx + Math.cos(angle) * outR;
     const oy = cy + Math.sin(angle) * outR;
 
-    ctx.fillStyle = i === 0 ? '#e94560' : '#aaa';
-    ctx.font = '9px monospace';
+    ctx.fillStyle = isActive ? '#e94560' : (i === 0 ? '#e94560' : '#aaa');
+    ctx.font = isActive ? 'bold 11px monospace' : '9px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(pitches[i].toFixed(0), ox, oy);
@@ -972,7 +1280,7 @@ function drawMOSCircle(ctx, W, H) {
   ctx.font = '10px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('gen=' + gen.toFixed(1) + '¢', cx, cy - 10);
+  ctx.fillText('gen=' + gen.toFixed(1) + '¢', cx, cy - 14);
 
   if (s > 0.01) {
     const ratio = L / s;
@@ -987,19 +1295,32 @@ function drawMOSCircle(ctx, W, H) {
     bestN /= g; bestD /= g;
     const str = bestErr < 0.04 ? `${bestN}:${bestD}` : ratio.toFixed(2) + ':1';
     ctx.fillStyle = '#f5a623';
-    ctx.fillText('L:s = ' + str, cx, cy + 4);
+    ctx.fillText('L:s = ' + str, cx, cy - 2);
     ctx.fillStyle = '#888';
     ctx.font = '9px monospace';
-    ctx.fillText(`L=${L.toFixed(1)}¢  s=${s.toFixed(1)}¢`, cx, cy + 16);
+    ctx.fillText(`L=${L.toFixed(1)}¢  s=${s.toFixed(1)}¢`, cx, cy + 10);
   } else {
     ctx.fillStyle = '#f5a623';
-    ctx.fillText('L:s = ∞:1', cx, cy + 4);
+    ctx.fillText('L:s = ∞:1', cx, cy - 2);
+  }
+
+  const udp = computeUDP(gen, n, S.modeRotation);
+  const modeName = getModeName(sel.key, gen, S.modeRotation);
+  ctx.fillStyle = S.modeRotation !== 0 ? '#6eb5ff' : '#556';
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'center';
+  if (modeName) {
+    ctx.fillText(modeName, cx, cy + 22);
+    ctx.font = '9px monospace';
+    ctx.fillText(udp, cx, cy + 34);
+  } else {
+    ctx.fillText(udp, cx, cy + 22);
   }
 }
 
-// ============================================================
-// INTERACTION
-// ============================================================
+// ================================================================
+//  INTERACTION — Hit testing & tooltip
+// ================================================================
 
 function hitCircleArrow(mx, my) {
   if (!S.selected) return null;
@@ -1014,6 +1335,131 @@ function hitCircleArrow(mx, my) {
   }
   return null;
 }
+
+function hitTest(mx, my, e) {
+  const tip = document.getElementById('tooltip');
+  let found = null;
+
+  for (const r of S.regions) {
+    if (r._y === undefined) continue;
+    const x1 = c2x(r.lowCents), x2 = c2x(r.highCents);
+    if (mx >= x1 && mx <= x2 && my >= r._y && my <= r._y + r._h) {
+      if (!found || r.size > found.size) found = r;
+    }
+  }
+
+  if (found !== S.hovered) {
+    S.hovered = found;
+    render();
+  }
+
+  if (found) {
+    const cc = x2c(mx);
+    const hr = computeHardness(cc, found.size);
+    const label = found.key.replace('_', ' ');
+    const fname = MOS_NAMES[found.key];
+
+    let html = `<div class="tt-title">${label}${fname ? ' — ' + fname : ''}</div>`;
+    html += `<div class="tt-sub">${found.lowCents.toFixed(2)}¢ — ${found.highCents.toFixed(2)}¢ &middot; ${found.size} notes</div>`;
+
+    if (found.parent) {
+      const pn = MOS_NAMES[found.parent];
+      html += `<div class="tt-sub">Parent: ${found.parent.replace('_',' ')}${pn ? ' ('+pn+')' : ''}</div>`;
+    }
+
+    if (hr.ratio !== Infinity) {
+      html += `<div class="tt-hard">L:s = ${hr.str} &nbsp; (L=${hr.L.toFixed(1)}¢, s=${hr.s.toFixed(1)}¢)</div>`;
+    }
+
+    const temps = getTemperamentsAtCursor(found.key, cc, found.lowCents, found.highCents);
+    for (const t of temps) {
+      html += `<div class="tt-temp">${t.name}: ${t.description}</div>`;
+    }
+
+    let nearest = null, nd = Infinity;
+    for (const g of S.edos) {
+      const d = Math.abs(g.cents - cc);
+      if (d < nd && g.cents >= found.lowCents && g.cents <= found.highCents) {
+        nd = d; nearest = g;
+      }
+    }
+    if (nearest && nd < (S.viewMax - S.viewMin) * 0.02) {
+      html += `<div class="tt-edo">Nearest: ${nearest.step}\\${nearest.edo} = ${nearest.cents.toFixed(2)}¢</div>`;
+    }
+
+    const isSelRegion = S.selected &&
+      S.selected.key === found.key &&
+      Math.abs(S.selected.lowCents - found.lowCents) < 0.01 &&
+      Math.abs(S.selected.highCents - found.highCents) < 0.01;
+    html += `<div style="color:#444;font-size:10px;margin-top:3px">${isSelRegion ? 'Click/drag to set generator' : 'Click to select'}</div>`;
+    tip.innerHTML = html;
+    tip.style.display = 'block';
+
+    let tx = e.clientX + 15, ty = e.clientY + 15;
+    if (tx + 330 > window.innerWidth) tx = e.clientX - 340;
+    if (ty + 200 > window.innerHeight) ty = e.clientY - 210;
+    tip.style.left = tx + 'px';
+    tip.style.top = ty + 'px';
+
+    S.canvas.style.cursor = 'pointer';
+  } else {
+    tip.style.display = 'none';
+    S.canvas.style.cursor = '';
+  }
+}
+
+function autoFilterMinSize(n) {
+  if (n <= 10) return;
+  const newMin = n - 3;
+  if (S.minSize >= newMin) return;
+  S.minSize = newMin;
+  document.getElementById('min-size').value = newMin;
+  document.getElementById('min-size-val').textContent = newMin;
+}
+
+function handleClick() {
+  const mx = S._lastClickX !== undefined ? S._lastClickX : 0;
+
+  if (S.hovered) {
+    const clickedSameRegion = S.selected &&
+      S.selected.key === S.hovered.key &&
+      Math.abs(S.selected.lowCents - S.hovered.lowCents) < 0.01 &&
+      Math.abs(S.selected.highCents - S.hovered.highCents) < 0.01;
+
+    if (clickedSameRegion) {
+      const cc = x2c(mx);
+      S.generatorCents = Math.max(S.selected.lowCents, Math.min(S.selected.highCents, cc));
+      render();
+    } else {
+      const prevGen = S.generatorCents;
+      S.selected = S.hovered;
+      if (prevGen !== null &&
+          prevGen >= S.hovered.lowCents && prevGen <= S.hovered.highCents) {
+        S.generatorCents = prevGen;
+      } else {
+        S.generatorCents = null;
+      }
+      autoFilterMinSize(S.hovered.size);
+      updatePanel();
+      render();
+    }
+  } else if (S.selected) {
+    const cc = x2c(mx);
+    if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
+      S.generatorCents = cc;
+      render();
+    } else {
+      S.selected = null;
+      S.generatorCents = null;
+      updatePanel();
+      render();
+    }
+  }
+}
+
+// ================================================================
+//  INTERACTION — Navigation
+// ================================================================
 
 function navigateToParent() {
   const sel = S.selected;
@@ -1033,6 +1479,7 @@ function navigateToParent() {
   if (gen !== null && (gen < candidate.lowCents || gen > candidate.highCents)) {
     S.generatorCents = null;
   }
+  autoFilterMinSize(candidate.size);
   updatePanel();
   render();
 }
@@ -1042,8 +1489,6 @@ function navigateToChild() {
   const childKeys = getChildMOSes(sel.key);
   const gen = S.generatorCents;
 
-  // If generator is set, pick the child whose range contains it
-  // Otherwise pick the child whose range overlaps the selected region
   let candidate = null;
   for (const ck of childKeys) {
     const match = S.regions.find(r =>
@@ -1061,9 +1506,35 @@ function navigateToChild() {
   if (gen !== null && (gen < candidate.lowCents || gen > candidate.highCents)) {
     S.generatorCents = null;
   }
+  autoFilterMinSize(candidate.size);
   updatePanel();
   render();
 }
+
+function findAdjacentRegion(sel, cents) {
+  const candidates = S.regions.filter(r =>
+    r.size >= S.minSize && r.size <= S.maxSize &&
+    cents >= r.lowCents - 0.5 && cents <= r.highCents + 0.5 &&
+    !(r.key === sel.key &&
+      Math.abs(r.lowCents - sel.lowCents) < 0.01 &&
+      Math.abs(r.highCents - sel.highCents) < 0.01)
+  );
+  if (!candidates.length) return null;
+
+  candidates.sort((a, b) => {
+    const da = Math.abs(a.size - sel.size);
+    const db = Math.abs(b.size - sel.size);
+    if (da !== db) return da - db;
+    const ma = (a.lowCents + a.highCents) / 2;
+    const mb = (b.lowCents + b.highCents) / 2;
+    return Math.abs(ma - cents) - Math.abs(mb - cents);
+  });
+  return candidates[0];
+}
+
+// ================================================================
+//  INTERACTION — Slider & axis
+// ================================================================
 
 function isOnAxisBar(my) {
   return my <= 55;
@@ -1077,39 +1548,6 @@ function hitSlider(mx, my) {
          my >= lay.sliderY - pad && my <= lay.sliderY + lay.sliderH + pad;
 }
 
-function getEqualizedEnd(region) {
-  const lo = region.lowCents + 0.01;
-  const hi = region.highCents - 0.01;
-  const hrLo = computeHardness(lo, region.size);
-  const hrHi = computeHardness(hi, region.size);
-  return hrLo.ratio < hrHi.ratio ? 'low' : 'high';
-}
-
-function findAdjacentRegion(sel, cents) {
-  // Find the best region that contains the target cents value,
-  // respecting current size filters. Prefer same size, then nearest size.
-  const candidates = S.regions.filter(r =>
-    r.size >= S.minSize && r.size <= S.maxSize &&
-    cents >= r.lowCents - 0.5 && cents <= r.highCents + 0.5 &&
-    !(r.key === sel.key &&
-      Math.abs(r.lowCents - sel.lowCents) < 0.01 &&
-      Math.abs(r.highCents - sel.highCents) < 0.01)
-  );
-  if (!candidates.length) return null;
-
-  // Prefer same size, then closest size
-  candidates.sort((a, b) => {
-    const da = Math.abs(a.size - sel.size);
-    const db = Math.abs(b.size - sel.size);
-    if (da !== db) return da - db;
-    // Among same size, prefer the one whose range center is closest
-    const ma = (a.lowCents + a.highCents) / 2;
-    const mb = (b.lowCents + b.highCents) / 2;
-    return Math.abs(ma - cents) - Math.abs(mb - cents);
-  });
-  return candidates[0];
-}
-
 function sliderXToGen(mx) {
   const sel = S.selected;
   const lay = getMOSCircleLayout(S.W, S.H);
@@ -1117,7 +1555,6 @@ function sliderXToGen(mx) {
   const eqEnd = getEqualizedEnd(sel);
   const range = sel.highCents - sel.lowCents;
 
-  // Map t to cents: 0 = equalized end, 1 = collapsed end
   let cents;
   if (eqEnd === 'low') {
     cents = sel.lowCents + t * range;
@@ -1133,7 +1570,6 @@ function sliderXToGen(mx) {
       updatePanel();
       return Math.max(adj.lowCents, Math.min(adj.highCents, targetCents));
     }
-    // Clamp to current region
     if (eqEnd === 'low') {
       return t < 0 ? sel.lowCents : sel.highCents;
     } else {
@@ -1163,10 +1599,589 @@ function setGenFromScreenX(mx) {
   render();
 }
 
+// ================================================================
+//  INTERACTION — View
+// ================================================================
+
+function clampView() {
+  const range = S.viewMax - S.viewMin;
+  if (S.viewMin < 0) { S.viewMin = 0; S.viewMax = range; }
+  if (S.viewMax > 1200) { S.viewMax = 1200; S.viewMin = 1200 - range; }
+  S.viewMin = Math.max(0, S.viewMin);
+  S.viewMax = Math.min(1200, S.viewMax);
+}
+
+function updateInfo() {
+  document.getElementById('range-display').textContent =
+    `${S.viewMin.toFixed(2)}¢ — ${S.viewMax.toFixed(2)}¢`;
+}
+
+// ================================================================
+//  AUDIO — Synth & arpeggiation
+// ================================================================
+
+const SYNTH = {
+  ctx: null,
+  playing: false,
+  stopFn: null,
+  waveform: 'triangle',
+  baseFreq: 261.63, // C4
+  activeDegree: -1,
+};
+
+function getAudioCtx() {
+  if (!SYNTH.ctx) SYNTH.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (SYNTH.ctx.state === 'suspended') SYNTH.ctx.resume();
+  return SYNTH.ctx;
+}
+
+function centsToFreq(cents) {
+  return SYNTH.baseFreq * Math.pow(2, cents / 1200);
+}
+
+function playNote(actx, freq, startTime, duration, waveform) {
+  const osc = actx.createOscillator();
+  const gain = actx.createGain();
+  osc.type = waveform;
+  osc.frequency.value = freq;
+  osc.connect(gain);
+  gain.connect(actx.destination);
+
+  const attack = 0.015;
+  const release = Math.min(0.06, duration * 0.3);
+  gain.gain.setValueAtTime(0, startTime);
+  gain.gain.linearRampToValueAtTime(0.15, startTime + attack);
+  gain.gain.setValueAtTime(0.15, startTime + duration - release);
+  gain.gain.linearRampToValueAtTime(0, startTime + duration);
+
+  osc.start(startTime);
+  osc.stop(startTime + duration);
+}
+
+function buildArpSequence(pitches, interval) {
+  const n = pitches.length;
+  if (interval === 1) {
+    const seq = [];
+    for (let i = 0; i <= n; i++) seq.push(i);
+    return seq;
+  }
+  const seq = [];
+  for (let i = 0; i < n; i++) {
+    seq.push(i);
+    seq.push(i + interval - 1);
+  }
+  seq.push(n);
+  return seq;
+}
+
+function buildRandomSequence(n) {
+  const seq = [];
+  const counts = new Array(n).fill(0);
+  let last = -1;
+  for (let total = 0; total < n * 2; total++) {
+    const avail = [];
+    for (let i = 0; i < n; i++) {
+      if (counts[i] < 2 && i !== last) avail.push(i);
+    }
+    if (!avail.length) {
+      for (let i = 0; i < n; i++) { if (counts[i] < 2) avail.push(i); }
+    }
+    const pick = avail[Math.floor(Math.random() * avail.length)];
+    seq.push(pick);
+    counts[pick]++;
+    last = pick;
+  }
+  return seq;
+}
+
+function stopPlayback() {
+  if (SYNTH.stopFn) SYNTH.stopFn();
+  SYNTH.playing = false;
+  SYNTH.stopFn = null;
+  const btn = document.querySelector('.arp-btn.playing');
+  if (btn) btn.classList.remove('playing');
+  const stopEl = document.querySelector('.stop-btn');
+  if (stopEl) stopEl.style.display = 'none';
+}
+
+function playArpeggiation(interval) {
+  if (!S.selected || S.generatorCents === null) return;
+  stopPlayback();
+
+  const actx = getAudioCtx();
+  const baseScale = buildMOSScale(S.generatorCents, S.selected.size, 1200);
+  const scale = rotateMOSScale(baseScale, S.modeRotation, 1200);
+  const allPitches = [...scale.pitches, 1200];
+
+  const seq = interval === 'random'
+    ? buildRandomSequence(scale.pitches.length)
+    : buildArpSequence(scale.pitches, interval);
+  const noteDur = 0.18;
+  const startTime = actx.currentTime + 0.05;
+  let cancelled = false;
+  const noteTimers = [];
+
+  for (let i = 0; i < seq.length; i++) {
+    const idx = seq[i];
+    const octave = Math.floor(idx / scale.pitches.length);
+    const degree = ((idx % scale.pitches.length) + scale.pitches.length) % scale.pitches.length;
+    const cents = scale.pitches[degree] + octave * 1200;
+    const freq = centsToFreq(cents);
+    playNote(actx, freq, startTime + i * noteDur, noteDur * 0.9, SYNTH.waveform);
+
+    noteTimers.push(setTimeout(() => {
+      if (cancelled) return;
+      SYNTH.activeDegree = degree;
+      render();
+    }, i * noteDur * 1000));
+  }
+
+  SYNTH.playing = true;
+  const totalTime = seq.length * noteDur * 1000 + 100;
+  const endTimer = setTimeout(() => { if (!cancelled) stopPlayback(); }, totalTime);
+
+  SYNTH.stopFn = () => {
+    cancelled = true;
+    clearTimeout(endTimer);
+    noteTimers.forEach(t => clearTimeout(t));
+    SYNTH.activeDegree = -1;
+    render();
+    actx.close();
+    SYNTH.ctx = null;
+  };
+
+  const stopEl = document.querySelector('.stop-btn');
+  if (stopEl) stopEl.style.display = '';
+}
+
+function renderPlaybackControls() {
+  const el = document.getElementById('sp-playback');
+  if (!el) return;
+  if (!S.selected) { el.innerHTML = ''; return; }
+
+  const n = S.selected.size;
+
+  const ordSuffix = i => {
+    if (i === 3) return '3rds';
+    return i + 'ths';
+  };
+
+  let h = `<select class="synth-select" title="Waveform">`;
+  for (const w of ['sine', 'triangle', 'sawtooth', 'square']) {
+    const sel = w === SYNTH.waveform ? ' selected' : '';
+    h += `<option value="${w}"${sel}>${w}</option>`;
+  }
+  h += '</select>';
+
+  h += '<div class="arp-btns">';
+  h += `<button class="arp-btn" data-interval="1" title="Ascending scale">▶ Scale</button>`;
+  for (let i = 3; i <= n; i++) {
+    const label = ordSuffix(i);
+    h += `<button class="arp-btn" data-interval="${i}" title="Arpeggiate in ${label}">▶ ${label}</button>`;
+  }
+  h += `<button class="arp-btn" data-interval="random" title="Play each note twice in random order">▶ Random</button>`;
+  h += '</div>';
+  h += '<button class="stop-btn">■ Stop</button>';
+
+  // Mode rotation controls
+  const udp = S.generatorCents !== null ? computeUDP(S.generatorCents, n, S.modeRotation) : '—';
+  const modeName = S.generatorCents !== null ? getModeName(S.selected.key, S.generatorCents, S.modeRotation) : null;
+  h += '<div class="mode-section">';
+  h += `<div class="mode-udp">${udp}${modeName ? ` <span class="mode-name">${modeName}</span>` : ''}</div>`;
+  h += '<div class="mode-row">';
+  h += '<span class="mode-row-label">gen</span>';
+  h += '<button class="mode-btn" data-action="gen-down" title="Darker (rotate by generator)">&#x25C0;</button>';
+  h += '<button class="mode-btn" data-action="gen-up" title="Brighter (rotate by generator)">&#x25B6;</button>';
+  h += '</div>';
+  h += '<div class="mode-row">';
+  h += '<span class="mode-row-label">step</span>';
+  h += '<button class="mode-btn" data-action="step-down" title="Previous mode (rotate by step)">&#x25C0;</button>';
+  h += '<button class="mode-btn" data-action="step-up" title="Next mode (rotate by step)">&#x25B6;</button>';
+  h += '</div>';
+  h += '</div>';
+
+  el.innerHTML = h;
+
+  el.querySelector('.synth-select').addEventListener('change', e => {
+    SYNTH.waveform = e.target.value;
+  });
+  el.querySelector('.stop-btn').addEventListener('click', stopPlayback);
+  el.querySelectorAll('.arp-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!S.generatorCents) return;
+      stopPlayback();
+      btn.classList.add('playing');
+      const iv = btn.dataset.interval;
+      playArpeggiation(iv === 'random' ? 'random' : +iv);
+    });
+  });
+  el.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!S.selected || S.generatorCents === null) return;
+      const action = btn.dataset.action;
+      const n = S.selected.size;
+      if (action === 'step-up') {
+        S.modeRotation = (S.modeRotation + 1) % n;
+      } else if (action === 'step-down') {
+        S.modeRotation = (S.modeRotation - 1 + n) % n;
+      } else if (action === 'gen-up') {
+        S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, 1);
+      } else if (action === 'gen-down') {
+        S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, -1);
+      }
+      stopPlayback();
+      renderPlaybackControls();
+      render();
+    });
+  });
+}
+
+// ================================================================
+//  UI — Selected panel
+// ================================================================
+
+function positionPanel() {
+  const panel = document.getElementById('selected-panel');
+  if (!panel || panel.style.display === 'none') return;
+  const { radius, cx, sliderY } = getMOSCircleLayout(S.W, S.H);
+  const circleRight = cx + radius + 20;
+  const defaultHeight = S.H - (sliderY - 18);
+  const height = S._panelHeight ? Math.max(80, Math.min(S.H - 40, S._panelHeight)) : defaultHeight;
+  panel.style.left = circleRight + 'px';
+  panel.style.top = '';
+  panel.style.bottom = '0';
+  panel.style.height = height + 'px';
+  panel.style.display = 'flex';
+}
+
+function updatePanel() {
+  const panel = document.getElementById('selected-panel');
+  const infoEl = document.getElementById('sp-info');
+  const edoEl = document.getElementById('sp-edo-container');
+  if (!S.selected) { panel.style.display = 'none'; stopPlayback(); return; }
+
+  const sel = S.selected;
+  const key = sel.key;
+  const label = key.replace('_', ' ');
+  const fname = MOS_NAMES[key];
+  const nL = sel.nL, nS = sel.nS;
+  const parent = findParentMOS(nL, nS);
+  const children = getChildMOSes(key);
+  const temps = getTemperamentsForMOS(key, sel.lowCents, sel.highCents);
+
+  // Left info section
+  const wikiUrl = `https://en.xen.wiki/w/${key}`;
+  let h = `<div class="sp-title"><a href="${wikiUrl}" target="_blank" style="color:#e94560;text-decoration:none">${label}${fname ? ' — '+fname : ''}</a></div>`;
+  h += `<div style="color:#aaa;margin-bottom:3px;font-size:11px">${nL+nS} notes (${nL}L + ${nS}s)</div>`;
+  h += `<div style="color:#ccc;font-size:10px;margin-bottom:3px">${sel.lowCents.toFixed(1)}¢ — ${sel.highCents.toFixed(1)}¢</div>`;
+
+  if (parent) {
+    const pn = MOS_NAMES[parent];
+    h += `<div style="font-size:10px;margin-bottom:2px">Parent: <span style="color:#f5a623">${parent.replace('_',' ')}${pn ? ' ('+pn+')' : ''}</span></div>`;
+  }
+
+  h += `<div style="font-size:10px;margin-bottom:2px">Children: `;
+  h += children.map(c => {
+    const cn = MOS_NAMES[c];
+    return `<span style="color:#6eb5ff">${c.replace('_',' ')}${cn ? ' ('+cn+')' : ''}</span>`;
+  }).join(', ');
+  h += '</div>';
+
+  if (temps.length) {
+    h += '<div style="margin-top:4px;font-weight:600;color:#50c878;font-size:10px">Temperaments:</div>';
+    for (const t of temps) {
+      h += `<div style="color:#ccc;font-size:10px"><span style="color:#50c878">${t.name}</span> ${t.effectiveRange[0].toFixed(0)}–${t.effectiveRange[1].toFixed(0)}¢</div>`;
+    }
+  }
+
+  infoEl.innerHTML = h;
+  renderPlaybackControls();
+
+  // Mode rotation transfer when switching MOS
+  if (S._edoTableKey !== key) {
+    if (S._edoTableKey && S.generatorCents !== null && S.modeRotation !== 0) {
+      const oldN = parseInt(S._edoTableKey.split('L')[0]) + parseInt(S._edoTableKey.split('_')[1]);
+      const oldChain = getGeneratorChain(S.generatorCents, oldN);
+      const oldRootGen = oldChain[S.modeRotation % oldN];
+      const oldFrac = oldN > 1 ? oldRootGen / (oldN - 1) : 0;
+      const newN = nL + nS;
+      const newChain = getGeneratorChain(S.generatorCents, newN);
+      const targetGen = Math.round(oldFrac * (newN - 1));
+      S.modeRotation = newChain.indexOf(targetGen);
+      if (S.modeRotation < 0) S.modeRotation = 0;
+    } else {
+      S.modeRotation = 0;
+    }
+    S._edoTableKey = key;
+    S._rulerBuiltKey = null;
+  }
+
+  panel.style.display = 'flex';
+  positionPanel();
+  renderEDOGrid();
+}
+
+// Build harmonic ratios N/D where N,D <= 31, N > D, gcd(N,D)=1
+function buildHarmonicRatios() {
+  if (S._harmonicRatios) return S._harmonicRatios;
+  const ratios = [];
+  for (let d = 1; d <= 31; d++) {
+    for (let n = d + 1; n <= 31; n++) {
+      if (gcd(n, d) !== 1) continue;
+      const cents = 1200 * Math.log2(n / d);
+      if (cents > 0 && cents <= 1200) {
+        ratios.push({ n, d, cents, label: `${n}/${d}` });
+      }
+    }
+  }
+  ratios.sort((a, b) => (a.n + a.d) - (b.n + b.d) || a.cents - b.cents);
+  S._harmonicRatios = ratios;
+  return ratios;
+}
+
+function drawRulerCanvas(canvas, centerCents, harmonics, pxPerCent, isGen) {
+  const track = canvas.parentElement;
+  const rect = track.getBoundingClientRect();
+  if (rect.width === 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const w = rect.width, ht = rect.height;
+  ctx.clearRect(0, 0, w, ht);
+
+  const viewHalf = (w / 2) / pxPerCent;
+  const viewLow = centerCents - viewHalf;
+  const viewHigh = centerCents + viewHalf;
+
+  // Cent tick marks
+  const startCent = Math.floor(viewLow);
+  for (let c = startCent; c <= viewHigh; c++) {
+    const x = (c - viewLow) * pxPerCent;
+    const isMajor = c % 5 === 0;
+    ctx.strokeStyle = isMajor ? '#2a3a5a' : '#1a2235';
+    ctx.lineWidth = isMajor ? 1 : 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x, ht * 0.4);
+    ctx.lineTo(x, ht * 0.6);
+    ctx.stroke();
+  }
+
+  // Harmonic ratio markers
+  const visible = harmonics.filter(r => r.cents >= viewLow - 2 && r.cents <= viewHigh + 2);
+  visible.sort((a, b) => (a.n * a.d) - (b.n * b.d));
+
+  const minLabelPx = isGen ? 44 : 36;
+  const placed = [];
+
+  for (const r of visible) {
+    const x = Math.round((r.cents - viewLow) * pxPerCent);
+    if (placed.some(px => Math.abs(x - px) < minLabelPx)) continue;
+    placed.push(x);
+
+    const complexity = r.n * r.d;
+    // 2/1=2, 3/2=6, 5/4=20, 7/4=28, 11/8=88, 25/18=450, 31/30=930
+    const simple = Math.max(0, 1 - Math.log(complexity) / Math.log(961));
+    const dist = Math.abs(r.cents - centerCents);
+    const distFade = Math.max(0.3, 1 - (dist / viewHalf) * 0.6);
+    const isClose = dist < 0.5;
+
+    const lineAlpha = isClose ? 1 : (0.15 + simple * 0.55) * distFade;
+    const lineWidth = isClose ? 2.5 : 0.5 + simple * 2;
+    const tickTop = isGen ? 6 : 4;
+    const tickBot = isGen ? ht - 6 : ht - 4;
+
+    const lineColor = isClose ? '#50c878' : `rgba(110,181,255,${lineAlpha})`;
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    ctx.moveTo(x + 0.5, tickTop);
+    ctx.lineTo(x + 0.5, tickBot);
+    ctx.stroke();
+
+    const baseFontSize = isGen ? 13 : 11;
+    const fontSize = Math.round(baseFontSize - 3 * (1 - simple));
+    const textAlpha = isClose ? 1 : (0.3 + simple * 0.7) * distFade;
+    ctx.fillStyle = isClose ? '#e0ffe0' : `rgba(220,230,250,${textAlpha})`;
+    ctx.font = `bold ${fontSize}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(r.label, x, isGen ? Math.round(ht * 0.35) : Math.round(ht * 0.32));
+
+    if (isGen) {
+      ctx.fillStyle = isClose ? '#7ac898' : `rgba(136,153,187,${textAlpha * 0.7})`;
+      ctx.font = `${Math.max(9, fontSize - 2)}px monospace`;
+      ctx.fillText(r.cents.toFixed(1) + '¢', x, Math.round(ht - 8));
+    }
+  }
+}
+
+function renderEDOGrid() {
+  const edoEl = document.getElementById('sp-edo-container');
+  const sel = S.selected;
+  if (!sel) return;
+
+  const genCents = S.generatorCents !== null ? S.generatorCents : (sel.lowCents + sel.highCents) / 2;
+  const hr = computeHardness(genCents, sel.size);
+  const hardnessStr = hr.ratio === Infinity ? '∞' : hr.ratio.toFixed(2);
+  const harmonics = buildHarmonicRatios();
+
+  const baseScale = buildMOSScale(genCents, sel.size, 1200);
+  const scale = rotateMOSScale(baseScale, S.modeRotation || 0, 1200);
+  const intervals = scale.pitches.slice(1);
+
+  const rulerKey = sel.key + '|' + intervals.length;
+  if (S._rulerBuiltKey !== rulerKey) {
+    let h = '<div class="edo-ruler-header">';
+    h += '<span class="edo-ruler-cents"></span>';
+    h += '<span class="edo-ruler-hardness"></span>';
+    h += '</div>';
+
+    h += '<div class="interval-ruler" data-ruler="gen">';
+    h += '<div class="interval-ruler-label"><span class="degree-name">Generator</span> <span class="degree-ratio"></span></div>';
+    h += '<div class="interval-ruler-track gen-track">';
+    h += '<div class="ruler-indicator"></div>';
+    h += '<canvas class="ruler-canvas"></canvas>';
+    h += '</div></div>';
+
+    h += '<div class="edo-rulers-scroll">';
+    for (let i = 0; i < intervals.length; i++) {
+      h += `<div class="interval-ruler" data-ruler="${i}">`;
+      h += `<div class="interval-ruler-label"><span class="degree-name">Degree ${i + 1}</span> <span class="degree-cents"></span> <span class="degree-ratio"></span></div>`;
+      h += '<div class="interval-ruler-track">';
+      h += '<div class="ruler-indicator"></div>';
+      h += '<canvas class="ruler-canvas"></canvas>';
+      h += '</div></div>';
+    }
+    h += '</div>';
+
+    edoEl.innerHTML = h;
+    S._rulerBuiltKey = rulerKey;
+    setupRulerInteraction(edoEl);
+  }
+
+  edoEl.querySelector('.edo-ruler-cents').textContent = genCents.toFixed(2) + '¢';
+  edoEl.querySelector('.edo-ruler-hardness').textContent = hardnessStr;
+
+  // Draw generator ruler
+  const genRuler = edoEl.querySelector('[data-ruler="gen"]');
+  const genRatioSpan = genRuler && genRuler.querySelector('.degree-ratio');
+  if (genRatioSpan) {
+    let closest = null, closestDist = Infinity;
+    for (const r of harmonics) {
+      const d = Math.abs(r.cents - genCents);
+      if (d < closestDist) { closestDist = d; closest = r; }
+    }
+    if (closest && closestDist < 15) {
+      const url = `https://en.xen.wiki/w/${closest.n}/${closest.d}`;
+      genRatioSpan.innerHTML = `≈ <a href="${url}" target="_blank">${closest.label}</a>`;
+    } else {
+      genRatioSpan.innerHTML = '';
+    }
+  }
+  const genCanvas = genRuler && genRuler.querySelector('.ruler-canvas');
+  if (genCanvas) drawRulerCanvas(genCanvas, genCents, harmonics, 30, true);
+
+  // Draw interval rulers
+  const scrollContainer = edoEl.querySelector('.edo-rulers-scroll');
+  if (scrollContainer) {
+    for (let i = 0; i < intervals.length; i++) {
+      const rulerEl = scrollContainer.querySelector(`[data-ruler="${i}"]`);
+      if (!rulerEl) continue;
+      const centsLabel = rulerEl.querySelector('.degree-cents');
+      if (centsLabel) centsLabel.textContent = intervals[i].toFixed(1) + '¢';
+
+      const ratioSpan = rulerEl.querySelector('.degree-ratio');
+      if (ratioSpan) {
+        let closest = null, closestDist = Infinity;
+        for (const r of harmonics) {
+          const d = Math.abs(r.cents - intervals[i]);
+          if (d < closestDist) { closestDist = d; closest = r; }
+        }
+        if (closest && closestDist < 15) {
+          const url = `https://en.xen.wiki/w/${closest.n}/${closest.d}`;
+          ratioSpan.innerHTML = `≈ <a href="${url}" target="_blank">${closest.label}</a>`;
+        } else {
+          ratioSpan.innerHTML = '';
+        }
+      }
+
+      const canvas = rulerEl.querySelector('.ruler-canvas');
+      if (canvas) drawRulerCanvas(canvas, intervals[i], harmonics, 30, false);
+    }
+  }
+}
+
+function rulerSetGenFromCents(cents) {
+  const sel = S.selected;
+  if (!sel) return;
+  if (cents < sel.lowCents || cents > sel.highCents) {
+    const clamped = Math.max(0, Math.min(1200, cents));
+    const adj = findAdjacentRegion(sel, clamped);
+    if (adj) {
+      S.selected = adj;
+      S.generatorCents = Math.max(adj.lowCents, Math.min(adj.highCents, clamped));
+      autoFilterMinSize(adj.size);
+      updatePanel();
+      render();
+      return;
+    }
+  }
+  S.generatorCents = Math.max(sel.lowCents, Math.min(sel.highCents, cents));
+  render();
+}
+
+function setupRulerGlobalHandlers() {
+  if (S._rulerGlobalInit) return;
+  S._rulerGlobalInit = true;
+
+  document.addEventListener('mousemove', e => {
+    if (!S._rulerDragging || !S.selected) return;
+    const dx = e.clientX - S._rulerDragStartX;
+    rulerSetGenFromCents(S._rulerDragStartCents - dx / 30);
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!S._rulerDragging) return;
+    S._rulerDragging = false;
+    const track = document.querySelector('.gen-track');
+    if (track) track.style.cursor = 'grab';
+  });
+}
+
+function setupRulerInteraction(edoEl) {
+  const track = edoEl.querySelector('.gen-track');
+  if (!track) return;
+
+  setupRulerGlobalHandlers();
+
+  track.addEventListener('mousedown', e => {
+    if (!S.selected) return;
+    S._rulerDragging = true;
+    S._rulerDragStartX = e.clientX;
+    S._rulerDragStartCents = S.generatorCents !== null ? S.generatorCents : (S.selected.lowCents + S.selected.highCents) / 2;
+    track.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  track.addEventListener('wheel', e => {
+    if (!S.selected) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = e.deltaY > 0 ? 0.15 : -0.15;
+    const genCents = S.generatorCents !== null ? S.generatorCents : (S.selected.lowCents + S.selected.highCents) / 2;
+    rulerSetGenFromCents(genCents + delta);
+  }, { passive: false });
+}
+
+// ================================================================
+//  INTERACTION — Event setup
+// ================================================================
+
 function setup() {
   const cntr = document.getElementById('canvas-container');
   const cvs = S.canvas;
-  const tip = document.getElementById('tooltip');
 
   // Zoom
   cntr.addEventListener('wheel', e => {
@@ -1191,12 +2206,10 @@ function setup() {
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
 
-    // Check arrow hits first
     const arrow = hitCircleArrow(mx, my);
     if (arrow === 'parent') { navigateToParent(); return; }
     if (arrow === 'child') { navigateToChild(); return; }
 
-    // Check slider hit first
     if (S.selected && hitSlider(mx, my)) {
       S.sliderDragging = true;
       S.generatorCents = sliderXToGen(mx);
@@ -1205,7 +2218,6 @@ function setup() {
       return;
     }
 
-    // Check axis bar click when MOS is selected
     if (S.selected && isOnAxisBar(my)) {
       const cc = x2c(mx);
       if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
@@ -1217,7 +2229,6 @@ function setup() {
       }
     }
 
-    // Default: pan drag
     S.dragging = true;
     S.dragX0 = e.clientX;
     S.dragMin0 = S.viewMin;
@@ -1251,7 +2262,6 @@ function setup() {
       render();
     } else {
       hitTest(mx, my, e);
-      // Override cursor for interactive zones
       if (hitCircleArrow(mx, my)) {
         cvs.style.cursor = 'pointer';
       } else if (S.selected && hitSlider(mx, my)) {
@@ -1352,13 +2362,13 @@ function setup() {
     }
     e.preventDefault();
   }, { passive: false });
-  cntr.addEventListener('touchend', e => {
+  cntr.addEventListener('touchend', () => {
     if (S.sliderDragging) S.sliderDragging = false;
     if (S.genDragging) S.genDragging = false;
   });
 
   // Resize
-  window.addEventListener('resize', () => { resizeCanvas(); render(); });
+  window.addEventListener('resize', () => { resizeCanvas(); render(); positionPanel(); });
 
   // Controls
   document.getElementById('min-size').addEventListener('input', e => {
@@ -1393,209 +2403,45 @@ function setup() {
     S.viewMin = 0; S.viewMax = 1200;
     updateInfo(); render();
   });
+  document.getElementById('selected-panel').addEventListener('mousedown', e => {
+    e.stopPropagation();
+  });
   document.getElementById('sp-close').addEventListener('click', () => {
     S.selected = null;
     S.generatorCents = null;
+    S._panelHeight = null;
     updatePanel(); render();
+  });
+
+  // Panel resize handle
+  const resizeHandle = document.getElementById('sp-resize-handle');
+  let resizing = false, resizeStartY = 0, resizeStartH = 0;
+
+  resizeHandle.addEventListener('mousedown', e => {
+    const panel = document.getElementById('selected-panel');
+    if (!panel || panel.style.display === 'none') return;
+    resizing = true;
+    resizeStartY = e.clientY;
+    resizeStartH = panel.getBoundingClientRect().height;
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    const dy = resizeStartY - e.clientY;
+    S._panelHeight = Math.max(80, Math.min(S.H - 40, resizeStartH + dy));
+    positionPanel();
+    renderEDOGrid();
+  });
+
+  document.addEventListener('mouseup', () => {
+    resizing = false;
   });
 }
 
-function clampView() {
-  const range = S.viewMax - S.viewMin;
-  if (S.viewMin < 0) { S.viewMin = 0; S.viewMax = range; }
-  if (S.viewMax > 1200) { S.viewMax = 1200; S.viewMin = 1200 - range; }
-  S.viewMin = Math.max(0, S.viewMin);
-  S.viewMax = Math.min(1200, S.viewMax);
-}
-
-function hitTest(mx, my, e) {
-  const tip = document.getElementById('tooltip');
-  let found = null;
-
-  // Prefer smaller (more specific) regions when overlapping
-  // Scan all rendered regions, pick the smallest that contains the mouse
-  for (const r of S.regions) {
-    if (r._y === undefined) continue;
-    const x1 = c2x(r.lowCents), x2 = c2x(r.highCents);
-    if (mx >= x1 && mx <= x2 && my >= r._y && my <= r._y + r._h) {
-      if (!found || r.size > found.size) found = r;
-    }
-  }
-
-  if (found !== S.hovered) {
-    S.hovered = found;
-    render();
-  }
-
-  if (found) {
-    const cc = x2c(mx);
-    const hr = computeHardness(cc, found.size);
-    const label = found.key.replace('_', ' ');
-    const fname = MOS_NAMES[found.key];
-
-    let html = `<div class="tt-title">${label}${fname ? ' — ' + fname : ''}</div>`;
-    html += `<div class="tt-sub">${found.lowCents.toFixed(2)}¢ — ${found.highCents.toFixed(2)}¢ &middot; ${found.size} notes</div>`;
-
-    if (found.parent) {
-      const pn = MOS_NAMES[found.parent];
-      html += `<div class="tt-sub">Parent: ${found.parent.replace('_',' ')}${pn ? ' ('+pn+')' : ''}</div>`;
-    }
-
-    if (hr.ratio !== Infinity) {
-      html += `<div class="tt-hard">L:s = ${hr.str} &nbsp; (L=${hr.L.toFixed(1)}¢, s=${hr.s.toFixed(1)}¢)</div>`;
-    }
-
-    const temps = TEMPERAMENTS.filter(t => t.mos === found.key && cc >= t.genRange[0] && cc <= t.genRange[1]);
-    for (const t of temps) {
-      html += `<div class="tt-temp">${t.name}: ${t.description}</div>`;
-    }
-
-    let nearest = null, nd = Infinity;
-    for (const g of S.edos) {
-      const d = Math.abs(g.cents - cc);
-      if (d < nd && g.cents >= found.lowCents && g.cents <= found.highCents) {
-        nd = d; nearest = g;
-      }
-    }
-    if (nearest && nd < (S.viewMax - S.viewMin) * 0.02) {
-      html += `<div class="tt-edo">Nearest: ${nearest.step}\\${nearest.edo} = ${nearest.cents.toFixed(2)}¢</div>`;
-    }
-
-    const isSelRegion = S.selected &&
-      S.selected.key === found.key &&
-      Math.abs(S.selected.lowCents - found.lowCents) < 0.01 &&
-      Math.abs(S.selected.highCents - found.highCents) < 0.01;
-    html += `<div style="color:#444;font-size:10px;margin-top:3px">${isSelRegion ? 'Click/drag to set generator' : 'Click to select'}</div>`;
-    tip.innerHTML = html;
-    tip.style.display = 'block';
-
-    let tx = e.clientX + 15, ty = e.clientY + 15;
-    if (tx + 330 > window.innerWidth) tx = e.clientX - 340;
-    if (ty + 200 > window.innerHeight) ty = e.clientY - 210;
-    tip.style.left = tx + 'px';
-    tip.style.top = ty + 'px';
-
-    S.canvas.style.cursor = 'pointer';
-  } else {
-    tip.style.display = 'none';
-    S.canvas.style.cursor = '';
-  }
-}
-
-function handleClick() {
-  const mx = S._lastClickX !== undefined ? S._lastClickX : 0;
-
-  if (S.hovered) {
-    const clickedSameRegion = S.selected &&
-      S.selected.key === S.hovered.key &&
-      Math.abs(S.selected.lowCents - S.hovered.lowCents) < 0.01 &&
-      Math.abs(S.selected.highCents - S.hovered.highCents) < 0.01;
-
-    if (clickedSameRegion) {
-      const cc = x2c(mx);
-      S.generatorCents = Math.max(S.selected.lowCents, Math.min(S.selected.highCents, cc));
-      render();
-    } else {
-      const prevGen = S.generatorCents;
-      S.selected = S.hovered;
-      if (prevGen !== null &&
-          prevGen >= S.hovered.lowCents && prevGen <= S.hovered.highCents) {
-        S.generatorCents = prevGen;
-      } else {
-        S.generatorCents = null;
-      }
-      updatePanel();
-      render();
-    }
-  } else if (S.selected) {
-    // Click on empty space — check if it's on the axis within selected range
-    const cc = x2c(mx);
-    if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
-      S.generatorCents = cc;
-      render();
-    } else {
-      S.selected = null;
-      S.generatorCents = null;
-      updatePanel();
-      render();
-    }
-  }
-}
-
-function updatePanel() {
-  const panel = document.getElementById('selected-panel');
-  const cont = document.getElementById('sp-content');
-  if (!S.selected) { panel.style.display = 'none'; return; }
-
-  const sel = S.selected;
-  const key = sel.key;
-  const label = key.replace('_', ' ');
-  const fname = MOS_NAMES[key];
-  const nL = sel.nL, nS = sel.nS;
-  const parent = findParentMOS(nL, nS);
-  const children = getChildMOSes(key);
-  const regions = [sel];
-  const temps = TEMPERAMENTS.filter(t => t.mos === key);
-
-  let h = `<div class="sp-title">${label}${fname ? ' — '+fname : ''}</div>`;
-  h += `<div style="color:#aaa;margin-bottom:4px">${nL+nS} notes (${nL} large + ${nS} small)</div>`;
-
-  if (parent) {
-    const pn = MOS_NAMES[parent];
-    h += `<div style="margin-bottom:3px">Parent: <span style="color:#f5a623">${parent.replace('_',' ')}${pn ? ' ('+pn+')' : ''}</span></div>`;
-  }
-
-  h += `<div style="margin-bottom:3px">Children: `;
-  h += children.map(c => {
-    const cn = MOS_NAMES[c];
-    return `<span style="color:#6eb5ff">${c.replace('_',' ')}${cn ? ' ('+cn+')' : ''}</span>`;
-  }).join(', ');
-  h += '</div>';
-
-  if (regions.length) {
-    h += '<div style="margin-top:6px;font-weight:600;color:#e94560">Generator Ranges:</div>';
-    for (const r of regions) {
-      h += `<div style="color:#ccc;font-size:11px">${r.lowCents.toFixed(2)}¢ — ${r.highCents.toFixed(2)}¢`;
-      h += ` <span style="color:#666">(${r.lowFrac[0]}/${r.lowFrac[1]} — ${r.highFrac[0]}/${r.highFrac[1]})</span></div>`;
-    }
-  }
-
-  // EDOs in this MOS's range
-  const edosInRange = [];
-  for (const r of regions) {
-    for (const g of S.edos) {
-      if (g.cents >= r.lowCents && g.cents <= r.highCents) {
-        const hr = computeHardness(g.cents, nL + nS);
-        edosInRange.push({ ...g, hr, region: r });
-      }
-    }
-  }
-  if (edosInRange.length) {
-    h += '<div style="margin-top:6px;font-weight:600;color:#6eb5ff">EDOs in range:</div>';
-    edosInRange.sort((a, b) => a.edo - b.edo);
-    const shown = edosInRange.slice(0, 20);
-    for (const e of shown) {
-      h += `<div style="color:#ccc;font-size:11px">${e.step}\\${e.edo} = ${e.cents.toFixed(1)}¢ <span style="color:#f5a623">L:s=${e.hr.str}</span></div>`;
-    }
-    if (edosInRange.length > 20) h += `<div style="color:#666;font-size:10px">+${edosInRange.length-20} more...</div>`;
-  }
-
-  if (temps.length) {
-    h += '<div style="margin-top:6px;font-weight:600;color:#50c878">Temperaments:</div>';
-    for (const t of temps) {
-      h += `<div style="color:#ccc;font-size:11px"><span style="color:#50c878">${t.name}</span> ${t.genRange[0]}–${t.genRange[1]}¢</div>`;
-      h += `<div style="color:#777;font-size:10px;margin-left:8px">${t.description}</div>`;
-    }
-  }
-
-  cont.innerHTML = h;
-  panel.style.display = 'block';
-}
-
-function updateInfo() {
-  document.getElementById('range-display').textContent =
-    `${S.viewMin.toFixed(2)}¢ — ${S.viewMax.toFixed(2)}¢`;
-}
+// ================================================================
+//  INIT
+// ================================================================
 
 function resizeCanvas() {
   const cntr = document.getElementById('canvas-container');
@@ -1607,10 +2453,6 @@ function resizeCanvas() {
   S.canvas.style.width = S.W + 'px';
   S.canvas.style.height = S.H + 'px';
 }
-
-// ============================================================
-// INIT
-// ============================================================
 
 window.addEventListener('DOMContentLoaded', () => {
   S.canvas = document.getElementById('main-canvas');
