@@ -52,7 +52,12 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Mohajira',
     description: 'Neutral thirds temperament. Generator splits the fifth into two equal ~350¢ thirds.' },
 
-  { name: 'Dicot', mos: ['3L_4s', '7L_3s'], genRange: [336.0, 342.0],
+  { name: 'Suhajira', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [353.0, 365.0],
+    commas: ['243/242', '2401/2400'], commaNames: ['rastma', 'breedsma'],
+    wikiUrl: 'https://en.xen.wiki/w/Rastmic_clan#Suhajira',
+    description: 'Rastmic clan. Sharp neutral third generator. Two generators = 3/2.' },
+
+  { name: 'Dicot', mos: ['3L_4s', '7L_3s'], genRange: [342.5, 360.0],
     commas: ['25/24'], commaNames: ['classical chromatic semitone'],
     wikiUrl: 'https://en.xen.wiki/w/Dicot_family',
     description: 'Equates major and minor thirds. Two neutral thirds = a fifth.' },
@@ -63,10 +68,6 @@ const TEMPERAMENTS = [
     description: 'Five major thirds = a twelfth (3/1). Best 9-odd-limit in this complexity range.' },
 
   // === SMITONIC (4L 3s) ===
-  { name: 'Hanson', mos: ['4L_3s', '4L_7s', '4L_11s'], genRange: [315.0, 319.0],
-    commas: ['15625/15552'], commaNames: ['kleisma'],
-    wikiUrl: 'https://en.xen.wiki/w/Kleismic_family',
-    description: 'Six minor thirds = a twelfth. Near-microtemperament. ~317¢ generator.' },
 
   { name: 'Myna', mos: ['4L_3s', '4L_7s', '4L_11s'], genRange: [307.0, 313.0],
     commas: ['126/125', '1728/1715'], commaNames: ['starling comma', 'orwellisma'],
@@ -86,43 +87,40 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Father_family',
     description: 'Tempers out 16/15, equating 5/4 with 4/3. Exotemperament.' },
 
-  { name: 'Tricot / Slendric', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [228.0, 240.0],
+  { name: 'Squares', mos: ['3L_2s', '3L_5s', '3L_8s'], genRange: [420.0, 428.75],
+    commas: ['256/245'], commaNames: ['squares comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Squares',
+    description: 'Four generators = 7/2. Generator is a sharp sub-fourth (~426¢). Accurate 7-limit.' },
+
+  { name: 'Tricot / Slendric', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [218.0, 240.0],
     commas: ['1029/1024'], commaNames: ['gamelisma'],
     wikiUrl: 'https://en.xen.wiki/w/Slendric',
     description: 'Three 8/7 generators = 3/2. 2.3.7 subgroup. Very accurate.' },
 
-  { name: 'Pentacot', mos: ['1L_7s', '8L_1s'], genRange: [137.0, 144.0],
+  { name: 'Glacier / Pentacot', mos: ['1L_7s', '8L_1s'], genRange: [137.0, 144.0],
     commas: [], commaNames: [],
-    wikiUrl: 'https://en.xen.wiki/w/Ploidacot/Pentacot',
-    description: 'Ploidacot family. Generator ~137–144¢.' },
+    wikiUrl: 'https://en.xen.wiki/w/Glacier',
+    description: 'Pentacot tuning (divides 3/2 into 5 steps). Generator ~137–144¢.' },
 
-  { name: 'Hexacot', mos: ['1L_9s', '10L_1s'], genRange: [114.26, 120.0],
-    commas: [], commaNames: [],
-    wikiUrl: 'https://en.xen.wiki/w/Ploidacot/Hexacot',
-    description: 'Ploidacot family. Generator ~114–120¢.' },
 
   { name: 'Alpha Tricot', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [628.5, 640.0],
     commas: [], commaNames: [],
-    wikiUrl: 'https://en.xen.wiki/w/Ploidacot/Alpha-tricot',
+    wikiUrl: 'https://en.xen.wiki/w/Alphatricot_family#Alphatricot',
     description: 'Alpha ploidacot family. Generator ~628.5–640¢.' },
 
-  { name: 'Alpha Tetracot', mos: ['3L_2s', '5L_3s', '5L_8s'], genRange: [471.4, 480.0],
+  { name: 'Buzzard', mos: ['3L_2s', '5L_3s', '5L_8s'], genRange: [471.4, 480.0],
     commas: [], commaNames: [],
-    wikiUrl: 'https://en.xen.wiki/w/Ploidacot/Alpha-tetracot',
-    description: 'Alpha ploidacot family. Generator ~471.4–480¢.' },
+    wikiUrl: 'https://en.xen.wiki/w/Buzzard',
+    description: 'Alpha tetracot (splits 3/1 into 4 steps). Generator ~471.4–480¢.' },
 
-  { name: 'Alpha Pentacot', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [377.12, 384.0],
-    commas: [], commaNames: [],
-    wikiUrl: 'https://en.xen.wiki/w/Ploidacot/Alpha-pentacot',
-    description: 'Alpha ploidacot family. Generator ~377.1–384¢.' },
 
-  { name: 'Alpha Hexacot', mos: ['4L_3s', '4L_7s', '4L_11s'], genRange: [314.27, 320.0],
+  { name: 'Kleismic', mos: ['4L_3s', '4L_7s', '4L_11s'], genRange: [313.0, 320.0],
     commas: [], commaNames: [],
-    wikiUrl: 'https://en.xen.wiki/w/Ploidacot/Alpha-hexacot',
-    description: 'Alpha ploidacot family. Generator ~314.3–320¢.' },
+    wikiUrl: 'https://en.xen.wiki/w/Kleismic_family',
+    description: 'Alpha hexacot (splits 3/1 into 6 steps). Generator ~314.3–320¢.' },
 
   // === SENSOID (3L 5s) ===
-  { name: 'Porcupine', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [158.0, 167.0],
+  { name: 'Porcupine', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [150.0, 182.4],
     commas: ['250/243'], commaNames: ['porcupine comma'],
     wikiUrl: 'https://en.xen.wiki/w/Porcupine',
     description: 'Two generators = 6/5, three = 4/3. ~163¢ generator.' },
@@ -138,18 +136,23 @@ const TEMPERAMENTS = [
     description: 'Sharp major third generator. Eight generators = 6/1.' },
 
   // === ORWELLOID (4L 5s) ===
+  { name: 'Neominor', mos: ['4L_5s', '4L_9s', '4L_13s'], genRange: [280.0, 285.5],
+    commas: ['2401/2400'], commaNames: ['breedsma'],
+    wikiUrl: 'https://en.xen.wiki/w/Breedsmic_temperaments#Neominor',
+    description: 'Breedsmic temperament. Generator is a subminor third. 4L 5s, 4L 9s, 4L 13s MOS family.' },
+
   { name: 'Orwell', mos: ['4L_5s', '4L_9s', '13L_9s'], genRange: [269.0, 275.0],
     commas: ['225/224', '1728/1715'], commaNames: ['marvel comma', 'orwellisma'],
     wikiUrl: 'https://en.xen.wiki/w/Orwell',
     description: 'Subminor third (7/6) generator. Seven generators = twelfth. Excellent 11-limit.' },
 
-  { name: 'Semaphore', mos: ['5L_4s', '5L_9s'], genRange: [247.0, 254.0],
+  { name: 'Semaphore', mos: ['5L_4s', '5L_9s'], genRange: [933, 968.0],
     commas: ['49/48'], commaNames: ['slendro diesis'],
     wikiUrl: 'https://en.xen.wiki/w/Semaphore_and_godzilla',
     description: 'Semi-fourth: two generators = 4/3. Equates 7/6 and 8/7.' },
 
   // === ARCHEOTONIC (6L 1s) ===
-  { name: 'Tetracot', mos: ['6L_1s', '7L_6s', '7L_13s'], genRange: [174.0, 178.0],
+  { name: 'Tetracot', mos: ['6L_1s', '7L_6s', '7L_13s'], genRange: [165.4, 180.0],
     commas: ['20000/19683'], commaNames: ['tetracot comma'],
     wikiUrl: 'https://en.xen.wiki/w/Tetracot_family',
     description: 'Four generators = 3/2. Generator is a sub-major second (~176¢). EDOs: 27, 34, 41.' },
@@ -197,12 +200,12 @@ const TEMPERAMENTS = [
     description: 'Half-octave period. Porcupine-family. 22edo is the canonical tuning.' },
 
   // === LARGER SCALES ===
-  { name: 'Miracle', mos: ['1L_9s', '10L_1s', '10L_11s'], genRange: [115.0, 118.0],
+  { name: 'Miracle', mos: ['1L_9s', '10L_1s', '10L_11s'], genRange: [111.0, 120.0],
     commas: ['225/224', '1029/1024'], commaNames: ['marvel comma', 'gamelisma'],
     wikiUrl: 'https://en.xen.wiki/w/Miracle',
     description: 'The secor (~116.7¢). Six secors = a fifth. Exceptional 11-limit efficiency.' },
 
-  { name: 'Negri', mos: ['1L_8s', '9L_1s', '9L_10s'], genRange: [123.0, 128.0],
+  { name: 'Negri', mos: ['1L_8s', '9L_1s', '9L_10s'], genRange: [111.0, 140.0],
     commas: ['16875/16384'], commaNames: ['negri comma'],
     wikiUrl: 'https://en.xen.wiki/w/Negri',
     description: 'Large semitone generator. Four generators = 4/3.' },
@@ -219,15 +222,14 @@ const TEMP_COLORS = {
   'Pythagorean': '#ffd700', 'Superpyth': '#ff6347', 'Ultrapyth': '#ff8247',
   'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84',
   'Mohajira': '#dda0dd',
-  'Dicot': '#c49bd4', 'Magic': '#ff69b4',
+  'Suhajira': '#e8b4e8', 'Dicot': '#c49bd4', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a',
   'Porcupine': '#7fff00', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
-  'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
+  'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa',
-  'Tricot / Slendric': '#deb887', 'Pentacot': '#c4a67a', 'Hexacot': '#a8926e',
-  'Alpha Tricot': '#d4aa70', 'Alpha Tetracot': '#c89e64', 'Alpha Pentacot': '#bc9258', 'Alpha Hexacot': '#b0864c',
-  'Father': '#f0e68c', 'Bug': '#cd853f',
+  'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
+  'Father': '#f0e68c', 'Squares': '#e0825a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
   'Blackwood': '#ba55d3', 'Lemba': '#d2691e', 'Hedgehog': '#8fbc8f',

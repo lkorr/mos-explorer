@@ -113,12 +113,12 @@ function rotateMOSScale(scale, rotation, period = 1200) {
 
 function findParentMOS(nL, nS) {
   if (nL === nS || (nL <= 1 && nS <= 1)) return null;
-  if (nL > nS) return `${nL - nS}L_${nS}s`;
+  if (nL > nS) return `${nS}L_${nL - nS}s`;
   return `${nL}L_${nS - nL}s`;
 }
 
 function getChildMOSes(nL, nS) {
-  return [`${nL + nS}L_${nS}s`, `${nL}L_${nL + nS}s`];
+  return [`${nL + nS}L_${nL}s`, `${nL}L_${nL + nS}s`];
 }
 
 function getAncestorChain(nL, nS) {

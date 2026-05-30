@@ -288,7 +288,7 @@ canvas { display: block; width: 100%; height: 100%; }
   align-self: flex-start;
 }
 
-#selected-panel .sp-title { font-weight: 700; color: #e94560; font-size: 14px; margin-bottom: 4px; }
+#selected-panel .sp-title { font-weight: 700; color: #e94560; font-size: 17px; margin-bottom: 4px; }
 #selected-panel a:hover { text-decoration: underline !important; }
 #selected-panel .sp-close { position: absolute; top: 6px; right: 10px; cursor: pointer; color: #888; font-size: 16px; z-index: 61; }
 #selected-panel .sp-close:hover { color: #e94560; }
@@ -566,7 +566,7 @@ function gcd(a, b) {
 
 function findParentMOS(nL, nS) {
   if (nL === nS || (nL <= 1 && nS <= 1)) return null;
-  if (nL > nS) return `${nL - nS}L_${nS}s`;
+  if (nL > nS) return `${nS}L_${nL - nS}s`;
   return `${nL}L_${nS - nL}s`;
 }
 
@@ -574,7 +574,7 @@ function getChildMOSes(key) {
   const m = key.match(/(\d+)L_(\d+)s/);
   if (!m) return [];
   const nL = +m[1], nS = +m[2];
-  return [`${nL + nS}L_${nS}s`, `${nL}L_${nL + nS}s`];
+  return [`${nL + nS}L_${nL}s`, `${nL}L_${nL + nS}s`];
 }
 
 function isDescendantMOS(childKey, ancestorKey) {
@@ -1290,49 +1290,17 @@ function drawMOSCircle(ctx, W, H) {
   ctx.fill();
   ctx.stroke();
 
-  // Title with parent/child arrows
+  // Title
   const titleY = sliderY - 8;
   const titleText = sel.key.replace('_', ' ');
-  ctx.font = 'bold 11px monospace';
-  const titleW = ctx.measureText(titleText).width;
-
-  const arrowSize = 10;
-  const arrowPad = 6;
-  const parentArrowX = cx - titleW / 2 - arrowPad - arrowSize / 2;
-  const parentKey = findParentMOS(sel.nL, sel.nS);
-  const parentExists = parentKey && S.regions.some(r =>
-    r.key === parentKey && r.size >= S.minSize && r.size <= S.maxSize);
-
-  ctx.fillStyle = parentExists ? '#aaa' : '#333';
-  ctx.beginPath();
-  ctx.moveTo(parentArrowX, titleY - arrowSize / 2);
-  ctx.lineTo(parentArrowX - arrowSize / 2, titleY + arrowSize / 2);
-  ctx.lineTo(parentArrowX + arrowSize / 2, titleY + arrowSize / 2);
-  ctx.closePath();
-  ctx.fill();
-
-  const childKeys = getChildMOSes(sel.key);
-  const childArrowX = cx + titleW / 2 + arrowPad + arrowSize / 2;
-  const childExists = childKeys.some(ck => S.regions.some(r =>
-    r.key === ck && r.size >= S.minSize && r.size <= S.maxSize));
-
-  ctx.fillStyle = childExists ? '#aaa' : '#333';
-  ctx.beginPath();
-  ctx.moveTo(childArrowX, titleY + arrowSize / 2);
-  ctx.lineTo(childArrowX - arrowSize / 2, titleY - arrowSize / 2);
-  ctx.lineTo(childArrowX + arrowSize / 2, titleY - arrowSize / 2);
-  ctx.closePath();
-  ctx.fill();
-
-  S._parentArrow = parentExists ? { x: parentArrowX, y: titleY, r: arrowSize } : null;
-  S._childArrow = childExists ? { x: childArrowX, y: titleY, r: arrowSize } : null;
-
-  // Title text
   ctx.fillStyle = '#e94560';
   ctx.font = 'bold 11px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(titleText, cx, titleY);
+
+  S._parentArrow = null;
+  S._childArrow = null;
 
   // Hardness slider track
   ctx.fillStyle = '#2a2a4a';
@@ -1340,21 +1308,22 @@ function drawMOSCircle(ctx, W, H) {
   ctx.roundRect(sliderX, sliderY, sliderW, sliderH, sliderH / 2);
   ctx.fill();
 
+  const eqEnd = getEqualizedEnd(sel);
+  const eqLabel = eqEnd === 'low' ? 0.15 : 0.85;
+  const colLabel = eqEnd === 'low' ? 0.85 : 0.15;
   ctx.fillStyle = '#556';
   ctx.font = '8px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('equalized', sliderX + sliderW * 0.15, sliderY + sliderH + 10);
-  ctx.fillText('collapsed', sliderX + sliderW * 0.85, sliderY + sliderH + 10);
+  ctx.fillText('equalized', sliderX + sliderW * eqLabel, sliderY + sliderH + 10);
+  ctx.fillText('collapsed', sliderX + sliderW * colLabel, sliderY + sliderH + 10);
 
   if (gen !== null) {
-    const eqEnd = getEqualizedEnd(sel);
-    const t = eqEnd === 'low'
-      ? (gen - sel.lowCents) / (sel.highCents - sel.lowCents)
-      : (sel.highCents - gen) / (sel.highCents - sel.lowCents);
+    const t = (gen - sel.lowCents) / (sel.highCents - sel.lowCents);
     const thumbX = sliderX + t * sliderW;
     const thumbR = sliderH / 2 + 2;
 
-    const sliderColor = lerpColor(sel.equalizedColor, sel.collapsedColor, Math.max(0, Math.min(1, t)));
+    const eqT = eqEnd === 'low' ? t : 1 - t;
+    const sliderColor = lerpColor(sel.equalizedColor, sel.collapsedColor, Math.max(0, Math.min(1, eqT)));
 
     const fillW = thumbX - sliderX;
     if (fillW > 1) {
@@ -1664,6 +1633,7 @@ function handleClick() {
     if (clickedSameRegion) {
       const cc = x2c(mx);
       S.generatorCents = Math.max(S.selected.lowCents, Math.min(S.selected.highCents, cc));
+      updatePanel();
       render();
     } else {
       const prevGen = S.generatorCents;
@@ -1681,6 +1651,7 @@ function handleClick() {
     const cc = x2c(mx);
     if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
       S.generatorCents = cc;
+      updatePanel();
       render();
     } else {
       S.selected = null;
@@ -1743,6 +1714,27 @@ function navigateToChild() {
   render();
 }
 
+function navigateToChildByKey(childKey) {
+  const sel = S.selected;
+  const gen = S.generatorCents;
+
+  const candidate = S.regions.find(r =>
+    r.key === childKey &&
+    r.size >= S.minSize && r.size <= S.maxSize &&
+    (gen !== null
+      ? (gen >= r.lowCents && gen <= r.highCents)
+      : (r.lowCents < sel.highCents && r.highCents > sel.lowCents))
+  );
+  if (!candidate) return;
+
+  S.selected = candidate;
+  if (gen !== null && (gen < candidate.lowCents || gen > candidate.highCents)) {
+    S.generatorCents = null;
+  }
+  updatePanel();
+  render();
+}
+
 function findAdjacentRegion(sel, cents) {
   const candidates = S.regions.filter(r =>
     r.size >= S.minSize && r.size <= S.maxSize &&
@@ -1783,32 +1775,8 @@ function hitSlider(mx, my) {
 function sliderXToGen(mx) {
   const sel = S.selected;
   const lay = getMOSCircleLayout(S.W, S.H);
-  const t = (mx - lay.sliderX) / lay.sliderW;
-  const eqEnd = getEqualizedEnd(sel);
-  const range = sel.highCents - sel.lowCents;
-
-  let cents;
-  if (eqEnd === 'low') {
-    cents = sel.lowCents + t * range;
-  } else {
-    cents = sel.highCents - t * range;
-  }
-
-  if (t < 0 || t > 1) {
-    const targetCents = Math.max(0, Math.min(1200, cents));
-    const adj = findAdjacentRegion(sel, targetCents);
-    if (adj) {
-      S.selected = adj;
-      updatePanel();
-      return Math.max(adj.lowCents, Math.min(adj.highCents, targetCents));
-    }
-    if (eqEnd === 'low') {
-      return t < 0 ? sel.lowCents : sel.highCents;
-    } else {
-      return t < 0 ? sel.highCents : sel.lowCents;
-    }
-  }
-  return cents;
+  const t = Math.max(0, Math.min(1, (mx - lay.sliderX) / lay.sliderW));
+  return sel.lowCents + t * (sel.highCents - sel.lowCents);
 }
 
 function setGenFromScreenX(mx) {
@@ -1828,6 +1796,7 @@ function setGenFromScreenX(mx) {
   }
 
   S.generatorCents = Math.max(sel.lowCents, Math.min(sel.highCents, cc));
+  updatePanel();
   render();
 }
 
@@ -2127,37 +2096,50 @@ function updatePanel() {
   const nL = sel.nL, nS = sel.nS;
   const parent = findParentMOS(nL, nS);
   const children = getChildMOSes(key);
-  const temps = getTemperamentsForMOS(key, sel.lowCents, sel.highCents);
+  const gen = S.generatorCents;
 
   // Left info section
   const wikiUrl = `https://en.xen.wiki/w/${key}`;
   let h = `<div class="sp-title"><a href="${wikiUrl}" target="_blank" style="color:#e94560;text-decoration:none">${label}${fname ? ' — '+fname : ''}</a></div>`;
-  h += `<div style="color:#aaa;margin-bottom:3px;font-size:11px">${nL+nS} notes (${nL}L + ${nS}s)</div>`;
-  h += `<div style="color:#ccc;font-size:10px;margin-bottom:3px">${sel.lowCents.toFixed(1)}¢ — ${sel.highCents.toFixed(1)}¢</div>`;
+  h += `<div style="color:#aaa;margin-bottom:3px;font-size:13px">${nL+nS} notes (${nL}L + ${nS}s)</div>`;
+  h += `<div style="color:#ccc;font-size:12px;margin-bottom:3px">${sel.lowCents.toFixed(1)}¢ — ${sel.highCents.toFixed(1)}¢</div>`;
 
   if (parent) {
     const pn = MOS_NAMES[parent];
-    h += `<div style="font-size:10px;margin-bottom:2px">Parent: <span style="color:#f5a623">${parent.replace('_',' ')}${pn ? ' ('+pn+')' : ''}</span></div>`;
+    const parentNavigable = S.regions.some(r =>
+      r.key === parent && r.size >= S.minSize && r.size <= S.maxSize);
+    h += `<div style="font-size:12px;margin-bottom:2px">`;
+    if (parentNavigable) {
+      h += `<a href="#" onclick="navigateToParent();return false" style="color:#f5a623;text-decoration:none;cursor:pointer" title="Navigate to parent">&#x25B2;</a> `;
+    }
+    h += `Parent: <a href="#" onclick="navigateToParent();return false" style="color:#f5a623;text-decoration:none;cursor:pointer">${parent.replace('_',' ')}${pn ? ' ('+pn+')' : ''}</a></div>`;
   }
 
-  h += `<div style="font-size:10px;margin-bottom:2px">Children: `;
+  const childNavigable = children.some(ck => S.regions.some(r =>
+    r.key === ck && r.size >= S.minSize && r.size <= S.maxSize));
+  h += `<div style="font-size:12px;margin-bottom:2px">`;
+  if (childNavigable) {
+    h += `<a href="#" onclick="navigateToChild();return false" style="color:#6eb5ff;text-decoration:none;cursor:pointer" title="Navigate to child">&#x25BC;</a> `;
+  }
+  h += `Children: `;
   h += children.map(c => {
     const cn = MOS_NAMES[c];
-    return `<span style="color:#6eb5ff">${c.replace('_',' ')}${cn ? ' ('+cn+')' : ''}</span>`;
+    return `<a href="#" onclick="navigateToChildByKey('${c}');return false" style="color:#6eb5ff;text-decoration:none;cursor:pointer">${c.replace('_',' ')}${cn ? ' ('+cn+')' : ''}</a>`;
   }).join(', ');
   h += '</div>';
 
-  if (temps.length) {
-    h += '<div style="margin-top:4px;font-weight:600;color:#50c878;font-size:10px">Temperaments:</div>';
-    for (const t of temps) {
-      const col = TEMP_COLORS[t.name] || '#50c878';
-      const commaStr = t.commas && t.commas.length ? ' — ' + t.commas.join(', ') : '';
-      const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
-      const mosStr = mosList.length > 1 ? ' [' + mosList.map(m => m.replace('_',' ')).join(' → ') + ']' : '';
-      const nameHtml = t.wikiUrl
-        ? `<a href="${t.wikiUrl}" target="_blank" style="color:${col};text-decoration:none">${t.name}</a>`
-        : `<span style="color:${col}">${t.name}</span>`;
-      h += `<div style="color:#ccc;font-size:10px">${nameHtml} ${t.effectiveRange[0].toFixed(0)}–${t.effectiveRange[1].toFixed(0)}¢<span style="color:#f5a623">${commaStr}</span><span style="color:#667">${mosStr}</span></div>`;
+  if (gen !== null) {
+    const activeTemps = getTemperamentsAtCursor(key, gen, sel.lowCents, sel.highCents);
+    if (activeTemps.length) {
+      h += '<div style="margin-top:4px;font-weight:600;color:#50c878;font-size:12px">Temperaments:</div>';
+      for (const t of activeTemps) {
+        const col = TEMP_COLORS[t.name] || '#50c878';
+        const commaStr = t.commas && t.commas.length ? ' — ' + t.commas.join(', ') : '';
+        const nameHtml = t.wikiUrl
+          ? `<a href="${t.wikiUrl}" target="_blank" style="color:${col};text-decoration:none">${t.name}</a>`
+          : `<span style="color:${col}">${t.name}</span>`;
+        h += `<div style="color:#ccc;font-size:12px">${nameHtml} ${t.effectiveRange[0].toFixed(0)}–${t.effectiveRange[1].toFixed(0)}¢<span style="color:#f5a623">${commaStr}</span></div>`;
+      }
     }
   }
 
@@ -2539,6 +2521,7 @@ function setup() {
 
     if (S.sliderDragging) {
       S.generatorCents = sliderXToGen(mx);
+      updatePanel();
       render();
       return;
     }
