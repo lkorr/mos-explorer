@@ -2019,17 +2019,12 @@ function getKeyMapping(key) {
 }
 
 
-function playKeyNote(key, code) {
+function startNote(code, degreeInScale, noteOctave) {
   if (!S.selected || S.generatorCents === null) return;
-  const mapping = getKeyMapping(key);
-  if (!mapping) return;
   const n = S.selected.size;
-  const gen = S.generatorCents;
-  const scale = rotateMOSScale(buildMOSScale(gen, n, 1200), S.modeRotation, 1200);
-  const octaveWrap = Math.floor(mapping.degree / n);
-  const degreeInScale = ((mapping.degree % n) + n) % n;
+  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
   const cents = scale.pitches[degreeInScale];
-  const totalCents = cents + (mapping.octave + octaveWrap + SYNTH.octaveShift) * 1200;
+  const totalCents = cents + noteOctave * 1200;
   const freq = SYNTH.baseFreq * Math.pow(2, totalCents / 1200);
 
   const actx = getAudioCtx();
@@ -2044,12 +2039,22 @@ function playKeyNote(key, code) {
   gain.gain.linearRampToValueAtTime(0.15, now + SYNTH.attack);
   gain.gain.linearRampToValueAtTime(0.15 * SYNTH.sustain, now + SYNTH.attack + SYNTH.decay);
   osc.start();
-  const noteOctave = mapping.octave + octaveWrap + SYNTH.octaveShift;
   let glowId = null;
   if (degreeInScale < n) {
     glowId = noteGlowOn(degreeInScale, noteOctave);
   }
   SYNTH._activeKeys[code] = { osc, gain, degreeInScale, glowId, noteOctave, currentCents: totalCents };
+}
+
+function playKeyNote(key, code) {
+  if (!S.selected || S.generatorCents === null) return;
+  const mapping = getKeyMapping(key);
+  if (!mapping) return;
+  const n = S.selected.size;
+  const octaveWrap = Math.floor(mapping.degree / n);
+  const degreeInScale = ((mapping.degree % n) + n) % n;
+  const noteOctave = mapping.octave + octaveWrap + SYNTH.octaveShift;
+  startNote(code, degreeInScale, noteOctave);
   renderChordHighlights();
 }
 
@@ -3060,7 +3065,7 @@ function getChords() {
   return _cachedChords;
 }
 
-let _chordMaxRoot = 50;
+let _chordMaxRoot = 1000;
 let _chordMaxRMS = 15;
 let _chordShowTetrads = false;
 
@@ -3088,7 +3093,6 @@ function renderChordsPanel() {
     let h = `<div class="sp-chords-title">${titleText} <span id="active-chord-label" style="color:#ff6;font-weight:400;font-size:10px"></span></div>`;
     if (showFilters) {
       h += '<div class="sp-chords-filter">';
-      h += `<label>Max</label><input type="range" id="chord-max-root" min="6" max="200" step="1" value="${_chordMaxRoot}"><span class="cf-val" id="chord-max-root-val">${_chordMaxRoot}</span>`;
       h += `<label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" step="1" value="${_chordMaxRMS}"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span>`;
       h += `<span class="cf-toggle${_chordShowTetrads ? ' active' : ''}" id="chord-show-tetrads">Tetrads</span>`;
       h += '</div>';
@@ -3150,12 +3154,6 @@ function renderChordsPanel() {
 }
 
 function _bindChordFilter() {
-  const slider = document.getElementById('chord-max-root');
-  if (slider) slider.addEventListener('input', e => {
-    _chordMaxRoot = +e.target.value;
-    document.getElementById('chord-max-root-val').textContent = _chordMaxRoot;
-    renderChordsPanel();
-  });
   const rmsSlider = document.getElementById('chord-max-rms');
   if (rmsSlider) rmsSlider.addEventListener('input', e => {
     _chordMaxRMS = +e.target.value;
@@ -3218,38 +3216,21 @@ let _chordNoteCounter = 0;
 function playChordDegrees(degrees) {
   if (!S.selected || S.generatorCents === null) return;
   const n = S.selected.size;
-  const holdMs = (SYNTH.attack + SYNTH.decay + 0.15) * 1000;
-  const gen = S.generatorCents;
-  const scale = rotateMOSScale(buildMOSScale(gen, n, 1200), S.modeRotation, 1200);
+  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
   const rootDeg = ((degrees[0] % n) + n) % n;
   const rootCents = scale.pitches[rootDeg];
-  const voiceGain = 0.15 / degrees.length;
+  const holdMs = (SYNTH.attack + SYNTH.decay + 0.15) * 1000;
+  const codes = [];
   for (const deg of degrees) {
     const degInScale = ((deg % n) + n) % n;
-    const code = `_chord_${_chordNoteCounter++}`;
-    let cents = scale.pitches[degInScale];
     let octaveExtra = 0;
-    if (cents < rootCents) { cents += 1200; octaveExtra = 1; }
-    const totalCents = cents + SYNTH.octaveShift * 1200;
-    const freq = SYNTH.baseFreq * Math.pow(2, totalCents / 1200);
-    const actx = getAudioCtx();
-    const osc = actx.createOscillator();
-    const gain = actx.createGain();
-    osc.type = SYNTH.waveform;
-    osc.frequency.value = freq;
-    osc.connect(gain);
-    gain.connect(getMaster());
-    const now = actx.currentTime;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(voiceGain, now + SYNTH.attack);
-    gain.gain.linearRampToValueAtTime(voiceGain * SYNTH.sustain, now + SYNTH.attack + SYNTH.decay);
-    osc.start();
-    const noteOctave = SYNTH.octaveShift + octaveExtra;
-    const glowId = noteGlowOn(degInScale, noteOctave);
-    SYNTH._activeKeys[code] = { osc, gain, degreeInScale: degInScale, glowId, noteOctave, currentCents: totalCents };
-    setTimeout(() => stopKeyNote(code), holdMs);
+    if (scale.pitches[degInScale] < rootCents) octaveExtra = 1;
+    const code = `_chord_${_chordNoteCounter++}`;
+    startNote(code, degInScale, SYNTH.octaveShift + octaveExtra);
+    codes.push(code);
   }
   renderChordHighlights();
+  setTimeout(() => { for (const c of codes) stopKeyNote(c); }, holdMs);
 }
 
 function renderChordHighlights() {
