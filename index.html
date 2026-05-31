@@ -319,8 +319,7 @@ canvas { display: block; width: 100%; height: 100%; }
   font-weight: 600;
 }
 
-#selected-panel .sp-chords-col,
-#selected-panel .sp-tetrads-col {
+#selected-panel .sp-chords-col {
   flex-shrink: 0;
   width: 440px;
   align-self: stretch;
@@ -331,14 +330,9 @@ canvas { display: block; width: 100%; height: 100%; }
   border-left: 1px solid #2a3a5a;
   padding-left: 10px;
 }
-#selected-panel .sp-tetrads-col { display: none; }
-#selected-panel .sp-tetrads-col.visible { display: block; }
-#selected-panel .sp-chords-col::-webkit-scrollbar,
-#selected-panel .sp-tetrads-col::-webkit-scrollbar { width: 4px; }
-#selected-panel .sp-chords-col::-webkit-scrollbar-track,
-#selected-panel .sp-tetrads-col::-webkit-scrollbar-track { background: transparent; }
-#selected-panel .sp-chords-col::-webkit-scrollbar-thumb,
-#selected-panel .sp-tetrads-col::-webkit-scrollbar-thumb { background: #2a3a5a; border-radius: 2px; }
+#selected-panel .sp-chords-col::-webkit-scrollbar { width: 4px; }
+#selected-panel .sp-chords-col::-webkit-scrollbar-track { background: transparent; }
+#selected-panel .sp-chords-col::-webkit-scrollbar-thumb { background: #2a3a5a; border-radius: 2px; }
 #selected-panel .sp-chords-title {
   font-size: 11px; font-weight: 700; color: #e94560; margin-bottom: 4px;
 }
@@ -347,12 +341,26 @@ canvas { display: block; width: 100%; height: 100%; }
   font-size: 10px; color: #8899bb;
 }
 #selected-panel .sp-chords-filter input[type="range"] {
-  width: 50px; accent-color: #e94560;
+  width: 130px; height: 20px; accent-color: #e94560; cursor: pointer;
 }
-#selected-panel .sp-chords-filter input[type="checkbox"] {
-  accent-color: #e94560;
+#selected-panel .sp-chords-filter .cf-toggle {
+  background: #1e2a4a;
+  border: 1px solid #2a3a5a;
+  border-radius: 3px;
+  color: #8899bb;
+  font-size: 10px;
+  padding: 1px 6px;
+  margin-left: 0;
+  cursor: pointer;
+  user-select: none;
 }
-#selected-panel .sp-chords-filter .cf-val { color: #e94560; min-width: 20px; }
+#selected-panel .sp-chords-filter .cf-toggle.active {
+  background: #2a1a3a;
+  border-color: #e94560;
+  color: #e94560;
+}
+#selected-panel .sp-chords-filter .cf-toggle:hover { border-color: #4a6a9a; }
+#selected-panel .sp-chords-filter .cf-val { color: #e94560; min-width: 24px; text-align: right; }
 
 .chord-matrix {
   border-collapse: collapse;
@@ -645,7 +653,6 @@ canvas { display: block; width: 100%; height: 100%; }
     <div class="sp-layout">
       <div class="sp-info" id="sp-info"></div>
       <div class="sp-chords-col" id="sp-chords-col"></div>
-      <div class="sp-tetrads-col" id="sp-tetrads-col"></div>
       <div class="sp-edo-container" id="sp-edo-container"></div>
     </div>
   </div>
@@ -2944,18 +2951,14 @@ function findScaleChords(scalePitches, maxErr, maxCx) {
       let cents = scalePitches[targetDeg] - scalePitches[root];
       if (cents <= 0) cents += 1200;
       const lo = jiPoolLowerBound(cents - maxErr);
-      let bestCx = Infinity;
-      const candidates = [];
       for (let ji_i = lo; ji_i < poolLen; ji_i++) {
         const ji = JI_POOL[ji_i];
         if (ji.cents > cents + maxErr) break;
         if (ji.complexity > maxCx) continue;
-        if (ji.complexity < bestCx) bestCx = ji.complexity;
         const signedErr = cents - ji.cents;
-        candidates.push({ deg: targetDeg, stepDeg: deg, cents, ji, error: Math.abs(signedErr), signedError: signedErr });
-      }
-      if (candidates.length) {
-        approxByDeg[deg] = candidates.filter(c => c.ji.complexity === bestCx);
+        const entry = { deg: targetDeg, stepDeg: deg, cents, ji, error: Math.abs(signedErr), signedError: signedErr };
+        if (!approxByDeg[deg]) approxByDeg[deg] = [];
+        approxByDeg[deg].push(entry);
       }
     }
     const degKeys = Object.keys(approxByDeg).map(Number).sort((a,b) => a - b);
@@ -3063,10 +3066,8 @@ let _chordShowTetrads = false;
 
 function renderChordsPanel() {
   const triEl = document.getElementById('sp-chords-col');
-  const tetEl = document.getElementById('sp-tetrads-col');
   if (!S.selected || S.generatorCents === null) {
-    triEl.innerHTML = ''; tetEl.innerHTML = '';
-    tetEl.classList.remove('visible');
+    triEl.innerHTML = '';
     return;
   }
   const now = performance.now();
@@ -3087,9 +3088,9 @@ function renderChordsPanel() {
     let h = `<div class="sp-chords-title">${titleText} <span id="active-chord-label" style="color:#ff6;font-weight:400;font-size:10px"></span></div>`;
     if (showFilters) {
       h += '<div class="sp-chords-filter">';
-      h += `<label>Max</label><input type="range" id="chord-max-root" min="6" max="200" value="${_chordMaxRoot}"><span class="cf-val" id="chord-max-root-val">${_chordMaxRoot}</span>`;
-      h += `<label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" value="${_chordMaxRMS}" style="width:40px"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span>`;
-      h += `<label><input type="checkbox" id="chord-show-tetrads"${_chordShowTetrads ? ' checked' : ''}> 4s</label>`;
+      h += `<label>Max</label><input type="range" id="chord-max-root" min="6" max="200" step="1" value="${_chordMaxRoot}"><span class="cf-val" id="chord-max-root-val">${_chordMaxRoot}</span>`;
+      h += `<label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" step="1" value="${_chordMaxRMS}"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span>`;
+      h += `<span class="cf-toggle${_chordShowTetrads ? ' active' : ''}" id="chord-show-tetrads">Tetrads</span>`;
       h += '</div>';
     }
     if (!chordGroups.length) {
@@ -3133,28 +3134,16 @@ function renderChordsPanel() {
     return h;
   }
 
-  // Collect triad groups
-  const triGroups = [];
+  const targetType = _chordShowTetrads ? 4 : 3;
+  const targetLabel = _chordShowTetrads ? 'Tetrads' : 'Triads';
+  const chordGroupsOut = [];
   for (const g of filtered) {
-    const triInvs = g.invList.filter(inv => inv.type === 3 && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
-    if (!triInvs.length) continue;
-    triGroups.push({ canonical: g.canonical, bestError: g.bestError, invList: triInvs });
-    if (triGroups.length >= 60) break;
+    const matching = g.invList.filter(inv => inv.type === targetType && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
+    if (!matching.length) continue;
+    chordGroupsOut.push({ canonical: g.canonical, bestError: g.bestError, invList: matching });
+    if (chordGroupsOut.length >= 60) break;
   }
-  triEl.innerHTML = buildChordMatrix(triGroups, 'Triads', true);
-
-  // Tetrads column
-  tetEl.classList.toggle('visible', _chordShowTetrads);
-  if (_chordShowTetrads) {
-    const tetGroups = [];
-    for (const g of filtered) {
-      const tetInvs = g.invList.filter(inv => inv.type === 4 && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
-      if (!tetInvs.length) continue;
-      tetGroups.push({ canonical: g.canonical, bestError: g.bestError, invList: tetInvs });
-      if (tetGroups.length >= 60) break;
-    }
-    tetEl.innerHTML = buildChordMatrix(tetGroups, 'Tetrads', false);
-  }
+  triEl.innerHTML = buildChordMatrix(chordGroupsOut, targetLabel, true);
 
   _bindChordFilter();
   renderChordHighlights();
@@ -3173,15 +3162,14 @@ function _bindChordFilter() {
     document.getElementById('chord-max-rms-val').textContent = _chordMaxRMS + '¢';
     renderChordsPanel();
   });
-  const tetBox = document.getElementById('chord-show-tetrads');
-  if (tetBox) tetBox.addEventListener('change', e => {
-    _chordShowTetrads = e.target.checked;
+  const tetBtn = document.getElementById('chord-show-tetrads');
+  if (tetBtn) tetBtn.addEventListener('click', () => {
+    _chordShowTetrads = !_chordShowTetrads;
     renderChordsPanel();
   });
   // Click on root degree to play chord, or invert button to cycle inversion
-  for (const col of [document.getElementById('sp-chords-col'), document.getElementById('sp-tetrads-col')]) {
-    if (!col) continue;
-    col.addEventListener('click', e => {
+  const col = document.getElementById('sp-chords-col');
+  if (col) col.addEventListener('click', e => {
       const invertBtn = e.target.closest('.cm-invert');
       if (invertBtn) {
         const row = invertBtn.closest('.chord-row');
@@ -3224,7 +3212,6 @@ function _bindChordFilter() {
       const degrees = rootEl.dataset.degrees.split(',').map(Number);
       playChordDegrees(degrees);
     });
-  }
 }
 
 let _chordNoteCounter = 0;
@@ -3236,6 +3223,7 @@ function playChordDegrees(degrees) {
   const scale = rotateMOSScale(buildMOSScale(gen, n, 1200), S.modeRotation, 1200);
   const rootDeg = ((degrees[0] % n) + n) % n;
   const rootCents = scale.pitches[rootDeg];
+  const voiceGain = 0.15 / degrees.length;
   for (const deg of degrees) {
     const degInScale = ((deg % n) + n) % n;
     const code = `_chord_${_chordNoteCounter++}`;
@@ -3253,8 +3241,8 @@ function playChordDegrees(degrees) {
     gain.connect(getMaster());
     const now = actx.currentTime;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.15, now + SYNTH.attack);
-    gain.gain.linearRampToValueAtTime(0.15 * SYNTH.sustain, now + SYNTH.attack + SYNTH.decay);
+    gain.gain.linearRampToValueAtTime(voiceGain, now + SYNTH.attack);
+    gain.gain.linearRampToValueAtTime(voiceGain * SYNTH.sustain, now + SYNTH.attack + SYNTH.decay);
     osc.start();
     const noteOctave = SYNTH.octaveShift + octaveExtra;
     const glowId = noteGlowOn(degInScale, noteOctave);
@@ -3267,7 +3255,7 @@ function playChordDegrees(degrees) {
 function renderChordHighlights() {
   const activeEntries = Object.values(SYNTH._activeKeys);
   const activeDegrees = activeEntries.map(e => e.degreeInScale);
-  const allRows = document.querySelectorAll('#sp-chords-col .chord-row, #sp-tetrads-col .chord-row');
+  const allRows = document.querySelectorAll('#sp-chords-col .chord-row');
   const label = document.getElementById('active-chord-label');
   if (!activeDegrees.length) {
     for (const row of allRows) row.classList.remove('active');
