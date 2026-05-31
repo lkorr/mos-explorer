@@ -1497,43 +1497,68 @@ function drawMOSCircle(ctx, W, H) {
 
   // Divider lines + pitch dots + labels
   S._circleDots = [];
+  const glowNow = performance.now();
   for (let i = 0; i < n; i++) {
     const angle = c2a(pitches[i]);
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const px = cx + cos * radius;
+    const py = cy + sin * radius;
+    S._circleDots.push({ x: px, y: py, degree: i, cents: pitches[i] });
 
+    const gs = getGlowState(i, glowNow);
+    const glow = gs.intensity;
+    const glowColor = gs.color;
+    const baseLineColor = i === 0 ? '#e94560' : '#8888aa';
+    const baseDotColor = i === 0 ? '#e94560' : '#ffffff';
+    const baseLabelColor = i === 0 ? '#e94560' : '#aaaaaa';
+
+    if (glow > 0.003) {
+      ctx.save();
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = 28 * glow;
+      const [gr, gg, gb] = hexToRGB(glowColor);
+      ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, ${glow})`;
+      ctx.lineWidth = 1 + 2.5 * glow;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(px, py);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const lineColor = glow > 0.003
+      ? lerpColor(baseLineColor, glowColor, glow)
+      : baseLineColor;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
-    ctx.strokeStyle = '#8888aa88';
+    ctx.lineTo(px, py);
+    ctx.strokeStyle = hexA(lineColor, glow > 0.003 ? 0.5 + 0.5 * glow : 0.53);
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    const isActive = SYNTH.activeDegree === i;
-    const dotR = isActive ? 8 : 5;
-    const px = cx + Math.cos(angle) * radius;
-    const py = cy + Math.sin(angle) * radius;
-    S._circleDots.push({ x: px, y: py, degree: i, cents: pitches[i] });
-
-    if (isActive) {
-      ctx.beginPath();
-      ctx.arc(px, py, 14, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(233, 69, 96, 0.25)';
-      ctx.fill();
-    }
+    const dotR = 5 + 4 * glow;
 
     ctx.beginPath();
     ctx.arc(px, py, dotR, 0, Math.PI * 2);
-    ctx.fillStyle = isActive ? '#e94560' : (i === 0 ? '#e94560' : '#fff');
+    ctx.fillStyle = lerpColor(baseDotColor, glowColor, glow);
+    if (glow > 0.003) {
+      ctx.save();
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = 24 * glow;
+    }
     ctx.fill();
+    if (glow > 0.003) ctx.restore();
     ctx.strokeStyle = '#1a1a2e';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     const outR = radius + 18;
-    const ox = cx + Math.cos(angle) * outR;
-    const oy = cy + Math.sin(angle) * outR;
+    const ox = cx + cos * outR;
+    const oy = cy + sin * outR;
 
-    ctx.fillStyle = isActive ? '#e94560' : (i === 0 ? '#e94560' : '#aaa');
-    ctx.font = isActive ? 'bold 13px monospace' : '11px monospace';
+    ctx.fillStyle = lerpColor(baseLabelColor, glowColor, glow);
+    ctx.font = '11px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(pitches[i].toFixed(0), ox, oy);
@@ -1548,7 +1573,7 @@ function drawMOSCircle(ctx, W, H) {
     const col = TEMP_COLORS[t.name] || '#50c878';
     ctx.fillStyle = col;
     ctx.font = 'bold 13px monospace';
-    ctx.fillText(t.name, cx, cy);
+    ctx.fillText(t.name, cx, cy - radius * 0.15);
   }
 
   // JI interval markers — all n/d where n,d < 20, within octave
@@ -1659,14 +1684,8 @@ function playCircleDot(dot) {
   gain.gain.exponentialRampToValueAtTime(0.001, now + total);
   osc.start(now);
   osc.stop(now + total);
-  SYNTH.activeDegree = dot.degree;
-  render();
-  setTimeout(() => {
-    if (SYNTH.activeDegree === dot.degree) {
-      SYNTH.activeDegree = -1;
-      render();
-    }
-  }, total * 1000);
+  const dotGlowId = noteGlowOn(dot.degree, 0);
+  setTimeout(() => noteGlowOff(dot.degree, dotGlowId), (SYNTH.attack + SYNTH.decay) * 1000);
 }
 
 // Keyboard-to-scale mapping
@@ -1674,7 +1693,7 @@ const KBD_ROWS = [
   { keys: ['z','x','c','v','b','n','m',',','.','/'], octave: -1 },
   { keys: ['a','s','d','f','g','h','j','k','l',';',"'"], octave: 0 },
   { keys: ['q','w','e','r','t','y','u','i','o','p','[',']','\\'], octave: 1 },
-  { keys: ['`','1','2','3','4','5','6','7','8','9','0','-','='], octave: 2 },
+  { keys: ['1','2','3','4','5','6','7','8','9','0','-','='], octave: 2 },
 ];
 
 function getKeyMapping(key) {
@@ -1712,11 +1731,12 @@ function playKeyNote(key) {
   gain.gain.linearRampToValueAtTime(0.15, now + SYNTH.attack);
   gain.gain.linearRampToValueAtTime(0.15 * SYNTH.sustain, now + SYNTH.attack + SYNTH.decay);
   osc.start();
-  SYNTH._activeKeys[key.toLowerCase()] = { osc, gain };
-  if (degree < n) {
-    SYNTH.activeDegree = degree;
-    render();
+  const noteOctave = mapping.octave + octaveWrap + SYNTH.octaveShift;
+  let glowId = null;
+  if (degreeInScale < n) {
+    glowId = noteGlowOn(degreeInScale, noteOctave);
   }
+  SYNTH._activeKeys[key.toLowerCase()] = { osc, gain, degreeInScale, glowId };
 }
 
 function stopKeyNote(key) {
@@ -1724,13 +1744,17 @@ function stopKeyNote(key) {
   if (!entry) return;
   const actx = getAudioCtx();
   const now = actx.currentTime;
+  const sustainGain = 0.15 * SYNTH.sustain;
+  const currentGain = entry.gain.gain.value;
+  const releaseFrom = Math.min(currentGain, Math.max(sustainGain, 0.001));
   entry.gain.gain.cancelScheduledValues(now);
-  entry.gain.gain.setValueAtTime(entry.gain.gain.value, now);
+  entry.gain.gain.setValueAtTime(releaseFrom, now);
   entry.gain.gain.exponentialRampToValueAtTime(0.001, now + SYNTH.release);
   entry.osc.stop(now + SYNTH.release);
+  if (entry.degreeInScale !== undefined) {
+    noteGlowOff(entry.degreeInScale, entry.glowId);
+  }
   delete SYNTH._activeKeys[key.toLowerCase()];
-  SYNTH.activeDegree = -1;
-  render();
 }
 
 function hitTest(mx, my, e) {
@@ -2070,7 +2094,6 @@ const SYNTH = {
   stopFn: null,
   waveform: 'triangle',
   baseFreq: 261.63, // C4
-  activeDegree: -1,
   keyboardMode: true,
   octaveShift: 0,
   attack: 0.015,
@@ -2078,7 +2101,116 @@ const SYNTH = {
   sustain: 1.0,
   release: 4,
   _activeKeys: {},
+  _glows: {},
+  _glowAnimating: false,
 };
+
+const OCTAVE_GLOW_COLORS = {
+  '-1': '#bb86fc',
+  '0': '#4cc9f0',
+  '1': '#50c878',
+  '2': '#f5c842',
+};
+
+function glowColorForOctave(oct) {
+  if (oct <= -1) return OCTAVE_GLOW_COLORS['-1'];
+  if (oct >= 2) return OCTAVE_GLOW_COLORS['2'];
+  return OCTAVE_GLOW_COLORS[String(oct)] || OCTAVE_GLOW_COLORS['0'];
+}
+
+let _glowIdCounter = 0;
+
+function noteGlowOn(degree, octave) {
+  const id = ++_glowIdCounter;
+  const color = glowColorForOctave(octave || 0);
+  if (!SYNTH._glows[degree]) SYNTH._glows[degree] = [];
+  SYNTH._glows[degree].push({ id, start: performance.now(), held: true, releaseStart: null, color });
+  startGlowAnimation();
+  return id;
+}
+
+function noteGlowOff(degree, glowId) {
+  const arr = SYNTH._glows[degree];
+  if (!arr) return;
+  if (glowId !== undefined) {
+    const g = arr.find(e => e.id === glowId);
+    if (g && g.held) {
+      g.held = false;
+      g.releaseStart = performance.now();
+      g.releaseLevel = g._lastEnv || SYNTH.sustain;
+    }
+  } else {
+    for (const g of arr) {
+      if (g.held) {
+        g.held = false;
+        g.releaseStart = performance.now();
+        g.releaseLevel = g._lastEnv || SYNTH.sustain;
+      }
+    }
+  }
+}
+
+function _envForGlow(g, now) {
+  const elapsed = (now - g.start) / 1000;
+  const atkEnd = SYNTH.attack;
+  const decEnd = atkEnd + SYNTH.decay;
+
+  let env;
+  if (elapsed < atkEnd) {
+    env = elapsed / Math.max(0.001, atkEnd);
+  } else if (elapsed < decEnd) {
+    env = 1 - (1 - SYNTH.sustain) * ((elapsed - atkEnd) / Math.max(0.001, SYNTH.decay));
+  } else {
+    env = SYNTH.sustain;
+  }
+
+  if (!g.held && g.releaseStart !== null) {
+    const relElapsed = (now - g.releaseStart) / 1000;
+    const t = relElapsed / Math.max(0.01, SYNTH.release);
+    if (t >= 1) return -1;
+    const audioGain = Math.pow(0.001, t);
+    env = g.releaseLevel * Math.pow(audioGain, 0.3);
+  }
+
+  g._lastEnv = env;
+  return env < 0.005 ? -1 : env;
+}
+
+function getGlowState(degree, now) {
+  const arr = SYNTH._glows[degree];
+  if (!arr || !arr.length) return { intensity: 0, color: '#4cc9f0' };
+
+  let bestIntensity = 0;
+  let bestColor = '#4cc9f0';
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const env = _envForGlow(arr[i], now);
+    if (env < 0) {
+      arr.splice(i, 1);
+      continue;
+    }
+    if (env > bestIntensity) {
+      bestIntensity = env;
+      bestColor = arr[i].color;
+    }
+  }
+  if (!arr.length) delete SYNTH._glows[degree];
+  return { intensity: bestIntensity, color: bestColor };
+}
+
+function startGlowAnimation() {
+  if (SYNTH._glowAnimating) return;
+  SYNTH._glowAnimating = true;
+  function tick() {
+    if (Object.keys(SYNTH._glows).length === 0) {
+      SYNTH._glowAnimating = false;
+      render();
+      return;
+    }
+    render();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
 
 function getAudioCtx() {
   if (!SYNTH.ctx) SYNTH.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2182,8 +2314,8 @@ function playArpeggiation(interval) {
 
     noteTimers.push(setTimeout(() => {
       if (cancelled) return;
-      SYNTH.activeDegree = degree;
-      render();
+      const arpGlowId = noteGlowOn(degree, 0);
+      setTimeout(() => { if (!cancelled) noteGlowOff(degree, arpGlowId); }, noteDur * 0.85 * 1000);
     }, i * noteDur * 1000));
   }
 
@@ -2195,7 +2327,7 @@ function playArpeggiation(interval) {
     cancelled = true;
     clearTimeout(endTimer);
     noteTimers.forEach(t => clearTimeout(t));
-    SYNTH.activeDegree = -1;
+    SYNTH._glows = {};
     render();
     actx.close();
     SYNTH.ctx = null;
