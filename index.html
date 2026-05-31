@@ -314,6 +314,7 @@ canvas { display: block; width: 100%; height: 100%; }
   margin-bottom: 4px;
   flex-shrink: 0;
   flex-wrap: wrap;
+  position: relative;
 }
 .ruler-sort-btn {
   font-size: 10px;
@@ -337,10 +338,16 @@ canvas { display: block; width: 100%; height: 100%; }
   font-weight: 700;
 }
 .edo-ruler-temps {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
   font-size: 11px;
   color: #dda0dd;
   font-family: 'Segoe UI', system-ui, sans-serif;
   text-align: center;
+  pointer-events: auto;
+  z-index: 1;
 }
 .edo-ruler-temps:empty {
   display: none;
@@ -511,7 +518,6 @@ canvas { display: block; width: 100%; height: 100%; }
 </div>
 
 <div id="tooltip"></div>
-<div class="help-text">Scroll to zoom &middot; Drag to pan &middot; Click region to select</div>
 
 <script src="mos-data.js"></script>
 <script>
@@ -682,7 +688,7 @@ function computeHardness(genCents, mosSize) {
   }
 
   const sorted = [...new Set(steps.map(x => Math.round(x * 100) / 100))].sort((a, b) => b - a);
-  if (sorted.length < 2) return { L: sorted[0] || 0, s: 0, ratio: Infinity, str: '∞:1' };
+  if (sorted.length < 2) { const v = sorted[0] || 0; return { L: v, s: v, ratio: 1, str: '1.00' }; }
 
   const L = sorted[0], s = sorted[sorted.length - 1];
   if (s < 0.01) return { L, s: 0, ratio: Infinity, str: '∞:1' };
@@ -720,7 +726,7 @@ function buildMOSScale(genCents, n, period) {
 
   const sorted = [...new Set(steps.map(x => Math.round(x * 100) / 100))].sort((a, b) => b - a);
   const L = sorted[0] || 0;
-  const s = sorted.length > 1 ? sorted[sorted.length - 1] : 0;
+  const s = sorted.length > 1 ? sorted[sorted.length - 1] : L;
 
   return { pitches, steps, L, s };
 }
@@ -1215,11 +1221,6 @@ function drawTemperaments(ctx, W, H) {
 
   S._tempRows = rows.length;
 
-  ctx.fillStyle = '#50c87888';
-  ctx.font = '9px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText('Temperaments for ' + sel.key.replace('_',' '), 4, baseY - 4);
-
   const maxRow = rows.length - 1;
   S._tempBars = [];
   for (const bar of bars) {
@@ -1320,11 +1321,25 @@ function drawMOSCircle(ctx, W, H) {
   // Title
   const titleY = sliderY - 8;
   const titleText = sel.key.replace('_', ' ');
-  ctx.fillStyle = '#e94560';
   ctx.font = 'bold 11px monospace';
-  ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(titleText, cx, titleY);
+  if (gen !== null) {
+    const hr = computeHardness(gen, n);
+    const hardStr = hr.ratio === Infinity ? '∞' : hr.ratio.toFixed(2);
+    const fullText = titleText + '  ' + hardStr;
+    const titleW = ctx.measureText(titleText + '  ').width;
+    const fullW = ctx.measureText(fullText).width;
+    const startX = cx - fullW / 2;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#e94560';
+    ctx.fillText(titleText, startX, titleY);
+    ctx.fillStyle = '#f5a623';
+    ctx.fillText(hardStr, startX + titleW, titleY);
+  } else {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e94560';
+    ctx.fillText(titleText, cx, titleY);
+  }
 
   S._parentArrow = null;
   S._childArrow = null;
@@ -2333,8 +2348,8 @@ function renderEDOGrid() {
       ? `<span class="sort-active">gen stack</span> / degree`
       : `gen stack / <span class="sort-active">degree</span>`;
     h += `</button>`;
+    h += '<span class="edo-ruler-temps"></span>';
     h += '</div>';
-    h += '<div class="edo-ruler-temps"></div>';
 
     h += '<div class="interval-ruler" data-ruler="gen">';
     h += '<div class="interval-ruler-label"><span class="degree-name">Generator</span> <span class="degree-ratio"></span></div>';
