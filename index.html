@@ -1736,7 +1736,56 @@ function playKeyNote(key) {
   if (degreeInScale < n) {
     glowId = noteGlowOn(degreeInScale, noteOctave);
   }
-  SYNTH._activeKeys[key.toLowerCase()] = { osc, gain, degreeInScale, glowId };
+  SYNTH._activeKeys[key.toLowerCase()] = { osc, gain, degreeInScale, glowId, noteOctave, currentCents: totalCents };
+}
+
+function updateHeldNotes() {
+  if (!S.selected || S.generatorCents === null) return;
+  const n = S.selected.size;
+  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
+  const actx = SYNTH.ctx;
+  if (!actx) return;
+  const now = actx.currentTime;
+  for (const k in SYNTH._activeKeys) {
+    const entry = SYNTH._activeKeys[k];
+    const targetCents = entry.currentCents;
+    if (targetCents === undefined) {
+      const cents = scale.pitches[entry.degreeInScale % n] + entry.noteOctave * 1200;
+      entry.currentCents = cents;
+      const freq = SYNTH.baseFreq * Math.pow(2, cents / 1200);
+      entry.osc.frequency.setValueAtTime(freq, now);
+      continue;
+    }
+    const oldDeg = entry.degreeInScale;
+    let bestDeg = 0, bestOct = 0, bestDist = Infinity;
+    for (let d = 0; d < n; d++) {
+      const baseCents = scale.pitches[d];
+      const octEst = Math.round((targetCents - baseCents) / 1200);
+      for (let o = octEst - 1; o <= octEst + 1; o++) {
+        const c = baseCents + o * 1200;
+        const dist = Math.abs(c - targetCents);
+        if (dist < bestDist) { bestDist = dist; bestDeg = d; bestOct = o; }
+      }
+    }
+    if (bestDeg !== oldDeg && entry.glowId != null) {
+      const oldArr = SYNTH._glows[oldDeg];
+      if (oldArr) {
+        const idx = oldArr.findIndex(g => g.id === entry.glowId);
+        if (idx !== -1) {
+          const glowEntry = oldArr.splice(idx, 1)[0];
+          if (!oldArr.length) delete SYNTH._glows[oldDeg];
+          if (!SYNTH._glows[bestDeg]) SYNTH._glows[bestDeg] = [];
+          SYNTH._glows[bestDeg].push(glowEntry);
+        }
+      }
+    }
+    entry.degreeInScale = bestDeg;
+    entry.noteOctave = bestOct;
+    const newCents = scale.pitches[bestDeg] + bestOct * 1200;
+    entry.currentCents = newCents;
+    const freq = SYNTH.baseFreq * Math.pow(2, newCents / 1200);
+    entry.osc.frequency.setValueAtTime(freq, now);
+  }
 }
 
 function stopKeyNote(key) {
@@ -2475,6 +2524,7 @@ function positionPanel() {
 }
 
 function updatePanel() {
+  updateHeldNotes();
   const panel = document.getElementById('selected-panel');
   const infoEl = document.getElementById('sp-info');
   const edoEl = document.getElementById('sp-edo-container');
@@ -3168,6 +3218,7 @@ function setup() {
         setSizeFromScrollbarY(my);
       } else if (S.sliderDragging) {
         S.generatorCents = sliderXToGen(mx);
+        updateHeldNotes();
         render();
       } else if (S.genDragging) {
         setGenFromScreenX(mx);
