@@ -2021,6 +2021,26 @@ function updateInfo() {
 //  AUDIO — Synth & arpeggiation
 // ================================================================
 
+const SYNTH_DEFAULTS = {
+  waveform: 'triangle', octaveShift: 0,
+  attack: 0.015, decay: 0.1, sustain: 1.0, release: 4,
+  keyboardMode: true,
+};
+const SYNTH_KEYS = Object.keys(SYNTH_DEFAULTS);
+
+function saveSynthSettings() {
+  const obj = {};
+  for (const k of SYNTH_KEYS) obj[k] = SYNTH[k];
+  try { localStorage.setItem('mos-synth', JSON.stringify(obj)); } catch {}
+}
+
+function loadSynthSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('mos-synth'));
+    if (s) for (const k of SYNTH_KEYS) if (k in s) SYNTH[k] = s[k];
+  } catch {}
+}
+
 const SYNTH = {
   ctx: null,
   playing: false,
@@ -2222,10 +2242,12 @@ function renderPlaybackControls() {
 
   el.querySelector('.synth-select').addEventListener('change', e => {
     SYNTH.waveform = e.target.value;
+    saveSynthSettings();
   });
   el.querySelector('.stop-btn').addEventListener('click', stopPlayback);
   el.querySelector('.kbd-btn').addEventListener('click', () => {
     SYNTH.keyboardMode = !SYNTH.keyboardMode;
+    saveSynthSettings();
     if (!SYNTH.keyboardMode) {
       Object.keys(SYNTH._activeKeys).forEach(k => stopKeyNote(k));
     }
@@ -2233,6 +2255,7 @@ function renderPlaybackControls() {
   });
   el.querySelector('.octave-slider').addEventListener('input', e => {
     SYNTH.octaveShift = +e.target.value;
+    saveSynthSettings();
     el.querySelector('.octave-val').textContent = (SYNTH.octaveShift > 0 ? '+' : '') + SYNTH.octaveShift;
   });
   el.querySelectorAll('.adsr-slider').forEach(slider => {
@@ -2244,6 +2267,7 @@ function renderPlaybackControls() {
       if (param === 'sustain') display.textContent = (val * 100).toFixed(0) + '%';
       else if (param === 'release') display.textContent = val.toFixed(1) + 's';
       else display.textContent = val >= 1 ? val.toFixed(1) + 's' : (val * 1000).toFixed(0) + 'ms';
+      saveSynthSettings();
     });
   });
   el.querySelectorAll('.arp-btn').forEach(btn => {
@@ -3091,6 +3115,7 @@ function resizeCanvas() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  loadSynthSettings();
   S.canvas = document.getElementById('main-canvas');
   S.ctx = S.canvas.getContext('2d');
   resizeCanvas();
