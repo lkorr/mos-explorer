@@ -15,17 +15,17 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Deeptone',
     description: 'Very flat meantone. Near 1/2-comma meantone, between flattone and 7edo. 11 fifths ~= 5/4, so the optimal generator is around 689.7c.' },
 
-  { name: 'Pythagorean', mos: ['5L_2s'], genRange: [701.5, 702.44],
+  { name: 'Pythagorean', mos: ['5L_2s'], genRange: [700, 703.44],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Pythagorean_tuning',
     description: 'Pure 3/2 at 701.955¢. Near-just intonation of 3-limit. 53edo is especially unique in that it almost perfectly captures the 3-limit.' },
 
-  { name: 'Parapyth', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [702.44, 705.88],
+  { name: 'Parapyth', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [703.44, 707.69],
     commas: ['352/351', '364/363'], commaNames: ['minthma', 'gentle comma'],
     wikiUrl: 'https://en.xen.wiki/w/Parapyth',
     description: 'Rank-3 (2.3.7.11.13). Near-pure, slightly sharp fifths with 7/11/13 mapping. Tempers out minthma and gentle comma. <br> <br> Technically parapyth is a rank-4 temperament, but the only alternative was to call this range "pepperoni" which I simply refuse to do.' },
 
-  { name: 'Superpyth', mos: ['5L_2s', '5L_7s'], genRange: [705.88, 713.08],
+  { name: 'Superpyth', mos: ['5L_2s', '5L_7s'], genRange: [707.69, 713.08],
     commas: ['64/63', '245/243'], commaNames: ['Archytas comma', 'sensamagic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Superpyth',
     description: 'Sharp fifths. Two fifths = 8/7. Opposite of meantone. 22 and 27edo are quintissential superpyth tunings.' },
@@ -35,10 +35,10 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Archytas_clan#Ultrapyth',
     description: 'Very sharp fifths near 5edo. Extends oceanfront (2.3.7.13/5). 5/4 mapped to +14 fifths. Melodically starts to collapse here; composition may be tricky.' },
 
-  { name: 'Schismatic', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [700.0, 701.5],
-    commas: ['32805/32768'], commaNames: ['schisma'],
-    wikiUrl: 'https://en.xen.wiki/w/Schismic',
-    description: 'Tempers out the schisma. Nearly pure fifths. Eight fourths = 10/1.' },
+//  { name: 'Schismatic', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [700.0, 701.5],
+//    commas: ['32805/32768'], commaNames: ['schisma'],
+//   wikiUrl: 'https://en.xen.wiki/w/Schismic',
+ //   description: 'Tempers out the schisma. Nearly pure fifths. Eight fourths = 10/1.' },
 
   // === ANTI-DIATONIC (2L 5s) ===
   { name: 'Mavila', mos: ['2L_5s', '7L_2s', '7L_9s'], genRange: [670.0, 685.7],
@@ -95,14 +95,14 @@ const TEMPERAMENTS = [
   { name: 'Squares', mos: ['3L_2s', '3L_5s', '3L_8s'], genRange: [420.0, 428.75],
     commas: ['256/245'], commaNames: ['squares comma'],
     wikiUrl: 'https://en.xen.wiki/w/Squares',
-    description: 'Four generators = 7/2. Generator is a sharp sub-fourth (~426¢). Accurate 7-limit.' },
+    description: 'Four generators stack to = 8/3. Generator is a sharp sub-fourth (~426¢).' },
 
   { name: 'Machine', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [211.765, 218.182],
     commas: ['16807/16384'], commaNames: ['cloudy comma'],
     wikiUrl: 'https://en.xen.wiki/w/Subgroup_temperaments#Machine',
     description: '2.7 subgroup. Generator is a flat 8/7. Five generators = octave minus a comma.' },
 
-  { name: 'Tricot / Slendric', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [218.182, 240.0],
+  { name: 'Tricot / Slendric', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [228.57, 240.0],
     commas: ['1029/1024'], commaNames: ['gamelisma'],
     wikiUrl: 'https://en.xen.wiki/w/Slendric',
     description: 'Three 8/7 generators = 3/2. 2.3.7 subgroup. Very accurate.' },

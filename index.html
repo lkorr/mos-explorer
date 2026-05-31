@@ -115,17 +115,40 @@ canvas { display: block; width: 100%; height: 100%; }
   overflow: hidden;
 }
 
-#selected-panel .sp-playback {
-  flex-shrink: 0;
+#synth-panel {
+  position: absolute;
+  z-index: 55;
+  display: none;
+}
+#synth-header {
+  background: #16213ef0;
+  border: 1px solid #0f3460;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #e94560;
+  cursor: pointer;
+  user-select: none;
+}
+#synth-header:hover { background: #1e2a4ef0; }
+#synth-body {
+  display: none;
+  background: #16213ef0;
+  border: 1px solid #0f3460;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  padding: 6px 10px;
+}
+#synth-body.open { display: flex; flex-direction: column; gap: 4px; }
+
+#synth-body .sp-playback {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  border-right: 1px solid #2a2a4a;
-  padding-right: 12px;
-  align-self: flex-start;
 }
 
-#selected-panel .sp-playback select {
+.sp-playback select {
   background: #1e2a4a;
   color: #ccc;
   border: 1px solid #2a3a5a;
@@ -135,15 +158,15 @@ canvas { display: block; width: 100%; height: 100%; }
   outline: none;
   cursor: pointer;
 }
-#selected-panel .sp-playback select:hover { border-color: #4a6a9a; }
+.sp-playback select:hover { border-color: #4a6a9a; }
 
-#selected-panel .sp-playback .arp-btns {
+.sp-playback .arp-btns {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 3px;
 }
 
-#selected-panel .sp-playback .arp-btn {
+.sp-playback .arp-btn {
   background: #1e2a4a;
   border: 1px solid #2a3a5a;
   border-radius: 4px;
@@ -154,18 +177,18 @@ canvas { display: block; width: 100%; height: 100%; }
   transition: background 0.12s, border-color 0.12s;
   white-space: nowrap;
 }
-#selected-panel .sp-playback .arp-btn:hover {
+.sp-playback .arp-btn:hover {
   background: #263456;
   border-color: #4a6a9a;
   color: #dde;
 }
-#selected-panel .sp-playback .arp-btn.playing {
+.sp-playback .arp-btn.playing {
   background: #2a1a3a;
   border-color: #e94560;
   color: #e94560;
 }
 
-#selected-panel .sp-playback .stop-btn {
+.sp-playback .stop-btn {
   background: #3a1a1a;
   border: 1px solid #e94560;
   border-radius: 4px;
@@ -175,9 +198,9 @@ canvas { display: block; width: 100%; height: 100%; }
   cursor: pointer;
   display: none;
 }
-#selected-panel .sp-playback .stop-btn:hover { background: #4a1a1a; }
+.sp-playback .stop-btn:hover { background: #4a1a1a; }
 
-#selected-panel .sp-playback .kbd-btn {
+.sp-playback .kbd-btn {
   background: #1a2a3a;
   border: 1px solid #4a6a9a;
   border-radius: 4px;
@@ -186,33 +209,33 @@ canvas { display: block; width: 100%; height: 100%; }
   padding: 3px 6px;
   cursor: pointer;
 }
-#selected-panel .sp-playback .kbd-btn.kbd-mode-btn {
+.sp-playback .kbd-btn.kbd-mode-btn {
   font-size: 9px;
   padding: 2px 5px;
 }
-#selected-panel .sp-playback .kbd-btn:hover { background: #2a3a5a; }
-#selected-panel .sp-playback .kbd-btn.active {
+.sp-playback .kbd-btn:hover { background: #2a3a5a; }
+.sp-playback .kbd-btn.active {
   background: #1a3a2a;
   border-color: #50c878;
   color: #50c878;
 }
 
-#selected-panel .sp-playback .octave-row {
+.sp-playback .octave-row {
   display: flex;
   align-items: center;
   gap: 4px;
   font-size: 10px;
   color: #8899bb;
 }
-#selected-panel .sp-playback .octave-row input { flex: 1; accent-color: #e94560; }
-#selected-panel .sp-playback .octave-val { color: #e94560; min-width: 18px; }
+.sp-playback .octave-row input { flex: 1; accent-color: #e94560; }
+.sp-playback .octave-val { color: #e94560; min-width: 18px; }
 
-#selected-panel .sp-playback .adsr-group { display: flex; flex-direction: column; gap: 2px; }
-#selected-panel .sp-playback .adsr-row {
+.sp-playback .adsr-group { display: flex; flex-direction: column; gap: 2px; }
+.sp-playback .adsr-row {
   display: flex; align-items: center; gap: 4px; font-size: 10px; color: #8899bb;
 }
-#selected-panel .sp-playback .adsr-row label { min-width: 10px; font-weight: 700; color: #6eb5ff; }
-#selected-panel .sp-playback .adsr-row input[type="range"] {
+.sp-playback .adsr-row label { min-width: 10px; font-weight: 700; color: #6eb5ff; }
+.sp-playback .adsr-row input[type="range"] {
   flex: 1;
   -webkit-appearance: none;
   appearance: none;
@@ -221,7 +244,7 @@ canvas { display: block; width: 100%; height: 100%; }
   border-radius: 2px;
   outline: none;
 }
-#selected-panel .sp-playback .adsr-row input[type="range"]::-webkit-slider-thumb {
+.sp-playback .adsr-row input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 10px;
   height: 10px;
@@ -231,7 +254,7 @@ canvas { display: block; width: 100%; height: 100%; }
   cursor: pointer;
   box-shadow: 0 0 4px #e9456066;
 }
-#selected-panel .sp-playback .adsr-row input[type="range"]::-moz-range-thumb {
+.sp-playback .adsr-row input[type="range"]::-moz-range-thumb {
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -240,16 +263,16 @@ canvas { display: block; width: 100%; height: 100%; }
   cursor: pointer;
   box-shadow: 0 0 4px #e9456066;
 }
-#selected-panel .sp-playback .adsr-row input[type="range"]::-webkit-slider-runnable-track {
+.sp-playback .adsr-row input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 2px;
 }
-#selected-panel .sp-playback .adsr-row input[type="range"]::-moz-range-track {
+.sp-playback .adsr-row input[type="range"]::-moz-range-track {
   height: 4px;
   border-radius: 2px;
   background: linear-gradient(90deg, #0f3460, #2a3a5a);
 }
-#selected-panel .sp-playback .adsr-val { color: #e94560; min-width: 30px; font-size: 9px; }
+.sp-playback .adsr-val { color: #e94560; min-width: 30px; font-size: 9px; }
 
 
 #selected-panel .sp-info .temp-info {
@@ -295,6 +318,94 @@ canvas { display: block; width: 100%; height: 100%; }
   color: #6eb5ff;
   font-weight: 600;
 }
+
+#selected-panel .sp-chords-col,
+#selected-panel .sp-tetrads-col {
+  flex-shrink: 0;
+  width: 440px;
+  align-self: stretch;
+  overflow-y: auto;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #2a3a5a transparent;
+  border-left: 1px solid #2a3a5a;
+  padding-left: 10px;
+}
+#selected-panel .sp-tetrads-col { display: none; }
+#selected-panel .sp-tetrads-col.visible { display: block; }
+#selected-panel .sp-chords-col::-webkit-scrollbar,
+#selected-panel .sp-tetrads-col::-webkit-scrollbar { width: 4px; }
+#selected-panel .sp-chords-col::-webkit-scrollbar-track,
+#selected-panel .sp-tetrads-col::-webkit-scrollbar-track { background: transparent; }
+#selected-panel .sp-chords-col::-webkit-scrollbar-thumb,
+#selected-panel .sp-tetrads-col::-webkit-scrollbar-thumb { background: #2a3a5a; border-radius: 2px; }
+#selected-panel .sp-chords-title {
+  font-size: 11px; font-weight: 700; color: #e94560; margin-bottom: 4px;
+}
+#selected-panel .sp-chords-filter {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  font-size: 10px; color: #8899bb;
+}
+#selected-panel .sp-chords-filter input[type="range"] {
+  width: 50px; accent-color: #e94560;
+}
+#selected-panel .sp-chords-filter input[type="checkbox"] {
+  accent-color: #e94560;
+}
+#selected-panel .sp-chords-filter .cf-val { color: #e94560; min-width: 20px; }
+
+.chord-matrix {
+  border-collapse: collapse;
+  font-size: 10px;
+  font-family: monospace;
+  width: 100%;
+}
+.chord-matrix th {
+  padding: 2px 4px;
+  color: #8899bb;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid #2a3a5a;
+}
+.chord-matrix th.cm-label { text-align: left; color: #50c878; font-weight: 700; min-width: 60px; }
+.chord-matrix th.cm-err { text-align: right; color: #666; font-weight: 400; }
+.chord-matrix td {
+  padding: 2px 3px;
+  text-align: center;
+  border-bottom: 1px solid #1a2a3a;
+}
+.chord-matrix td.cm-label {
+  text-align: left;
+  color: #50c878;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chord-matrix td.cm-label a { color: inherit; text-decoration: none; }
+.chord-matrix td.cm-label a:hover { text-decoration: underline; }
+.chord-matrix .cm-invert {
+  cursor: pointer;
+  color: #888;
+  font-size: 13px;
+  margin-left: 4px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  user-select: none;
+  display: inline-block;
+}
+.chord-matrix .cm-invert:hover { color: #ff6; background: #3a2a4a; }
+.chord-matrix td.cm-err { text-align: right; color: #666; }
+.chord-matrix .cm-dot {
+  cursor: pointer;
+  color: #f5a623;
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+.chord-matrix .cm-dot:hover { background: #3a2a4a; color: #ff6; }
+.chord-matrix .cm-dot.active { background: #2a1a3a; color: #ff6; font-weight: 700; }
+.chord-matrix .cm-empty { color: #2a2a3a; }
+.chord-matrix tr.chord-row { transition: background 0.12s; }
+.chord-matrix tr.chord-row.active { background: #2a1a3a; }
 
 #selected-panel .sp-info {
   flex-shrink: 0;
@@ -524,12 +635,17 @@ canvas { display: block; width: 100%; height: 100%; }
 
 <div id="canvas-container">
   <canvas id="main-canvas"></canvas>
+  <div id="synth-panel">
+    <div id="synth-header">Synth ▸</div>
+    <div id="synth-body"></div>
+  </div>
   <div id="selected-panel">
     <div class="sp-resize-handle" id="sp-resize-handle"></div>
     <span class="sp-close" id="sp-close">&times;</span>
     <div class="sp-layout">
-      <div class="sp-playback" id="sp-playback"></div>
       <div class="sp-info" id="sp-info"></div>
+      <div class="sp-chords-col" id="sp-chords-col"></div>
+      <div class="sp-tetrads-col" id="sp-tetrads-col"></div>
       <div class="sp-edo-container" id="sp-edo-container"></div>
     </div>
   </div>
@@ -887,6 +1003,7 @@ function complementaryColor(hex) {
   const [r, g, b] = hexToRGB(hex);
   return rgbToHex(255 - r, 255 - g, 255 - b);
 }
+
 
 // ================================================================
 //  RENDER — Main dispatcher
@@ -1771,7 +1888,7 @@ function handleModeButton(action) {
   else if (action === 'gen-up') S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, 1);
   else if (action === 'gen-down') S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, -1);
   stopPlayback();
-  renderPlaybackControls();
+  updatePanel();
   render();
 }
 
@@ -1818,7 +1935,7 @@ function playCircleDot(dot) {
   osc.type = SYNTH.waveform;
   osc.frequency.value = freq;
   osc.connect(gain);
-  gain.connect(actx.destination);
+  gain.connect(getMaster());
   gain.gain.setValueAtTime(0, now);
   gain.gain.linearRampToValueAtTime(0.15, now + SYNTH.attack);
   gain.gain.linearRampToValueAtTime(0.15 * SYNTH.sustain, now + SYNTH.attack + SYNTH.decay);
@@ -1828,6 +1945,23 @@ function playCircleDot(dot) {
   const dotGlowId = noteGlowOn(dot.degree, 0);
   setTimeout(() => noteGlowOff(dot.degree, dotGlowId), (SYNTH.attack + SYNTH.decay) * 1000);
 }
+
+// Physical key code → logical key character (stable regardless of modifiers)
+const CODE_TO_KEY = {};
+['z','x','c','v','b','n','m'].forEach((k,i) => CODE_TO_KEY['Key'+k.toUpperCase()] = k);
+[',','.','/'].forEach((k,i) => CODE_TO_KEY[['Comma','Period','Slash'][i]] = k);
+['a','s','d','f','g','h','j','k','l'].forEach((k,i) => CODE_TO_KEY['Key'+k.toUpperCase()] = k);
+CODE_TO_KEY['Semicolon'] = ';';
+CODE_TO_KEY['Quote'] = "'";
+['q','w','e','r','t','y','u','i','o','p'].forEach((k,i) => CODE_TO_KEY['Key'+k.toUpperCase()] = k);
+CODE_TO_KEY['BracketLeft'] = '[';
+CODE_TO_KEY['BracketRight'] = ']';
+CODE_TO_KEY['Backslash'] = '\\';
+['1','2','3','4','5','6','7','8','9','0'].forEach((k,i) => CODE_TO_KEY['Digit'+k] = k);
+CODE_TO_KEY['Minus'] = '-';
+CODE_TO_KEY['Equal'] = '=';
+
+function codeToKey(code) { return CODE_TO_KEY[code] || null; }
 
 // Keyboard-to-scale mapping
 // 1Row mode: each row = 1 octave below/above the home row
@@ -1877,7 +2011,8 @@ function getKeyMapping(key) {
   return null;
 }
 
-function playKeyNote(key) {
+
+function playKeyNote(key, code) {
   if (!S.selected || S.generatorCents === null) return;
   const mapping = getKeyMapping(key);
   if (!mapping) return;
@@ -1896,7 +2031,7 @@ function playKeyNote(key) {
   osc.type = SYNTH.waveform;
   osc.frequency.value = freq;
   osc.connect(gain);
-  gain.connect(actx.destination);
+  gain.connect(getMaster());
   const now = actx.currentTime;
   gain.gain.setValueAtTime(0, now);
   gain.gain.linearRampToValueAtTime(0.15, now + SYNTH.attack);
@@ -1907,7 +2042,8 @@ function playKeyNote(key) {
   if (degreeInScale < n) {
     glowId = noteGlowOn(degreeInScale, noteOctave);
   }
-  SYNTH._activeKeys[key.toLowerCase()] = { osc, gain, degreeInScale, glowId, noteOctave, currentCents: totalCents };
+  SYNTH._activeKeys[code] = { osc, gain, degreeInScale, glowId, noteOctave, currentCents: totalCents };
+  renderChordHighlights();
 }
 
 function findNearestDegrees(targetCents, scale, n) {
@@ -1983,8 +2119,8 @@ function updateHeldNotes() {
   }
 }
 
-function stopKeyNote(key) {
-  const entry = SYNTH._activeKeys[key.toLowerCase()];
+function stopKeyNote(code) {
+  const entry = SYNTH._activeKeys[code];
   if (!entry) return;
   const actx = getAudioCtx();
   const now = actx.currentTime;
@@ -1998,7 +2134,8 @@ function stopKeyNote(key) {
   if (entry.degreeInScale !== undefined) {
     noteGlowOff(entry.degreeInScale, entry.glowId);
   }
-  delete SYNTH._activeKeys[key.toLowerCase()];
+  delete SYNTH._activeKeys[code];
+  renderChordHighlights();
 }
 
 function hitTest(mx, my, e) {
@@ -2486,9 +2623,24 @@ function startGlowAnimation() {
 }
 
 function getAudioCtx() {
-  if (!SYNTH.ctx) SYNTH.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!SYNTH.ctx) {
+    SYNTH.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const comp = SYNTH.ctx.createDynamicsCompressor();
+    comp.threshold.value = -24;
+    comp.knee.value = 12;
+    comp.ratio.value = 12;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.1;
+    comp.connect(SYNTH.ctx.destination);
+    SYNTH._master = comp;
+  }
   if (SYNTH.ctx.state === 'suspended') SYNTH.ctx.resume();
   return SYNTH.ctx;
+}
+
+function getMaster() {
+  getAudioCtx();
+  return SYNTH._master;
 }
 
 function centsToFreq(cents) {
@@ -2501,7 +2653,7 @@ function playNote(actx, freq, startTime, duration, waveform) {
   osc.type = waveform;
   osc.frequency.value = freq;
   osc.connect(gain);
-  gain.connect(actx.destination);
+  gain.connect(getMaster());
 
   const attack = 0.015;
   const release = Math.min(0.06, duration * 0.3);
@@ -2604,6 +2756,7 @@ function playArpeggiation(interval) {
     render();
     actx.close();
     SYNTH.ctx = null;
+    SYNTH._master = null;
   };
 
   const stopEl = document.querySelector('.stop-btn');
@@ -2611,13 +2764,13 @@ function playArpeggiation(interval) {
 }
 
 function renderPlaybackControls() {
-  const el = document.getElementById('sp-playback');
+  const el = document.getElementById('synth-body');
   if (!el) return;
   if (!S.selected) { el.innerHTML = ''; return; }
 
   const n = S.selected.size;
 
-  let h = '';
+  let h = '<div class="sp-playback">';
   h += `<select class="synth-select" title="Waveform">`;
   for (const w of ['sine', 'triangle', 'sawtooth', 'square']) {
     const sel = w === SYNTH.waveform ? ' selected' : '';
@@ -2644,6 +2797,7 @@ function renderPlaybackControls() {
   h += `<div class="adsr-row"><label>D</label><input type="range" class="adsr-slider" data-param="decay" min="0.01" max="2" step="0.01" value="${SYNTH.decay}"><span class="adsr-val">${SYNTH.decay >= 1 ? SYNTH.decay.toFixed(1) : (SYNTH.decay * 1000).toFixed(0) + 'ms'}</span></div>`;
   h += `<div class="adsr-row"><label>S</label><input type="range" class="adsr-slider" data-param="sustain" min="0" max="1" step="0.01" value="${SYNTH.sustain}"><span class="adsr-val">${(SYNTH.sustain * 100).toFixed(0)}%</span></div>`;
   h += `<div class="adsr-row"><label>R</label><input type="range" class="adsr-slider" data-param="release" min="0.05" max="8" step="0.05" value="${SYNTH.release}"><span class="adsr-val">${SYNTH.release.toFixed(1)}s</span></div>`;
+  h += '</div>';
   h += '</div>';
 
 
@@ -2697,13 +2851,512 @@ function renderPlaybackControls() {
 }
 
 // ================================================================
+//  CHORDS — find JI-approximate chords in the current scale
+// ================================================================
+
+const JI_POOL = [];
+(function buildJIPool() {
+  const seen = new Set();
+  for (let d = 1; d <= 16; d++) {
+    for (let n = d + 1; n <= 16; n++) {
+      const g = gcd(n, d);
+      const rn = n / g, rd = d / g;
+      const key = rn + '/' + rd;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const cents = 1200 * Math.log2(rn / rd);
+      if (cents > 0 && cents < 1200) {
+        JI_POOL.push({ n: rn, d: rd, cents, complexity: rn * rd });
+      }
+    }
+  }
+  JI_POOL.sort((a, b) => a.cents - b.cents);
+})();
+
+function lcm(a, b) { return (a / gcd(a, b)) * b; }
+
+function ratioToIntNotation(ratioList) {
+  const L = ratioList.reduce((acc, r) => lcm(acc, r[1]), 1);
+  const nums = ratioList.map(r => r[0] * (L / r[1]));
+  const g = nums.reduce(gcd);
+  return nums.map(v => v / g);
+}
+
+// Get canonical (root position) form of an integer notation chord
+function chordCanonical(intNot) {
+  const nums = intNot.split(':').map(Number);
+  // Try all rotations (inversions), return the one with smallest first ratio
+  let best = nums;
+  let bestRoot = nums[0];
+  const len = nums.length;
+  for (let rot = 1; rot < len; rot++) {
+    // Invert: take note at position rot as new bass, octave-complete
+    const rotated = [];
+    for (let i = 0; i < len; i++) {
+      const idx = (rot + i) % len;
+      let val = nums[idx];
+      if (i > 0 && rotated.length > 0) {
+        while (val <= rotated[rotated.length - 1]) val *= 2;
+      } else if (i === 0) {
+        // bass note as-is
+      }
+      rotated.push(val);
+    }
+    // Normalize
+    const g = rotated.reduce(gcd);
+    const normed = rotated.map(v => v / g);
+    if (normed[0] < bestRoot || (normed[0] === bestRoot && normed.join(':') < best.join(':'))) {
+      best = normed;
+      bestRoot = normed[0];
+    }
+  }
+  return best.join(':');
+}
+
+// Binary search: find index of first JI_POOL entry with cents >= target
+function jiPoolLowerBound(target) {
+  let lo = 0, hi = JI_POOL.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (JI_POOL[mid].cents < target) lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+
+function computeRMS(errors) {
+  let sum = 0, sumSq = 0;
+  for (let i = 0; i < errors.length; i++) { sum += errors[i]; }
+  const mean = sum / errors.length;
+  for (let i = 0; i < errors.length; i++) { const d = errors[i] - mean; sumSq += d * d; }
+  return Math.sqrt(sumSq / errors.length);
+}
+
+function findScaleChords(scalePitches, maxErr, maxCx) {
+  if (!scalePitches || scalePitches.length < 3) return [];
+  const n = scalePitches.length;
+  const inversionMap = {};
+  const poolLen = JI_POOL.length;
+
+  for (let root = 0; root < n; root++) {
+    const approxByDeg = {};
+    for (let deg = 1; deg < n; deg++) {
+      const targetDeg = (root + deg) % n;
+      let cents = scalePitches[targetDeg] - scalePitches[root];
+      if (cents <= 0) cents += 1200;
+      const lo = jiPoolLowerBound(cents - maxErr);
+      let bestCx = Infinity;
+      const candidates = [];
+      for (let ji_i = lo; ji_i < poolLen; ji_i++) {
+        const ji = JI_POOL[ji_i];
+        if (ji.cents > cents + maxErr) break;
+        if (ji.complexity > maxCx) continue;
+        if (ji.complexity < bestCx) bestCx = ji.complexity;
+        const signedErr = cents - ji.cents;
+        candidates.push({ deg: targetDeg, stepDeg: deg, cents, ji, error: Math.abs(signedErr), signedError: signedErr });
+      }
+      if (candidates.length) {
+        approxByDeg[deg] = candidates.filter(c => c.ji.complexity === bestCx);
+      }
+    }
+    const degKeys = Object.keys(approxByDeg).map(Number).sort((a,b) => a - b);
+
+    // Triads
+    for (let di = 0; di < degKeys.length; di++) {
+      for (let dj = di + 1; dj < degKeys.length; dj++) {
+        const list1 = approxByDeg[degKeys[di]], list2 = approxByDeg[degKeys[dj]];
+        for (const iv1 of list1) {
+          for (const iv2 of list2) {
+            if (iv2.cents - iv1.cents < 50) continue;
+            const ratios = [[1,1],[iv1.ji.n, iv1.ji.d],[iv2.ji.n, iv2.ji.d]];
+            const intNot = ratioToIntNotation(ratios).join(':');
+            const canon = chordCanonical(intNot);
+            if (!inversionMap[canon]) inversionMap[canon] = { canonical: canon, inversions: {}, maxNum: 0 };
+            if (!inversionMap[canon].inversions[intNot]) {
+              const rms3 = computeRMS([0, iv1.signedError, iv2.signedError]);
+              inversionMap[canon].inversions[intNot] = { notation: intNot, type: 3, roots: [], rmsError: rms3 };
+            }
+            inversionMap[canon].inversions[intNot].roots.push({ root, degrees: [root, iv1.deg, iv2.deg] });
+          }
+        }
+      }
+    }
+
+    // Tetrads
+    for (let di = 0; di < degKeys.length; di++) {
+      for (let dj = di + 1; dj < degKeys.length; dj++) {
+        for (let dk = dj + 1; dk < degKeys.length; dk++) {
+          const list1 = approxByDeg[degKeys[di]], list2 = approxByDeg[degKeys[dj]], list3 = approxByDeg[degKeys[dk]];
+          for (const iv1 of list1) {
+            for (const iv2 of list2) {
+              if (iv2.cents - iv1.cents < 50) continue;
+              for (const iv3 of list3) {
+                if (iv3.cents - iv2.cents < 50) continue;
+                const ratios = [[1,1],[iv1.ji.n,iv1.ji.d],[iv2.ji.n,iv2.ji.d],[iv3.ji.n,iv3.ji.d]];
+                const intNot = ratioToIntNotation(ratios).join(':');
+                const canon = chordCanonical(intNot);
+                if (!inversionMap[canon]) inversionMap[canon] = { canonical: canon, inversions: {}, maxNum: 0 };
+                if (!inversionMap[canon].inversions[intNot]) {
+                  const rms4 = computeRMS([0, iv1.signedError, iv2.signedError, iv3.signedError]);
+                  inversionMap[canon].inversions[intNot] = { notation: intNot, type: 4, roots: [], rmsError: rms4 };
+                }
+                inversionMap[canon].inversions[intNot].roots.push({ root, degrees: [root, iv1.deg, iv2.deg, iv3.deg] });
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Deduplicate roots within each inversion, pre-compute numeric fields
+  const groups = Object.values(inversionMap);
+  for (const g of groups) {
+    const canonNums = g.canonical.split(':').map(Number);
+    g.maxNum = Math.max.apply(null, canonNums);
+    g.lowestRoot = Math.min.apply(null, canonNums);
+    let bestErr = Infinity;
+    for (const inv of Object.values(g.inversions)) {
+      const seen = new Set();
+      inv.roots = inv.roots.filter(r => {
+        const key = r.degrees.slice().sort((a,b)=>a-b).join(',');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      const invNums = inv.notation.split(':').map(Number);
+      inv.maxNum = Math.max.apply(null, invNums);
+      if (inv.rmsError < bestErr) bestErr = inv.rmsError;
+    }
+    g.invList = Object.values(g.inversions);
+    g.invList.sort((a, b) => {
+      const aN = a.notation.split(':').map(Number);
+      const bN = b.notation.split(':').map(Number);
+      return Math.min.apply(null, aN) - Math.min.apply(null, bN);
+    });
+    g.bestError = bestErr;
+  }
+
+  groups.sort((a, b) => a.lowestRoot - b.lowestRoot || a.bestError - b.bestError);
+  return groups;
+}
+
+let _cachedChords = [];
+let _cachedChordScale = null;
+let _chordLastRenderTime = 0;
+let _chordTrailingTimer = null;
+const _chordThrottleMs = 30;
+
+function getChords() {
+  if (!S.selected || S.generatorCents === null) return [];
+  const n = S.selected.size;
+  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
+  const scaleKey = scale.pitches.map(p => p.toFixed(1)).join(',');
+  if (scaleKey === _cachedChordScale) return _cachedChords;
+  _cachedChordScale = scaleKey;
+  _cachedChords = findScaleChords(scale.pitches, 35, 200);
+  return _cachedChords;
+}
+
+let _chordMaxRoot = 50;
+let _chordMaxRMS = 15;
+let _chordShowTetrads = false;
+
+function renderChordsPanel() {
+  const triEl = document.getElementById('sp-chords-col');
+  const tetEl = document.getElementById('sp-tetrads-col');
+  if (!S.selected || S.generatorCents === null) {
+    triEl.innerHTML = ''; tetEl.innerHTML = '';
+    tetEl.classList.remove('visible');
+    return;
+  }
+  const now = performance.now();
+  const elapsed = now - _chordLastRenderTime;
+  if (elapsed < _chordThrottleMs) {
+    clearTimeout(_chordTrailingTimer);
+    _chordTrailingTimer = setTimeout(renderChordsPanel, _chordThrottleMs - elapsed);
+    return;
+  }
+  clearTimeout(_chordTrailingTimer);
+  _chordLastRenderTime = now;
+  const groups = getChords();
+  const filtered = groups.filter(g => g.maxNum <= _chordMaxRoot && g.bestError <= _chordMaxRMS);
+
+  const n = S.selected.size;
+
+  function buildChordMatrix(chordGroups, titleText, showFilters) {
+    let h = `<div class="sp-chords-title">${titleText} <span id="active-chord-label" style="color:#ff6;font-weight:400;font-size:10px"></span></div>`;
+    if (showFilters) {
+      h += '<div class="sp-chords-filter">';
+      h += `<label>Max</label><input type="range" id="chord-max-root" min="6" max="200" value="${_chordMaxRoot}"><span class="cf-val" id="chord-max-root-val">${_chordMaxRoot}</span>`;
+      h += `<label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" value="${_chordMaxRMS}" style="width:40px"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span>`;
+      h += `<label><input type="checkbox" id="chord-show-tetrads"${_chordShowTetrads ? ' checked' : ''}> 4s</label>`;
+      h += '</div>';
+    }
+    if (!chordGroups.length) {
+      h += '<div style="color:#556;font-size:11px">None found</div>';
+      return h;
+    }
+    h += '<table class="chord-matrix"><thead><tr>';
+    h += '<th class="cm-label"></th>';
+    for (let d = 0; d < n; d++) h += `<th>${d}</th>`;
+    h += '<th class="cm-err">¢</th>';
+    h += '</tr></thead><tbody>';
+    for (const g of chordGroups) {
+      const invs = g.invList;
+      // Default view shows only the first inversion (root position)
+      const activeInv = invs[0];
+      const rootSet = new Set(activeInv.roots.map(r => r.root));
+      const rootDegMap = {};
+      for (const r of activeInv.roots) rootDegMap[r.root] = r.degrees;
+      const allDegs = activeInv.roots.map(r => r.degrees);
+      const invsData = JSON.stringify(invs.map(inv => ({
+        notation: inv.notation, rms: inv.rmsError.toFixed(1),
+        roots: inv.roots.map(r => ({ root: r.root, degrees: r.degrees }))
+      })));
+      const hasInversions = invs.length > 1;
+      h += `<tr class="chord-row" data-all-degrees='${JSON.stringify(allDegs)}' data-invs='${invsData.replace(/'/g, '&#39;')}' data-inv-idx="0">`;
+      h += `<td class="cm-label"><a href="https://en.xen.wiki/w/${activeInv.notation}" target="_blank" class="cm-chord-name">${activeInv.notation}</a>`;
+      if (hasInversions) h += `<span class="cm-invert" title="Cycle inversion">&#x25B8;</span>`;
+      h += `</td>`;
+      for (let d = 0; d < n; d++) {
+        if (rootSet.has(d)) {
+          const degs = rootDegMap[d].join(',');
+          h += `<td><span class="cm-dot cr-root" data-degrees="${degs}">●</span></td>`;
+        } else {
+          h += '<td class="cm-empty">·</td>';
+        }
+      }
+      h += `<td class="cm-err">${activeInv.rmsError.toFixed(1)}</td>`;
+      h += '</tr>';
+    }
+    h += '</tbody></table>';
+    return h;
+  }
+
+  // Collect triad groups
+  const triGroups = [];
+  for (const g of filtered) {
+    const triInvs = g.invList.filter(inv => inv.type === 3 && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
+    if (!triInvs.length) continue;
+    triGroups.push({ canonical: g.canonical, bestError: g.bestError, invList: triInvs });
+    if (triGroups.length >= 60) break;
+  }
+  triEl.innerHTML = buildChordMatrix(triGroups, 'Triads', true);
+
+  // Tetrads column
+  tetEl.classList.toggle('visible', _chordShowTetrads);
+  if (_chordShowTetrads) {
+    const tetGroups = [];
+    for (const g of filtered) {
+      const tetInvs = g.invList.filter(inv => inv.type === 4 && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
+      if (!tetInvs.length) continue;
+      tetGroups.push({ canonical: g.canonical, bestError: g.bestError, invList: tetInvs });
+      if (tetGroups.length >= 60) break;
+    }
+    tetEl.innerHTML = buildChordMatrix(tetGroups, 'Tetrads', false);
+  }
+
+  _bindChordFilter();
+  renderChordHighlights();
+}
+
+function _bindChordFilter() {
+  const slider = document.getElementById('chord-max-root');
+  if (slider) slider.addEventListener('input', e => {
+    _chordMaxRoot = +e.target.value;
+    document.getElementById('chord-max-root-val').textContent = _chordMaxRoot;
+    renderChordsPanel();
+  });
+  const rmsSlider = document.getElementById('chord-max-rms');
+  if (rmsSlider) rmsSlider.addEventListener('input', e => {
+    _chordMaxRMS = +e.target.value;
+    document.getElementById('chord-max-rms-val').textContent = _chordMaxRMS + '¢';
+    renderChordsPanel();
+  });
+  const tetBox = document.getElementById('chord-show-tetrads');
+  if (tetBox) tetBox.addEventListener('change', e => {
+    _chordShowTetrads = e.target.checked;
+    renderChordsPanel();
+  });
+  // Click on root degree to play chord, or invert button to cycle inversion
+  for (const col of [document.getElementById('sp-chords-col'), document.getElementById('sp-tetrads-col')]) {
+    if (!col) continue;
+    col.addEventListener('click', e => {
+      const invertBtn = e.target.closest('.cm-invert');
+      if (invertBtn) {
+        const row = invertBtn.closest('.chord-row');
+        if (!row) return;
+        const invs = JSON.parse(row.dataset.invs || '[]');
+        if (invs.length < 2) return;
+        let idx = (+row.dataset.invIdx + 1) % invs.length;
+        row.dataset.invIdx = idx;
+        const inv = invs[idx];
+        const nameEl = row.querySelector('.cm-chord-name');
+        if (nameEl) {
+          nameEl.textContent = inv.notation;
+          nameEl.href = 'https://en.xen.wiki/w/' + inv.notation;
+        }
+        const errEl = row.querySelector('.cm-err');
+        if (errEl) errEl.textContent = inv.rms;
+        // Rebuild dots for this inversion
+        const rootSet = new Set(inv.roots.map(r => r.root));
+        const rootDegMap = {};
+        for (const r of inv.roots) rootDegMap[r.root] = r.degrees;
+        const cells = row.querySelectorAll('td:not(.cm-label):not(.cm-err)');
+        for (let d = 0; d < cells.length; d++) {
+          if (rootSet.has(d)) {
+            const degs = rootDegMap[d].join(',');
+            cells[d].innerHTML = `<span class="cm-dot cr-root" data-degrees="${degs}">●</span>`;
+            cells[d].className = '';
+          } else {
+            cells[d].innerHTML = '·';
+            cells[d].className = 'cm-empty';
+          }
+        }
+        // Update allDegrees for highlight matching
+        const allDegs = [];
+        for (const r of inv.roots) allDegs.push(r.degrees);
+        row.dataset.allDegrees = JSON.stringify(allDegs);
+        return;
+      }
+      const rootEl = e.target.closest('.cr-root');
+      if (!rootEl) return;
+      const degrees = rootEl.dataset.degrees.split(',').map(Number);
+      playChordDegrees(degrees);
+    });
+  }
+}
+
+let _chordNoteCounter = 0;
+function playChordDegrees(degrees) {
+  if (!S.selected || S.generatorCents === null) return;
+  const n = S.selected.size;
+  const holdMs = (SYNTH.attack + SYNTH.decay + 0.15) * 1000;
+  const gen = S.generatorCents;
+  const scale = rotateMOSScale(buildMOSScale(gen, n, 1200), S.modeRotation, 1200);
+  const rootDeg = ((degrees[0] % n) + n) % n;
+  const rootCents = scale.pitches[rootDeg];
+  for (const deg of degrees) {
+    const degInScale = ((deg % n) + n) % n;
+    const code = `_chord_${_chordNoteCounter++}`;
+    let cents = scale.pitches[degInScale];
+    let octaveExtra = 0;
+    if (cents < rootCents) { cents += 1200; octaveExtra = 1; }
+    const totalCents = cents + SYNTH.octaveShift * 1200;
+    const freq = SYNTH.baseFreq * Math.pow(2, totalCents / 1200);
+    const actx = getAudioCtx();
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = SYNTH.waveform;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(getMaster());
+    const now = actx.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.15, now + SYNTH.attack);
+    gain.gain.linearRampToValueAtTime(0.15 * SYNTH.sustain, now + SYNTH.attack + SYNTH.decay);
+    osc.start();
+    const noteOctave = SYNTH.octaveShift + octaveExtra;
+    const glowId = noteGlowOn(degInScale, noteOctave);
+    SYNTH._activeKeys[code] = { osc, gain, degreeInScale: degInScale, glowId, noteOctave, currentCents: totalCents };
+    setTimeout(() => stopKeyNote(code), holdMs);
+  }
+  renderChordHighlights();
+}
+
+function renderChordHighlights() {
+  const activeEntries = Object.values(SYNTH._activeKeys);
+  const activeDegrees = activeEntries.map(e => e.degreeInScale);
+  const allRows = document.querySelectorAll('#sp-chords-col .chord-row, #sp-tetrads-col .chord-row');
+  const label = document.getElementById('active-chord-label');
+  if (!activeDegrees.length) {
+    for (const row of allRows) row.classList.remove('active');
+    if (label) label.textContent = '';
+    return;
+  }
+
+  let lowestEntry = activeEntries[0];
+  for (const e of activeEntries) {
+    if (e.noteOctave < lowestEntry.noteOctave ||
+        (e.noteOctave === lowestEntry.noteOctave && e.currentCents < lowestEntry.currentCents)) {
+      lowestEntry = e;
+    }
+  }
+  const bassDegree = lowestEntry.degreeInScale;
+
+  let activeLabel = '';
+  for (const row of allRows) {
+    const invs = JSON.parse(row.dataset.invs || '[]');
+    let matchedInvIdx = -1;
+    const matchedRoots = new Set();
+
+    for (let ii = 0; ii < invs.length; ii++) {
+      for (const r of invs[ii].roots) {
+        if (r.root === bassDegree && r.degrees.every(d => activeDegrees.includes(d))) {
+          matchedRoots.add(r.root);
+          if (matchedInvIdx < 0) matchedInvIdx = ii;
+        }
+      }
+      if (matchedInvIdx >= 0) break;
+    }
+
+    const active = matchedRoots.size > 0;
+    row.classList.toggle('active', active);
+
+    if (active && matchedInvIdx >= 0) {
+      const currentIdx = +row.dataset.invIdx || 0;
+      // Switch row to show the matched inversion if it's different
+      if (matchedInvIdx !== currentIdx) {
+        const inv = invs[matchedInvIdx];
+        row.dataset.invIdx = matchedInvIdx;
+        const nameEl = row.querySelector('.cm-chord-name');
+        if (nameEl) {
+          nameEl.textContent = inv.notation;
+          nameEl.href = 'https://en.xen.wiki/w/' + inv.notation;
+        }
+        const errEl = row.querySelector('.cm-err');
+        if (errEl) errEl.textContent = inv.rms;
+        const rSet = new Set(inv.roots.map(r => r.root));
+        const rDegMap = {};
+        for (const r of inv.roots) rDegMap[r.root] = r.degrees;
+        const cells = row.querySelectorAll('td:not(.cm-label):not(.cm-err)');
+        for (let d = 0; d < cells.length; d++) {
+          if (rSet.has(d)) {
+            const degs = rDegMap[d].join(',');
+            cells[d].innerHTML = `<span class="cm-dot cr-root" data-degrees="${degs}">●</span>`;
+            cells[d].className = '';
+          } else {
+            cells[d].innerHTML = '·';
+            cells[d].className = 'cm-empty';
+          }
+        }
+        const allDegs = inv.roots.map(r => r.degrees);
+        row.dataset.allDegrees = JSON.stringify(allDegs);
+      }
+      if (!activeLabel) {
+        const inv = invs[matchedInvIdx];
+        activeLabel = inv.notation + ' (' + inv.rms + '¢)';
+      }
+    }
+
+    const dotEls = row.querySelectorAll('.cm-dot');
+    for (const el of dotEls) {
+      const degs = el.dataset.degrees.split(',').map(Number);
+      el.classList.toggle('active', matchedRoots.has(degs[0]));
+    }
+  }
+  if (label) label.textContent = activeLabel;
+}
+
+// ================================================================
 //  UI — Selected panel
 // ================================================================
 
 function positionPanel() {
   const panel = document.getElementById('selected-panel');
+  const synthPanel = document.getElementById('synth-panel');
   if (!panel || panel.style.display === 'none') return;
-  const { radius, cx, sliderY } = getMOSCircleLayout(S.W, S.H);
+  const { radius, cx, cy, sliderY } = getMOSCircleLayout(S.W, S.H);
   const panelPad = 28;
   const circleRight = cx + radius + panelPad + 8;
   const defaultHeight = S.H - (sliderY - 38);
@@ -2713,6 +3366,17 @@ function positionPanel() {
   panel.style.bottom = '0';
   panel.style.height = height + 'px';
   panel.style.display = 'flex';
+
+  if (synthPanel) {
+    const synthLeft = cx - radius - panelPad;
+    const synthWidth = (radius + panelPad) * 2;
+    const panelTop = sliderY - 38;
+    synthPanel.style.left = Math.max(4, synthLeft) + 'px';
+    synthPanel.style.width = synthWidth + 'px';
+    synthPanel.style.bottom = (S.H - panelTop + 4) + 'px';
+    synthPanel.style.top = '';
+    synthPanel.style.display = 'block';
+  }
 }
 
 function updatePanel() {
@@ -2720,7 +3384,13 @@ function updatePanel() {
   const panel = document.getElementById('selected-panel');
   const infoEl = document.getElementById('sp-info');
   const edoEl = document.getElementById('sp-edo-container');
-  if (!S.selected) { panel.style.display = 'none'; stopPlayback(); return; }
+  const synthPanel = document.getElementById('synth-panel');
+  if (!S.selected) {
+    panel.style.display = 'none';
+    if (synthPanel) synthPanel.style.display = 'none';
+    stopPlayback();
+    return;
+  }
 
   const sel = S.selected;
   const key = sel.key;
@@ -2791,6 +3461,7 @@ function updatePanel() {
   }
 
   infoEl.innerHTML = h;
+  renderChordsPanel();
   renderPlaybackControls();
 
   // Mode rotation transfer when switching MOS
@@ -3382,11 +4053,17 @@ function setup() {
     if (S.sliderDragging) {
       S.sliderDragging = false;
       cvs.style.cursor = '';
+      clearTimeout(_chordTrailingTimer);
+      _chordLastRenderTime = 0;
+      renderChordsPanel();
       return;
     }
     if (S.genDragging) {
       S.genDragging = false;
       cvs.style.cursor = '';
+      clearTimeout(_chordTrailingTimer);
+      _chordLastRenderTime = 0;
+      renderChordsPanel();
       return;
     }
     if (S.dragging) {
@@ -3494,9 +4171,11 @@ function setup() {
     e.preventDefault();
   }, { passive: false });
   cntr.addEventListener('touchend', () => {
+    const wasDragging = S.sliderDragging || S.genDragging;
     if (S.sizeSbDragging) S.sizeSbDragging = false;
     if (S.sliderDragging) S.sliderDragging = false;
     if (S.genDragging) S.genDragging = false;
+    if (wasDragging) { clearTimeout(_chordTrailingTimer); _chordLastRenderTime = 0; renderChordsPanel(); }
   });
 
   // Resize
@@ -3511,17 +4190,19 @@ function setup() {
       handleModeButton(dir === 1 ? 'gen-up' : 'gen-down');
       return;
     }
-    const mapping = getKeyMapping(e.key);
-    if (mapping && !SYNTH._activeKeys[e.key.toLowerCase()]) {
+    const noteKey = codeToKey(e.code);
+    if (!noteKey) return;
+    const mapping = getKeyMapping(noteKey);
+    if (mapping && !SYNTH._activeKeys[e.code]) {
       e.preventDefault();
-      playKeyNote(e.key);
+      playKeyNote(noteKey, e.code);
     }
   });
 
   window.addEventListener('keyup', e => {
     if (!SYNTH.keyboardMode) return;
-    if (SYNTH._activeKeys[e.key.toLowerCase()]) {
-      stopKeyNote(e.key);
+    if (SYNTH._activeKeys[e.code]) {
+      stopKeyNote(e.code);
     }
   });
 
@@ -3570,6 +4251,16 @@ function setup() {
     S._panelHeight = null;
     S._circleRadius = null;
     updatePanel(); render();
+  });
+
+  document.getElementById('synth-header').addEventListener('click', () => {
+    const body = document.getElementById('synth-body');
+    const header = document.getElementById('synth-header');
+    const open = body.classList.toggle('open');
+    header.textContent = open ? 'Synth ▾' : 'Synth ▸';
+  });
+  document.getElementById('synth-panel').addEventListener('mousedown', e => {
+    e.stopPropagation();
   });
 
   // Panel resize handle
