@@ -15,12 +15,17 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Deeptone',
     description: 'Very flat meantone. Near 1/2-comma meantone, between flattone and 7edo.' },
 
-  { name: 'Pythagorean', mos: ['5L_2s'], genRange: [701.5, 703.0],
+  { name: 'Pythagorean', mos: ['5L_2s'], genRange: [701.5, 702.4],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Pythagorean_tuning',
     description: 'Pure 3/2 at 701.955¢. No commas tempered — just intonation of 3-limit.' },
 
-  { name: 'Superpyth', mos: ['5L_2s', '5L_7s'], genRange: [703.0, 713.08],
+  { name: 'Parapyth', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [702.4, 705.88],
+    commas: ['352/351', '364/363'], commaNames: ['minthma', 'gentle comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Parapyth',
+    description: 'Rank-3 (2.3.7.11.13). Near-pure fifths with 7/11/13 mapping. Tempers out minthma and gentle comma.' },
+
+  { name: 'Superpyth', mos: ['5L_2s', '5L_7s'], genRange: [705.88, 713.08],
     commas: ['64/63', '245/243'], commaNames: ['Archytas comma', 'sensamagic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Superpyth',
     description: 'Sharp fifths. Two fifths = 8/7. Opposite of meantone.' },
@@ -92,7 +97,12 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Squares',
     description: 'Four generators = 7/2. Generator is a sharp sub-fourth (~426¢). Accurate 7-limit.' },
 
-  { name: 'Tricot / Slendric', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [218.0, 240.0],
+  { name: 'Machine', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [211.765, 218.182],
+    commas: ['16807/16384'], commaNames: ['cloudy comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Subgroup_temperaments#Machine',
+    description: '2.7 subgroup. Generator is a flat 8/7. Five generators = octave minus a comma.' },
+
+  { name: 'Tricot / Slendric', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [218.182, 240.0],
     commas: ['1029/1024'], commaNames: ['gamelisma'],
     wikiUrl: 'https://en.xen.wiki/w/Slendric',
     description: 'Three 8/7 generators = 3/2. 2.3.7 subgroup. Very accurate.' },
@@ -254,7 +264,7 @@ const TEMPERAMENTS = [
 
 const TEMP_COLORS = {
   'Meantone': '#50c878', 'Flattone': '#3da86a', 'Deeptone': '#2d8a55',
-  'Pythagorean': '#ffd700', 'Superpyth': '#ff6347', 'Ultrapyth': '#ff8247',
+  'Pythagorean': '#ffd700', 'Parapyth': '#ffec40', 'Superpyth': '#ff6347', 'Ultrapyth': '#ff8247',
   'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84', 'Casablanca': '#15968a',
   'Mohajira': '#dda0dd',
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
@@ -263,7 +273,7 @@ const TEMP_COLORS = {
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
-  'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
+  'Machine': '#e8c89e', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
   'Father': '#f0e68c', 'Squares': '#e0825a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',

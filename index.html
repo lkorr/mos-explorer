@@ -177,6 +177,40 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 #selected-panel .sp-playback .stop-btn:hover { background: #4a1a1a; }
 
+#selected-panel .sp-playback .kbd-btn {
+  background: #1a2a3a;
+  border: 1px solid #4a6a9a;
+  border-radius: 4px;
+  color: #8899bb;
+  font-size: 10px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+#selected-panel .sp-playback .kbd-btn:hover { background: #2a3a5a; }
+#selected-panel .sp-playback .kbd-btn.active {
+  background: #1a3a2a;
+  border-color: #50c878;
+  color: #50c878;
+}
+
+#selected-panel .sp-playback .octave-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #8899bb;
+}
+#selected-panel .sp-playback .octave-row input { flex: 1; accent-color: #e94560; }
+#selected-panel .sp-playback .octave-val { color: #e94560; min-width: 18px; }
+
+#selected-panel .sp-playback .adsr-group { display: flex; flex-direction: column; gap: 1px; }
+#selected-panel .sp-playback .adsr-row {
+  display: flex; align-items: center; gap: 4px; font-size: 10px; color: #8899bb;
+}
+#selected-panel .sp-playback .adsr-row label { min-width: 10px; font-weight: 700; }
+#selected-panel .sp-playback .adsr-row input { flex: 1; accent-color: #e94560; }
+#selected-panel .sp-playback .adsr-val { color: #e94560; min-width: 30px; font-size: 9px; }
+
 #selected-panel .sp-playback .mode-section {
   border-top: 1px solid #2a2a4a;
   padding-top: 4px;
@@ -488,7 +522,7 @@ canvas { display: block; width: 100%; height: 100%; }
   </div>
   <div class="ctrl-group">
     <label>Max EDO:</label>
-    <input type="range" id="max-edo" min="5" max="72" value="60">
+    <input type="range" id="max-edo" min="5" max="350" value="60" style="width:600px">
     <span class="value-display" id="max-edo-val">60</span>
   </div>
   <div class="ctrl-group">
@@ -888,7 +922,7 @@ function render() {
     positionPanel();
     renderEDOGrid();
   }
-  drawSizeScrollbar(ctx, W, H);
+  // drawSizeScrollbar(ctx, W, H);
 
   ctx.restore();
 }
@@ -945,9 +979,7 @@ function drawSizeScrollbar(ctx, W, H) {
 }
 
 function hitSizeScrollbar(mx, my) {
-  const geo = getSizeScrollbarGeometry(S.H);
-  return mx >= geo.x && mx <= geo.x + SIZE_SB_WIDTH &&
-         my >= geo.trackTop && my <= geo.trackBottom;
+  return false;
 }
 
 function setSizeFromScrollbarY(my) {
@@ -1286,11 +1318,11 @@ function drawGeneratorMarker(ctx, W, H) {
 // ================================================================
 
 function getMOSCircleLayout(W, H) {
-  const radius = Math.min(140, Math.min(W, H) * 0.18);
+  const radius = Math.min(170, Math.min(W, H) * 0.22);
   const cx = 20 + radius + 10;
   const cy = H - 20 - radius - 10;
   const sliderW = radius * 2 + 16;
-  const sliderH = 12;
+  const sliderH = 14;
   const sliderX = cx - sliderW / 2;
   const sliderY = cy - radius - 40;
   return { radius, cx, cy, sliderW, sliderH, sliderX, sliderY };
@@ -1305,9 +1337,9 @@ function drawMOSCircle(ctx, W, H) {
   const { radius, cx, cy, sliderW, sliderH, sliderX, sliderY } = getMOSCircleLayout(W, H);
 
   // Background panel
-  const panelPad = 12;
-  const panelTop = sliderY - 18;
-  const panelBot = cy + radius + 24;
+  const panelPad = 28;
+  const panelTop = sliderY - 22;
+  const panelBot = cy + radius + 36;
   const panelLeft = cx - radius - panelPad;
   const panelRight = cx + radius + panelPad;
   ctx.fillStyle = '#16213ef0';
@@ -1321,7 +1353,7 @@ function drawMOSCircle(ctx, W, H) {
   // Title
   const titleY = sliderY - 8;
   const titleText = sel.key.replace('_', ' ');
-  ctx.font = 'bold 11px monospace';
+  ctx.font = 'bold 13px monospace';
   ctx.textBaseline = 'middle';
   if (gen !== null) {
     const hr = computeHardness(gen, n);
@@ -1354,10 +1386,10 @@ function drawMOSCircle(ctx, W, H) {
   const eqLabel = eqEnd === 'low' ? 0.15 : 0.85;
   const colLabel = eqEnd === 'low' ? 0.85 : 0.15;
   ctx.fillStyle = '#556';
-  ctx.font = '8px monospace';
+  ctx.font = '9px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('equalized', sliderX + sliderW * eqLabel, sliderY + sliderH + 10);
-  ctx.fillText('collapsed', sliderX + sliderW * colLabel, sliderY + sliderH + 10);
+  ctx.fillText('equalized', sliderX + sliderW * eqLabel, sliderY + sliderH + 12);
+  ctx.fillText('collapsed', sliderX + sliderW * colLabel, sliderY + sliderH + 12);
 
   if (gen !== null) {
     const t = (gen - sel.lowCents) / (sel.highCents - sel.lowCents);
@@ -1388,16 +1420,16 @@ function drawMOSCircle(ctx, W, H) {
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.strokeStyle = '#3a3a5c';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   ctx.stroke();
 
   if (gen === null) {
     ctx.fillStyle = '#556';
-    ctx.font = '11px monospace';
+    ctx.font = '13px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Click cent axis or', cx, cy - 6);
-    ctx.fillText('drag slider above', cx, cy + 8);
+    ctx.fillText('Click cent axis or', cx, cy - 8);
+    ctx.fillText('drag slider above', cx, cy + 10);
     return;
   }
 
@@ -1441,7 +1473,7 @@ function drawMOSCircle(ctx, W, H) {
     ctx.beginPath();
     ctx.arc(cx, cy, radius, a1, a2);
     ctx.strokeStyle = hexA(col, 0.9);
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 5;
     ctx.stroke();
 
     const midAngle = c2a(startC + step / 2);
@@ -1450,13 +1482,14 @@ function drawMOSCircle(ctx, W, H) {
     const ly = cy + Math.sin(midAngle) * labelR;
 
     ctx.fillStyle = col;
-    ctx.font = 'bold 10px monospace';
+    ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(step.toFixed(0) + '¢', lx, ly);
   }
 
   // Divider lines + pitch dots + labels
+  S._circleDots = [];
   for (let i = 0; i < n; i++) {
     const angle = c2a(pitches[i]);
 
@@ -1468,13 +1501,14 @@ function drawMOSCircle(ctx, W, H) {
     ctx.stroke();
 
     const isActive = SYNTH.activeDegree === i;
-    const dotR = isActive ? 7 : 4;
+    const dotR = isActive ? 8 : 5;
     const px = cx + Math.cos(angle) * radius;
     const py = cy + Math.sin(angle) * radius;
+    S._circleDots.push({ x: px, y: py, degree: i, cents: pitches[i] });
 
     if (isActive) {
       ctx.beginPath();
-      ctx.arc(px, py, 12, 0, Math.PI * 2);
+      ctx.arc(px, py, 14, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(233, 69, 96, 0.25)';
       ctx.fill();
     }
@@ -1487,75 +1521,86 @@ function drawMOSCircle(ctx, W, H) {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    const outR = radius + 16;
+    const outR = radius + 18;
     const ox = cx + Math.cos(angle) * outR;
     const oy = cy + Math.sin(angle) * outR;
 
     ctx.fillStyle = isActive ? '#e94560' : (i === 0 ? '#e94560' : '#aaa');
-    ctx.font = isActive ? 'bold 11px monospace' : '9px monospace';
+    ctx.font = isActive ? 'bold 13px monospace' : '11px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(pitches[i].toFixed(0), ox, oy);
   }
 
-  // Center info
-  ctx.fillStyle = '#aaa';
-  ctx.font = '10px monospace';
+  // Center info — temperament name only
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('gen=' + gen.toFixed(1) + '¢', cx, cy - 14);
-
-  if (s > 0.01) {
-    const ratio = L / s;
-    let bestN = 1, bestD = 1, bestErr = Infinity;
-    for (let d = 1; d <= 12; d++) {
-      const num = Math.round(ratio * d);
-      if (num < 1) continue;
-      const err = Math.abs(ratio - num / d);
-      if (err < bestErr) { bestErr = err; bestN = num; bestD = d; }
-    }
-    const g = gcd(bestN, bestD);
-    bestN /= g; bestD /= g;
-    const str = bestErr < 0.04 ? `${bestN}:${bestD}` : ratio.toFixed(2) + ':1';
-    ctx.fillStyle = '#f5a623';
-    ctx.fillText('L:s = ' + str, cx, cy - 2);
-    ctx.fillStyle = '#888';
-    ctx.font = '9px monospace';
-    ctx.fillText(`L=${L.toFixed(1)}¢  s=${s.toFixed(1)}¢`, cx, cy + 10);
-  } else {
-    ctx.fillStyle = '#f5a623';
-    ctx.fillText('L:s = ∞:1', cx, cy - 2);
-  }
-
-  const udp = computeUDP(gen, n, S.modeRotation);
-  const stepPattern = computeStepPattern(gen, n, S.modeRotation, P);
-  const modeName = getModeName(sel.key, gen, S.modeRotation);
-  ctx.fillStyle = S.modeRotation !== 0 ? '#6eb5ff' : '#556';
-  ctx.font = 'bold 10px monospace';
-  ctx.textAlign = 'center';
-  if (modeName) {
-    ctx.fillText(modeName, cx, cy + 22);
-    ctx.font = '9px monospace';
-    ctx.fillText(udp + '  ' + stepPattern, cx, cy + 34);
-  } else {
-    ctx.fillText(udp, cx, cy + 22);
-    ctx.font = '9px monospace';
-    ctx.fillText(stepPattern, cx, cy + 34);
-  }
-
   const activeTemps = getTemperamentsAtCursor(sel.key, gen, sel.lowCents, sel.highCents);
   if (activeTemps.length) {
     const t = activeTemps[0];
     const col = TEMP_COLORS[t.name] || '#50c878';
     ctx.fillStyle = col;
-    ctx.font = 'bold 9px monospace';
-    ctx.fillText(t.name, cx, cy + 46);
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText(t.name, cx, cy);
+  }
+
+  // JI interval markers — all n/d where n,d < 20, within octave
+  const jiMarkers = [];
+  const jiSeen = new Set();
+  for (let d = 1; d < 20; d++) {
+    for (let n = d + 1; n < 20; n++) {
+      let gn = n, gd = d, tmp;
+      while (gd) { tmp = gd; gd = gn % gd; gn = tmp; }
+      const rn = n / gn, rd = d / gn;
+      const key = rn + '/' + rd;
+      if (jiSeen.has(key)) continue;
+      jiSeen.add(key);
+      const cents = 1200 * Math.log2(rn / rd);
+      if (cents > 0 && cents < 1200 && rn * rd <= 125) {
+        jiMarkers.push({ ratio: key, cents, complexity: rn * rd });
+      }
+    }
+  }
+  jiMarkers.sort((a, b) => a.complexity - b.complexity);
+  for (const ji of jiMarkers) {
+    const maxFont = 14, minFont = 6;
+    const fontSize = Math.round(maxFont - (maxFont - minFont) * Math.min(1, (ji.complexity - 6) / 119));
+    const tickLen = fontSize > 8 ? 13 : 8;
+    const angle = c2a(ji.cents);
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    ctx.beginPath();
+    ctx.moveTo(cx + cos * (radius - tickLen), cy + sin * (radius - tickLen));
+    ctx.lineTo(cx + cos * (radius + 3), cy + sin * (radius + 3));
+    const alpha = fontSize > 8 ? '99' : '55';
+    ctx.strokeStyle = '#f5a623' + alpha;
+    ctx.lineWidth = fontSize > 9 ? 1.5 : 1;
+    ctx.stroke();
+    ctx.fillStyle = '#f5a623';
+    ctx.globalAlpha = 0.4 + 0.6 * (fontSize - minFont) / (maxFont - minFont);
+    ctx.font = (fontSize > 9 ? 'bold ' : '') + fontSize + 'px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const lr = radius - tickLen - 8;
+    ctx.fillText(ji.ratio, cx + cos * lr, cy + sin * lr);
+    ctx.globalAlpha = 1;
   }
 }
 
 // ================================================================
 //  INTERACTION — Hit testing & tooltip
 // ================================================================
+
+function hitMOSCirclePanel(mx, my) {
+  if (!S.selected) return false;
+  const { radius, cx, cy, sliderY } = getMOSCircleLayout(S.W, S.H);
+  const panelPad = 28;
+  const panelTop = sliderY - 22;
+  const panelBot = cy + radius + 36;
+  const panelLeft = cx - radius - panelPad;
+  const panelRight = cx + radius + panelPad;
+  return mx >= panelLeft && mx <= panelRight && my >= panelTop && my <= panelBot;
+}
 
 function hitCircleArrow(mx, my) {
   if (!S.selected) return null;
@@ -1571,9 +1616,121 @@ function hitCircleArrow(mx, my) {
   return null;
 }
 
+function hitCircleDot(mx, my) {
+  if (!S._circleDots) return null;
+  const hitR = 12;
+  for (const dot of S._circleDots) {
+    const dx = mx - dot.x, dy = my - dot.y;
+    if (dx * dx + dy * dy <= hitR * hitR) return dot;
+  }
+  return null;
+}
+
+function playCircleDot(dot) {
+  stopPlayback();
+  const actx = getAudioCtx();
+  const freq = centsToFreq(dot.cents);
+  const now = actx.currentTime;
+  const total = SYNTH.attack + SYNTH.decay + SYNTH.release;
+  const osc = actx.createOscillator();
+  const gain = actx.createGain();
+  osc.type = SYNTH.waveform;
+  osc.frequency.value = freq;
+  osc.connect(gain);
+  gain.connect(actx.destination);
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.15, now + SYNTH.attack);
+  gain.gain.linearRampToValueAtTime(0.15 * SYNTH.sustain, now + SYNTH.attack + SYNTH.decay);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + total);
+  osc.start(now);
+  osc.stop(now + total);
+  SYNTH.activeDegree = dot.degree;
+  render();
+  setTimeout(() => {
+    if (SYNTH.activeDegree === dot.degree) {
+      SYNTH.activeDegree = -1;
+      render();
+    }
+  }, total * 1000);
+}
+
+// Keyboard-to-scale mapping
+const KBD_ROWS = [
+  { keys: ['z','x','c','v','b','n','m',',','.','/'], octave: -1 },
+  { keys: ['a','s','d','f','g','h','j','k','l',';',"'"], octave: 0 },
+  { keys: ['q','w','e','r','t','y','u','i','o','p','[',']','\\'], octave: 1 },
+  { keys: ['`','1','2','3','4','5','6','7','8','9','0','-','='], octave: 2 },
+];
+
+function getKeyMapping(key) {
+  const k = key.toLowerCase();
+  for (const row of KBD_ROWS) {
+    const idx = row.keys.indexOf(k);
+    if (idx !== -1) return { degree: idx, octave: row.octave };
+  }
+  return null;
+}
+
+function playKeyNote(key) {
+  if (!S.selected || S.generatorCents === null) return;
+  const mapping = getKeyMapping(key);
+  if (!mapping) return;
+  const n = S.selected.size;
+  const gen = S.generatorCents;
+  const scale = rotateMOSScale(buildMOSScale(gen, n, 1200), S.modeRotation, 1200);
+  const degree = mapping.degree;
+  const octaveWrap = Math.floor(degree / n);
+  const degreeInScale = degree % n;
+  const cents = scale.pitches[degreeInScale];
+  const totalCents = cents + (mapping.octave + octaveWrap + SYNTH.octaveShift) * 1200;
+  const freq = SYNTH.baseFreq * Math.pow(2, totalCents / 1200);
+
+  const actx = getAudioCtx();
+  const osc = actx.createOscillator();
+  const gain = actx.createGain();
+  osc.type = SYNTH.waveform;
+  osc.frequency.value = freq;
+  osc.connect(gain);
+  gain.connect(actx.destination);
+  const now = actx.currentTime;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.15, now + SYNTH.attack);
+  gain.gain.linearRampToValueAtTime(0.15 * SYNTH.sustain, now + SYNTH.attack + SYNTH.decay);
+  osc.start();
+  SYNTH._activeKeys[key.toLowerCase()] = { osc, gain };
+  if (degree < n) {
+    SYNTH.activeDegree = degree;
+    render();
+  }
+}
+
+function stopKeyNote(key) {
+  const entry = SYNTH._activeKeys[key.toLowerCase()];
+  if (!entry) return;
+  const actx = getAudioCtx();
+  const now = actx.currentTime;
+  entry.gain.gain.cancelScheduledValues(now);
+  entry.gain.gain.setValueAtTime(entry.gain.gain.value, now);
+  entry.gain.gain.exponentialRampToValueAtTime(0.001, now + SYNTH.release);
+  entry.osc.stop(now + SYNTH.release);
+  delete SYNTH._activeKeys[key.toLowerCase()];
+  SYNTH.activeDegree = -1;
+  render();
+}
+
 function hitTest(mx, my, e) {
   const tip = document.getElementById('tooltip');
   let found = null;
+
+  if (hitMOSCirclePanel(mx, my)) {
+    if (S.hovered) {
+      S.hovered = null;
+      tip.style.display = 'none';
+      S.canvas.style.cursor = '';
+      render();
+    }
+    return;
+  }
 
   for (const r of S.regions) {
     if (r._y === undefined) continue;
@@ -1690,6 +1847,7 @@ function handleClick() {
       render();
     }
   } else if (S.selected) {
+    if (hitMOSCirclePanel(mx, my)) return;
     const cc = x2c(mx);
     if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
       S.generatorCents = cc;
@@ -1870,6 +2028,13 @@ const SYNTH = {
   waveform: 'triangle',
   baseFreq: 261.63, // C4
   activeDegree: -1,
+  keyboardMode: true,
+  octaveShift: 0,
+  attack: 0.015,
+  decay: 0.1,
+  sustain: 1.0,
+  release: 4,
+  _activeKeys: {},
 };
 
 function getAudioCtx() {
@@ -2026,6 +2191,14 @@ function renderPlaybackControls() {
   h += `<button class="arp-btn" data-interval="random" title="Play each note twice in random order">▶ Random</button>`;
   h += '</div>';
   h += '<button class="stop-btn">■ Stop</button>';
+  h += `<button class="kbd-btn${SYNTH.keyboardMode ? ' active' : ''}" title="Map keyboard to scale degrees">⌨ Keyboard</button>`;
+  h += `<div class="octave-row"><label>Oct</label><input type="range" class="octave-slider" min="-2" max="2" step="1" value="${SYNTH.octaveShift || 0}"><span class="octave-val">${SYNTH.octaveShift > 0 ? '+' : ''}${SYNTH.octaveShift || 0}</span></div>`;
+  h += '<div class="adsr-group">';
+  h += `<div class="adsr-row"><label>A</label><input type="range" class="adsr-slider" data-param="attack" min="0.005" max="2" step="0.005" value="${SYNTH.attack}"><span class="adsr-val">${SYNTH.attack >= 1 ? SYNTH.attack.toFixed(1) : (SYNTH.attack * 1000).toFixed(0) + 'ms'}</span></div>`;
+  h += `<div class="adsr-row"><label>D</label><input type="range" class="adsr-slider" data-param="decay" min="0.01" max="2" step="0.01" value="${SYNTH.decay}"><span class="adsr-val">${SYNTH.decay >= 1 ? SYNTH.decay.toFixed(1) : (SYNTH.decay * 1000).toFixed(0) + 'ms'}</span></div>`;
+  h += `<div class="adsr-row"><label>S</label><input type="range" class="adsr-slider" data-param="sustain" min="0" max="1" step="0.01" value="${SYNTH.sustain}"><span class="adsr-val">${(SYNTH.sustain * 100).toFixed(0)}%</span></div>`;
+  h += `<div class="adsr-row"><label>R</label><input type="range" class="adsr-slider" data-param="release" min="0.05" max="8" step="0.05" value="${SYNTH.release}"><span class="adsr-val">${SYNTH.release.toFixed(1)}s</span></div>`;
+  h += '</div>';
 
   // Mode rotation controls
   const udp = S.generatorCents !== null ? computeUDP(S.generatorCents, n, S.modeRotation) : '—';
@@ -2051,6 +2224,28 @@ function renderPlaybackControls() {
     SYNTH.waveform = e.target.value;
   });
   el.querySelector('.stop-btn').addEventListener('click', stopPlayback);
+  el.querySelector('.kbd-btn').addEventListener('click', () => {
+    SYNTH.keyboardMode = !SYNTH.keyboardMode;
+    if (!SYNTH.keyboardMode) {
+      Object.keys(SYNTH._activeKeys).forEach(k => stopKeyNote(k));
+    }
+    renderPlaybackControls();
+  });
+  el.querySelector('.octave-slider').addEventListener('input', e => {
+    SYNTH.octaveShift = +e.target.value;
+    el.querySelector('.octave-val').textContent = (SYNTH.octaveShift > 0 ? '+' : '') + SYNTH.octaveShift;
+  });
+  el.querySelectorAll('.adsr-slider').forEach(slider => {
+    slider.addEventListener('input', e => {
+      const param = e.target.dataset.param;
+      SYNTH[param] = +e.target.value;
+      const val = SYNTH[param];
+      const display = e.target.closest('.adsr-row').querySelector('.adsr-val');
+      if (param === 'sustain') display.textContent = (val * 100).toFixed(0) + '%';
+      else if (param === 'release') display.textContent = val.toFixed(1) + 's';
+      else display.textContent = val >= 1 ? val.toFixed(1) + 's' : (val * 1000).toFixed(0) + 'ms';
+    });
+  });
   el.querySelectorAll('.arp-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (!S.generatorCents) return;
@@ -2089,8 +2284,9 @@ function positionPanel() {
   const panel = document.getElementById('selected-panel');
   if (!panel || panel.style.display === 'none') return;
   const { radius, cx, sliderY } = getMOSCircleLayout(S.W, S.H);
-  const circleRight = cx + radius + 20;
-  const defaultHeight = S.H - (sliderY - 18);
+  const panelPad = 28;
+  const circleRight = cx + radius + panelPad + 8;
+  const defaultHeight = S.H - (sliderY - 22);
   const height = S._panelHeight ? Math.max(80, Math.min(S.H - 40, S._panelHeight)) : defaultHeight;
   panel.style.left = circleRight + 'px';
   panel.style.top = '';
@@ -2561,6 +2757,11 @@ function setup() {
       return;
     }
 
+    const dot = hitCircleDot(mx, my);
+    if (dot) { playCircleDot(dot); return; }
+
+    if (hitMOSCirclePanel(mx, my)) return;
+
     if (S.selected && isOnAxisBar(my)) {
       const cc = x2c(mx);
       if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
@@ -2639,6 +2840,8 @@ function setup() {
         cvs.style.cursor = 'ns-resize';
       } else if (hitCircleArrow(mx, my)) {
         cvs.style.cursor = 'pointer';
+      } else if (hitCircleDot(mx, my)) {
+        cvs.style.cursor = 'pointer';
       } else if (hitTempBar(mx, my)) {
         cvs.style.cursor = 'pointer';
       } else if (S.selected && hitSlider(mx, my)) {
@@ -2647,7 +2850,11 @@ function setup() {
         const cc = x2c(mx);
         if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
           cvs.style.cursor = 'crosshair';
+        } else if (!S.hovered) {
+          cvs.style.cursor = '';
         }
+      } else if (!S.hovered) {
+        cvs.style.cursor = '';
       }
     }
 
@@ -2698,10 +2905,16 @@ function setup() {
       if (hitSizeScrollbar(mx, my)) {
         S.sizeSbDragging = true;
         setSizeFromScrollbarY(my);
+      } else if (hitCircleArrow(mx, my)) {
+        const arrow = hitCircleArrow(mx, my);
+        if (arrow === 'parent') navigateToParent();
+        else if (arrow === 'child') navigateToChild();
       } else if (S.selected && hitSlider(mx, my)) {
         S.sliderDragging = true;
         S.generatorCents = sliderXToGen(mx);
         render();
+      } else if (hitMOSCirclePanel(mx, my)) {
+        // absorb touch on circle panel — don't start drag
       } else if (S.selected && isOnAxisBar(my)) {
         const cc = x2c(mx);
         if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
@@ -2775,6 +2988,23 @@ function setup() {
 
   // Resize
   window.addEventListener('resize', () => { resizeCanvas(); render(); positionPanel(); });
+
+  window.addEventListener('keydown', e => {
+    if (!SYNTH.keyboardMode || e.repeat) return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    const mapping = getKeyMapping(e.key);
+    if (mapping && !SYNTH._activeKeys[e.key.toLowerCase()]) {
+      e.preventDefault();
+      playKeyNote(e.key);
+    }
+  });
+
+  window.addEventListener('keyup', e => {
+    if (!SYNTH.keyboardMode) return;
+    if (SYNTH._activeKeys[e.key.toLowerCase()]) {
+      stopKeyNote(e.key);
+    }
+  });
 
   // Controls
   document.getElementById('min-size').addEventListener('input', e => {
