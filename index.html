@@ -602,7 +602,9 @@ function getModeName(key, genCents, modeRotation) {
   const n = parseInt(key.split('L')[0]) + parseInt(key.split('_')[1]);
   const chain = getGeneratorChain(genCents, n);
   const rootGenIndex = chain[modeRotation];
-  if (rootGenIndex < modes.length) return modes[rootGenIndex];
+  const dark = genCents < 600;
+  const modeIdx = dark ? (n - 1 - rootGenIndex) : rootGenIndex;
+  if (modeIdx < modes.length) return modes[modeIdx];
   return null;
 }
 
@@ -779,7 +781,10 @@ function computeUDP(genCents, n, modeRotation, period) {
   period = period || 1200;
   const chain = getGeneratorChain(genCents, n, period);
   const rootGenIndex = chain[modeRotation];
-  return `${rootGenIndex}|${n - 1 - rootGenIndex}`;
+  const dark = genCents < period / 2;
+  const u = dark ? rootGenIndex : (n - 1 - rootGenIndex);
+  const d = dark ? (n - 1 - rootGenIndex) : rootGenIndex;
+  return `${u}|${d}`;
 }
 
 function computeStepPattern(genCents, n, modeRotation, period) {
