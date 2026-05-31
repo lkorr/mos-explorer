@@ -1949,6 +1949,7 @@ function playCircleDot(dot) {
   gain.gain.exponentialRampToValueAtTime(0.001, now + total);
   osc.start(now);
   osc.stop(now + total);
+  osc.onended = () => { gain.disconnect(); osc.disconnect(); };
   const dotGlowId = noteGlowOn(dot.degree, 0);
   setTimeout(() => noteGlowOff(dot.degree, dotGlowId), (SYNTH.attack + SYNTH.decay) * 1000);
 }
@@ -2143,6 +2144,10 @@ function stopKeyNote(code) {
   entry.gain.gain.setValueAtTime(releaseFrom, now);
   entry.gain.gain.exponentialRampToValueAtTime(0.001, now + SYNTH.release);
   entry.osc.stop(now + SYNTH.release);
+  entry.osc.onended = () => {
+    entry.gain.disconnect();
+    entry.osc.disconnect();
+  };
   if (entry.degreeInScale !== undefined) {
     noteGlowOff(entry.degreeInScale, entry.glowId);
   }
@@ -2676,6 +2681,7 @@ function playNote(actx, freq, startTime, duration, waveform) {
 
   osc.start(startTime);
   osc.stop(startTime + duration);
+  osc.onended = () => { gain.disconnect(); osc.disconnect(); };
 }
 
 function buildArpSequence(pitches, interval) {
