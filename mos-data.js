@@ -8,12 +8,12 @@ const TEMPERAMENTS = [
   { name: 'Flattone', mos: ['5L_2s', '7L_5s', '12L_7s'], genRange: [690.9, 694.77],
     commas: ['81/80', '525/512'], commaNames: ['syntonic comma', 'avicennma'],
     wikiUrl: 'https://en.xen.wiki/w/Meantone_family#Flattone',
-    description: 'Very flat meantone. 7/4 maps to diminished seventh. ~695¢ fifth.' },
+    description: 'Flat meantone. 7/4 maps to diminished seventh. ~695¢ fifth.' },
 
   { name: 'Deeptone', mos: ['5L_2s', '7L_5s'], genRange: [685.7, 690.9],
     commas: ['81/80'], commaNames: ['syntonic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Deeptone',
-    description: 'Very flat meantone. Near 1/2-comma meantone, between flattone and mavila.' },
+    description: 'Very flat meantone. Near 1/2-comma meantone, between flattone and 7edo.' },
 
   { name: 'Pythagorean', mos: ['5L_2s'], genRange: [701.5, 703.0],
     commas: [], commaNames: [],
@@ -46,21 +46,21 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Mabila_family',
     description: 'Flat fifths like mavila but three generators = 5/2. Ten bad fifths reach a good one. 9L 7s MOS has good triads.' },
 
+  { name: 'Casablanca', mos: ['2L_5s', '2L_7s', '2L_9s'], genRange: [540.0, 550.0],
+    commas: ['126/125'], commaNames: ['starling comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Starling_temperaments#Casablanca',
+    description: 'Starling family. Generator is a sharp 11/8 (~545¢). Two generators = 6/5.' },
+
   // === MOSH / NEUTRAL THIRDS (3L 4s) ===
   { name: 'Mohajira', mos: ['3L_4s', '7L_3s'], genRange: [342.0, 353.0],
     commas: ['81/80', '121/120', '243/242'], commaNames: ['syntonic comma', 'biyatisma', 'rastma'],
     wikiUrl: 'https://en.xen.wiki/w/Mohajira',
-    description: 'Neutral thirds temperament. Generator splits the fifth into two equal ~350¢ thirds.' },
+    description: 'Neutral thirds temperament. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> family. Generator splits the fifth into two equal ~350¢ thirds.' },
 
   { name: 'Suhajira', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [353.0, 365.0],
     commas: ['243/242', '2401/2400'], commaNames: ['rastma', 'breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Rastmic_clan#Suhajira',
-    description: 'Rastmic clan. Sharp neutral third generator. Two generators = 3/2.' },
-
-  { name: 'Dicot', mos: ['3L_4s', '7L_3s'], genRange: [342.5, 360.0],
-    commas: ['25/24'], commaNames: ['classical chromatic semitone'],
-    wikiUrl: 'https://en.xen.wiki/w/Dicot_family',
-    description: 'Equates major and minor thirds. Two neutral thirds = a fifth.' },
+    description: 'Rastmic clan. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> family. Sharp neutral third generator. Two generators = 3/2.' },
 
   { name: 'Magic', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [377.0, 385.0],
     commas: ['3125/3072'], commaNames: ['magic comma'],
@@ -82,7 +82,7 @@ const TEMPERAMENTS = [
   // === PENTATONIC (2L 3s) ===
 
   // === ANTI-PENTATONIC (3L 2s) ===
-  { name: 'Father', mos: ['3L_2s', '5L_3s'], genRange: [440.0, 465.0],
+  { name: 'Father', mos: ['3L_2s', '5L_3s'], genRange: [454.0, 471.4],
     commas: ['16/15'], commaNames: ['diatonic semitone'],
     wikiUrl: 'https://en.xen.wiki/w/Father_family',
     description: 'Tempers out 16/15, equating 5/4 with 4/3. Exotemperament.' },
@@ -125,12 +125,12 @@ const TEMPERAMENTS = [
     description: 'Alpha hexacot (splits 3/1 into 6 steps). Generator ~314.3–320¢.' },
 
   // === SENSOID (3L 5s) ===
-  { name: 'Porcupine', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [150.0, 182.4],
+  { name: 'Porcupine', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [150.0, 171.43],
     commas: ['250/243'], commaNames: ['porcupine comma'],
     wikiUrl: 'https://en.xen.wiki/w/Porcupine',
     description: 'Two generators = 6/5, three = 4/3. ~163¢ generator.' },
 
-  { name: 'Sensi', mos: ['3L_5s', '8L_3s', '8L_11s'], genRange: [440.0, 448.0],
+  { name: 'Sensi', mos: ['3L_5s', '8L_3s', '8L_11s'], genRange: [435.0, 454.0],
     commas: ['78732/78125'], commaNames: ['sensipent comma'],
     wikiUrl: 'https://en.xen.wiki/w/Sensipent_family',
     description: 'Half a major sixth generator. Two generators = 5/3, seven = 6/1.' },
@@ -151,18 +151,18 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Orwell',
     description: 'Subminor third (7/6) generator. Seven generators = twelfth. Excellent 11-limit.' },
 
-  { name: 'Semaphore', mos: ['5L_4s', '5L_9s'], genRange: [933, 968.0],
+  { name: 'Semaphore', mos: ['5L_4s', '5L_9s'], genRange: [933, 960.0],
     commas: ['49/48'], commaNames: ['slendro diesis'],
     wikiUrl: 'https://en.xen.wiki/w/Semaphore_and_godzilla',
     description: 'Semi-fourth: two generators = 4/3. Equates 7/6 and 8/7.' },
 
   // === ARCHEOTONIC (6L 1s) ===
-  { name: 'Tetracot', mos: ['6L_1s', '7L_6s', '7L_13s'], genRange: [165.4, 180.0],
+  { name: 'Tetracot', mos: ['6L_1s', '7L_6s', '7L_13s'], genRange: [171.43, 180.0],
     commas: ['20000/19683'], commaNames: ['tetracot comma'],
     wikiUrl: 'https://en.xen.wiki/w/Tetracot_family',
     description: 'Four generators = 3/2. Generator is a sub-major second (~176¢). EDOs: 27, 34, 41.' },
 
-  { name: 'Didacus', mos: ['6L_1s', '7L_6s', '13L_7s'], genRange: [171.5, 200.0],
+  { name: 'Didacus', mos: ['6L_1s', '7L_6s', '13L_7s'], genRange: [180, 200.0],
     commas: ['3136/3125'], commaNames: ['hemimean comma'],
     wikiUrl: 'https://en.xen.wiki/w/Didacus',
     description: 'Tempers out 3136/3125. Generator is half a major third (half of 5/4).' },
@@ -193,10 +193,10 @@ const TEMPERAMENTS = [
     description: 'Generator is ~77.1¢. Fifteen generators = 3/2. Excellent 11-limit accuracy.' },
 
   // === TRIVIAL / SMALL ===
-  { name: 'Bug', mos: ['4L_1s', '4L_5s'], genRange: [240.0, 264.0],
-    commas: ['27/25'], commaNames: ['large limma'],
-    wikiUrl: 'https://en.xen.wiki/w/Bug_family',
-    description: 'Equates 10/9 and 6/5. Exotemperament.' },
+ // { name: 'Bug', mos: ['4L_1s', '4L_5s'], genRange: [240.0, 264.0],
+ //   commas: ['27/25'], commaNames: ['large limma'],
+ //   wikiUrl: 'https://en.xen.wiki/w/Bug_family',
+ //   description: 'Equates 10/9 and 6/5. Exotemperament.' },
 
   // === NON-OCTAVE PERIOD (disabled — octave-period mapping not yet reliable) ===
   { name: 'Pajara', mos: ['1L_9s', '10L_1s'], genRange: [105.0, 115.0], disabled: true,
@@ -240,7 +240,7 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Miracle',
     description: 'The secor (~116.7¢). Six secors = a fifth. Exceptional 11-limit efficiency.' },
 
-  { name: 'Negri', mos: ['1L_8s', '9L_1s', '9L_10s'], genRange: [111.0, 140.0],
+  { name: 'Negri', mos: ['1L_8s', '9L_1s', '9L_10s'], genRange: [120.0, 137.0],
     commas: ['16875/16384'], commaNames: ['negri comma'],
     wikiUrl: 'https://en.xen.wiki/w/Negri',
     description: 'Large semitone generator. Four generators = 4/3.' },
@@ -255,9 +255,9 @@ const TEMPERAMENTS = [
 const TEMP_COLORS = {
   'Meantone': '#50c878', 'Flattone': '#3da86a', 'Deeptone': '#2d8a55',
   'Pythagorean': '#ffd700', 'Superpyth': '#ff6347', 'Ultrapyth': '#ff8247',
-  'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84',
+  'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84', 'Casablanca': '#15968a',
   'Mohajira': '#dda0dd',
-  'Suhajira': '#e8b4e8', 'Dicot': '#c49bd4', 'Magic': '#ff69b4',
+  'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a',
   'Porcupine': '#7fff00', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
