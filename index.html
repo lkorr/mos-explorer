@@ -2020,7 +2020,7 @@ function getKeyMapping(key) {
 }
 
 
-function startNote(code, degreeInScale, noteOctave) {
+function startNote(code, degreeInScale, noteOctave, startAt) {
   if (!S.selected || S.generatorCents === null) return;
   const n = S.selected.size;
   const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
@@ -2035,11 +2035,12 @@ function startNote(code, degreeInScale, noteOctave) {
   osc.frequency.value = freq;
   osc.connect(gain);
   gain.connect(getMaster());
-  const now = actx.currentTime;
-  gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(0.15, now + SYNTH.attack);
-  gain.gain.linearRampToValueAtTime(0.15 * SYNTH.sustain, now + SYNTH.attack + SYNTH.decay);
-  osc.start();
+  const t = startAt || actx.currentTime;
+  const attack = Math.max(SYNTH.attack, 0.02);
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.15, t + attack);
+  gain.gain.linearRampToValueAtTime(0.15 * SYNTH.sustain, t + attack + SYNTH.decay);
+  osc.start(t);
   let glowId = null;
   if (degreeInScale < n) {
     glowId = noteGlowOn(degreeInScale, noteOctave);
@@ -2137,16 +2138,16 @@ function stopKeyNote(code) {
   if (!entry) return;
   const actx = getAudioCtx();
   const now = actx.currentTime;
-  const sustainGain = 0.15 * SYNTH.sustain;
+  const rel = Math.min(SYNTH.release, 2);
   const currentGain = entry.gain.gain.value;
-  const releaseFrom = Math.min(currentGain, Math.max(sustainGain, 0.001));
+  const releaseFrom = Math.max(currentGain, 0.001);
   entry.gain.gain.cancelScheduledValues(now);
   entry.gain.gain.setValueAtTime(releaseFrom, now);
-  entry.gain.gain.exponentialRampToValueAtTime(0.001, now + SYNTH.release);
-  entry.osc.stop(now + SYNTH.release);
+  entry.gain.gain.exponentialRampToValueAtTime(0.001, now + rel);
+  entry.osc.stop(now + rel + 0.05);
   entry.osc.onended = () => {
-    entry.gain.disconnect();
-    entry.osc.disconnect();
+    try { entry.gain.disconnect(); } catch {}
+    try { entry.osc.disconnect(); } catch {}
   };
   if (entry.degreeInScale !== undefined) {
     noteGlowOff(entry.degreeInScale, entry.glowId);
@@ -3071,14 +3072,32 @@ function getChords() {
   return _cachedChords;
 }
 
-let _chordMaxRoot = 1000;
+let _chordMaxRoot = 50;
 let _chordMaxRMS = 15;
 let _chordShowTetrads = false;
 
+let _chordFiltersBound = false;
+
+function ensureChordFilters(container) {
+  let filterEl = document.getElementById('chord-filter-bar');
+  if (filterEl) return;
+  let h = '<div id="chord-filter-bar">';
+  h += '<div class="sp-chords-title"><span id="chord-type-label">Triads</span> <span id="active-chord-label" style="color:#ff6;font-weight:400;font-size:10px"></span></div>';
+  h += '<div class="sp-chords-filter">';
+  h += `<label>Max</label><input type="range" id="chord-max-root" min="6" max="200" step="1" value="${_chordMaxRoot}"><span class="cf-val" id="chord-max-root-val">${_chordMaxRoot}</span>`;
+  h += `<label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" step="1" value="${_chordMaxRMS}"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span>`;
+  h += `<span class="cf-toggle${_chordShowTetrads ? ' active' : ''}" id="chord-show-tetrads">Tetrads</span>`;
+  h += '</div></div>';
+  h += '<div id="chord-table-body"></div>';
+  container.innerHTML = h;
+  _chordFiltersBound = false;
+}
+
 function renderChordsPanel() {
-  const triEl = document.getElementById('sp-chords-col');
+  const colEl = document.getElementById('sp-chords-col');
   if (!S.selected || S.generatorCents === null) {
-    triEl.innerHTML = '';
+    colEl.innerHTML = '';
+    _chordFiltersBound = false;
     return;
   }
   const now = performance.now();
@@ -3090,31 +3109,37 @@ function renderChordsPanel() {
   }
   clearTimeout(_chordTrailingTimer);
   _chordLastRenderTime = now;
+
+  ensureChordFilters(colEl);
+  const tableEl = document.getElementById('chord-table-body');
+  const typeLabel = document.getElementById('chord-type-label');
+
   const groups = getChords();
   const filtered = groups.filter(g => g.maxNum <= _chordMaxRoot && g.bestError <= _chordMaxRMS);
-
   const n = S.selected.size;
+  const targetType = _chordShowTetrads ? 4 : 3;
+  if (typeLabel) typeLabel.textContent = _chordShowTetrads ? 'Tetrads' : 'Triads';
+  const tetBtn = document.getElementById('chord-show-tetrads');
+  if (tetBtn) tetBtn.classList.toggle('active', _chordShowTetrads);
 
-  function buildChordMatrix(chordGroups, titleText, showFilters) {
-    let h = `<div class="sp-chords-title">${titleText} <span id="active-chord-label" style="color:#ff6;font-weight:400;font-size:10px"></span></div>`;
-    if (showFilters) {
-      h += '<div class="sp-chords-filter">';
-      h += `<label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" step="1" value="${_chordMaxRMS}"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span>`;
-      h += `<span class="cf-toggle${_chordShowTetrads ? ' active' : ''}" id="chord-show-tetrads">Tetrads</span>`;
-      h += '</div>';
-    }
-    if (!chordGroups.length) {
-      h += '<div style="color:#556;font-size:11px">None found</div>';
-      return h;
-    }
-    h += '<table class="chord-matrix"><thead><tr>';
+  const chordGroupsOut = [];
+  for (const g of filtered) {
+    const matching = g.invList.filter(inv => inv.type === targetType && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
+    if (!matching.length) continue;
+    chordGroupsOut.push({ canonical: g.canonical, bestError: g.bestError, invList: matching });
+    if (chordGroupsOut.length >= 60) break;
+  }
+
+  if (!chordGroupsOut.length) {
+    tableEl.innerHTML = '<div style="color:#556;font-size:11px">None found</div>';
+  } else {
+    let h = '<table class="chord-matrix"><thead><tr>';
     h += '<th class="cm-label"></th>';
     for (let d = 0; d < n; d++) h += `<th>${d}</th>`;
     h += '<th class="cm-err">¢</th>';
     h += '</tr></thead><tbody>';
-    for (const g of chordGroups) {
+    for (const g of chordGroupsOut) {
       const invs = g.invList;
-      // Default view shows only the first inversion (root position)
       const activeInv = invs[0];
       const rootSet = new Set(activeInv.roots.map(r => r.root));
       const rootDegMap = {};
@@ -3141,35 +3166,33 @@ function renderChordsPanel() {
       h += '</tr>';
     }
     h += '</tbody></table>';
-    return h;
+    tableEl.innerHTML = h;
   }
 
-  const targetType = _chordShowTetrads ? 4 : 3;
-  const targetLabel = _chordShowTetrads ? 'Tetrads' : 'Triads';
-  const chordGroupsOut = [];
-  for (const g of filtered) {
-    const matching = g.invList.filter(inv => inv.type === targetType && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
-    if (!matching.length) continue;
-    chordGroupsOut.push({ canonical: g.canonical, bestError: g.bestError, invList: matching });
-    if (chordGroupsOut.length >= 60) break;
+  if (!_chordFiltersBound) {
+    _chordFiltersBound = true;
+    _bindChordFilter();
   }
-  triEl.innerHTML = buildChordMatrix(chordGroupsOut, targetLabel, true);
-
-  _bindChordFilter();
   renderChordHighlights();
 }
 
 function _bindChordFilter() {
+  const maxSlider = document.getElementById('chord-max-root');
+  if (maxSlider) maxSlider.addEventListener('input', e => {
+    _chordMaxRoot = +e.target.value;
+    document.getElementById('chord-max-root-val').textContent = _chordMaxRoot;
+    _updateChordTable();
+  });
   const rmsSlider = document.getElementById('chord-max-rms');
   if (rmsSlider) rmsSlider.addEventListener('input', e => {
     _chordMaxRMS = +e.target.value;
     document.getElementById('chord-max-rms-val').textContent = _chordMaxRMS + '¢';
-    renderChordsPanel();
+    _updateChordTable();
   });
   const tetBtn = document.getElementById('chord-show-tetrads');
   if (tetBtn) tetBtn.addEventListener('click', () => {
     _chordShowTetrads = !_chordShowTetrads;
-    renderChordsPanel();
+    _updateChordTable();
   });
   // Click on root degree to play chord, or invert button to cycle inversion
   const col = document.getElementById('sp-chords-col');
@@ -3218,25 +3241,69 @@ function _bindChordFilter() {
     });
 }
 
+function _updateChordTable() {
+  const typeLabel = document.getElementById('chord-type-label');
+  const tetBtn = document.getElementById('chord-show-tetrads');
+  if (typeLabel) typeLabel.textContent = _chordShowTetrads ? 'Tetrads' : 'Triads';
+  if (tetBtn) tetBtn.classList.toggle('active', _chordShowTetrads);
+  // Force table rebuild by calling renderChordsPanel but filters already exist
+  _chordLastRenderTime = 0;
+  renderChordsPanel();
+}
+
 let _chordNoteCounter = 0;
+let _chordActiveCodes = [];
+
+const _killFadeMs = 0.02;
+
+function killChordNotes() {
+  const actx = SYNTH.ctx;
+  if (!actx) { _chordActiveCodes = []; return; }
+  const now = actx.currentTime;
+  for (const code of _chordActiveCodes) {
+    const entry = SYNTH._activeKeys[code];
+    if (!entry) continue;
+    try {
+      entry.gain.gain.cancelScheduledValues(now);
+      entry.gain.gain.setValueAtTime(entry.gain.gain.value, now);
+      entry.gain.gain.linearRampToValueAtTime(0, now + _killFadeMs);
+      entry.osc.stop(now + _killFadeMs + 0.01);
+    } catch {}
+    entry.osc.onended = () => {
+      try { entry.gain.disconnect(); } catch {}
+      try { entry.osc.disconnect(); } catch {}
+    };
+    if (entry.degreeInScale !== undefined) {
+      noteGlowOff(entry.degreeInScale, entry.glowId);
+    }
+    delete SYNTH._activeKeys[code];
+  }
+  _chordActiveCodes = [];
+}
+
 function playChordDegrees(degrees) {
   if (!S.selected || S.generatorCents === null) return;
+  killChordNotes();
   const n = S.selected.size;
   const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
   const rootDeg = ((degrees[0] % n) + n) % n;
   const rootCents = scale.pitches[rootDeg];
-  const holdMs = (SYNTH.attack + SYNTH.decay + 0.15) * 1000;
+  const actx = getAudioCtx();
+  const startAt = actx.currentTime + _killFadeMs + 0.005;
+  const attack = Math.max(SYNTH.attack, 0.02);
+  const holdMs = (attack + SYNTH.decay + 0.15) * 1000;
   const codes = [];
   for (const deg of degrees) {
     const degInScale = ((deg % n) + n) % n;
     let octaveExtra = 0;
     if (scale.pitches[degInScale] < rootCents) octaveExtra = 1;
     const code = `_chord_${_chordNoteCounter++}`;
-    startNote(code, degInScale, SYNTH.octaveShift + octaveExtra);
+    startNote(code, degInScale, SYNTH.octaveShift + octaveExtra, startAt);
     codes.push(code);
   }
+  _chordActiveCodes = codes;
   renderChordHighlights();
-  setTimeout(() => { for (const c of codes) stopKeyNote(c); }, holdMs);
+  setTimeout(() => { for (const c of codes) stopKeyNote(c); }, holdMs + (_killFadeMs * 1000));
 }
 
 function renderChordHighlights() {
@@ -3318,6 +3385,23 @@ function renderChordHighlights() {
     for (const el of dotEls) {
       const degs = el.dataset.degrees.split(',').map(Number);
       el.classList.toggle('active', matchedRoots.has(degs[0]));
+    }
+  }
+  // If no visible row matched, search all cached chords for a label
+  if (!activeLabel && _cachedChords.length) {
+    for (const g of _cachedChords) {
+      let found = false;
+      for (const inv of g.invList) {
+        for (const r of inv.roots) {
+          if (r.root === bassDegree && r.degrees.every(d => activeDegrees.includes(d))) {
+            activeLabel = inv.notation + ' (' + inv.rmsError.toFixed(1) + '¢)';
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+      if (found) break;
     }
   }
   if (label) label.textContent = activeLabel;
