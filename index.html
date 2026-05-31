@@ -186,9 +186,9 @@ canvas { display: block; width: 100%; height: 100%; }
   padding: 3px 6px;
   cursor: pointer;
 }
-#selected-panel .sp-playback .kbd-btn.kbd-2row-btn {
-  font-size: 8px;
-  padding: 2px 4px;
+#selected-panel .sp-playback .kbd-btn.kbd-mode-btn {
+  font-size: 9px;
+  padding: 2px 5px;
 }
 #selected-panel .sp-playback .kbd-btn:hover { background: #2a3a5a; }
 #selected-panel .sp-playback .kbd-btn.active {
@@ -1479,11 +1479,17 @@ function drawMOSCircle(ctx, W, H) {
 
   if (gen !== null) {
     const stepPat = computeStepPattern(gen, n, S.modeRotation);
+    const mosLabel = sel.key.replace('_', ' ');
+    ctx.font = '11px monospace';
+    ctx.textBaseline = 'middle';
+    const labelY = sliderY + sliderH + 24;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#e94560';
+    ctx.fillText(mosLabel, sliderX, labelY);
     if (stepPat) {
-      ctx.font = '11px monospace';
-      ctx.textAlign = 'center';
+      const mosW = ctx.measureText(mosLabel + '  ').width;
       ctx.fillStyle = '#aab';
-      ctx.fillText(stepPat, cx, sliderY + sliderH + 24);
+      ctx.fillText(stepPat, sliderX + mosW, labelY);
     }
   }
 
@@ -1646,11 +1652,13 @@ function drawMOSCircle(ctx, W, H) {
     const ox = cx + cos * outR;
     const oy = cy + sin * outR;
 
-    ctx.fillStyle = lerpColor(baseLabelColor, glowColor, glow);
-    ctx.font = '11px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(pitches[i].toFixed(0), ox, oy);
+    if (i > 0) {
+      ctx.fillStyle = lerpColor(baseLabelColor, glowColor, glow);
+      ctx.font = '11px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pitches[i].toFixed(0), ox, oy);
+    }
   }
 
   // Center info — temperament name only
@@ -1822,31 +1830,50 @@ function playCircleDot(dot) {
 }
 
 // Keyboard-to-scale mapping
-const KBD_ROWS = [
-  { keys: ['z','x','c','v','b','n','m',',','.','/'], octave: -1 },
-  { keys: ['a','s','d','f','g','h','j','k','l',';',"'"], octave: 0 },
-  { keys: ['q','w','e','r','t','y','u','i','o','p','[',']','\\'], octave: 1 },
-  { keys: ['1','2','3','4','5','6','7','8','9','0','-','='], octave: 2 },
-];
+// 1Row mode: each row = 1 octave below/above the home row
+// z=1oct below a, x=1oct below s, etc.
+const KBD_HOME =  ['a','s','d','f','g','h','j','k','l',';',"'"];
+const KBD_BOTTOM = ['z','x','c','v','b','n','m',',','.','/'];
+const KBD_UPPER =  ['q','w','e','r','t','y','u','i','o','p','[',']','\\'];
+const KBD_TOP =    ['1','2','3','4','5','6','7','8','9','0','-','='];
 
-const KBD_2ROW = [
-  ['z','x','c','v','b','n','m',',','.','/','a','s','d','f','g','h','j','k','l',';',"'"],
-  ['q','w','e','r','t','y','u','i','o','p','[',']','1','2','3','4','5','6','7','8','9','0','-','='],
+// Continuous mode: / is 1 step below A, . is 2 below, etc.
+// Then A ascends normally through home, upper, top rows
+const KBD_BELOW = ['/','.',',','m','n','b','v','c','x','z']; // index 0 = 1 below, index 9 = 10 below
+const KBD_ABOVE = [
+  'a','s','d','f','g','h','j','k','l',';',"'",
+  'q','w','e','r','t','y','u','i','o','p','[',']','\\',
+  '1','2','3','4','5','6','7','8','9','0','-','=',
 ];
 
 function getKeyMapping(key) {
   const k = key.toLowerCase();
-  if (SYNTH.kbd2Row) {
-    for (let r = 0; r < KBD_2ROW.length; r++) {
-      const idx = KBD_2ROW[r].indexOf(k);
-      if (idx !== -1) return { degree: idx, octave: r };
+  if (SYNTH.kbdContinuous) {
+    const aboveIdx = KBD_ABOVE.indexOf(k);
+    if (aboveIdx !== -1) {
+      return { degree: aboveIdx, octave: 0 };
+    }
+    const belowIdx = KBD_BELOW.indexOf(k);
+    if (belowIdx !== -1) {
+      // / = 1 below, . = 2 below, etc. → offset = -(belowIdx+1)
+      const offset = -(belowIdx + 1);
+      if (!S.selected) return { degree: 0, octave: -1 };
+      const n = S.selected.size;
+      const octave = Math.floor(offset / n);
+      const degreeInOctave = ((offset % n) + n) % n;
+      return { degree: degreeInOctave, octave: octave };
     }
     return null;
   }
-  for (const row of KBD_ROWS) {
-    const idx = row.keys.indexOf(k);
-    if (idx !== -1) return { degree: idx, octave: row.octave };
-  }
+  // 1Row mode
+  let idx = KBD_HOME.indexOf(k);
+  if (idx !== -1) return { degree: idx, octave: 0 };
+  idx = KBD_BOTTOM.indexOf(k);
+  if (idx !== -1) return { degree: idx, octave: -1 };
+  idx = KBD_UPPER.indexOf(k);
+  if (idx !== -1) return { degree: idx, octave: 1 };
+  idx = KBD_TOP.indexOf(k);
+  if (idx !== -1) return { degree: idx, octave: 2 };
   return null;
 }
 
@@ -1857,9 +1884,8 @@ function playKeyNote(key) {
   const n = S.selected.size;
   const gen = S.generatorCents;
   const scale = rotateMOSScale(buildMOSScale(gen, n, 1200), S.modeRotation, 1200);
-  const degree = mapping.degree;
-  const octaveWrap = Math.floor(degree / n);
-  const degreeInScale = degree % n;
+  const octaveWrap = Math.floor(mapping.degree / n);
+  const degreeInScale = ((mapping.degree % n) + n) % n;
   const cents = scale.pitches[degreeInScale];
   const totalCents = cents + (mapping.octave + octaveWrap + SYNTH.octaveShift) * 1200;
   const freq = SYNTH.baseFreq * Math.pow(2, totalCents / 1200);
@@ -2317,7 +2343,7 @@ function updateInfo() {
 const SYNTH_DEFAULTS = {
   waveform: 'triangle', octaveShift: 0,
   attack: 0.015, decay: 0.1, sustain: 1.0, release: 4,
-  keyboardMode: true, kbd2Row: false,
+  keyboardMode: true, kbdContinuous: false,
 };
 const SYNTH_KEYS = Object.keys(SYNTH_DEFAULTS);
 
@@ -2341,7 +2367,7 @@ const SYNTH = {
   waveform: 'triangle',
   baseFreq: 261.63, // C4
   keyboardMode: true,
-  kbd2Row: false,
+  kbdContinuous: false,
   octaveShift: 0,
   attack: 0.015,
   decay: 0.1,
@@ -2604,9 +2630,13 @@ function renderPlaybackControls() {
   h += '</div>';
   h += '<button class="stop-btn">■ Stop</button>';
   h += `<button class="kbd-btn${SYNTH.keyboardMode ? ' active' : ''}" title="Map keyboard to scale degrees">⌨ Keyboard</button>`;
-  h += `<button class="kbd-btn kbd-2row-btn${SYNTH.kbd2Row ? ' active' : ''}" title="2 rows per octave — continuous scale across bottom two rows, then top two rows">2Row</button>`;
+  const modeLabel = SYNTH.kbdContinuous ? 'Cont' : '1Row';
+  h += `<button class="kbd-btn kbd-mode-btn${SYNTH.kbdContinuous ? ' active' : ''}" title="Toggle continuous vs 1-row-per-octave">${modeLabel}</button>`;
   if (SYNTH.keyboardMode) {
-    h += `<div style="font-size:9px;color:#667;line-height:1.3;margin-top:2px">Each row = octave shift<br>Space = brighter mode<br>Shift+Space = darker</div>`;
+    const kbdHelp = SYNTH.kbdContinuous
+      ? 'A=root, continuous up/down'
+      : 'Each row = 1 octave, A=root';
+    h += `<div style="font-size:9px;color:#667;line-height:1.3;margin-top:2px">${kbdHelp}<br>Space/Alt = rotate mode</div>`;
   }
   h += `<div class="octave-row"><label>Oct</label><input type="range" class="octave-slider" min="-2" max="2" step="1" value="${SYNTH.octaveShift || 0}"><span class="octave-val">${SYNTH.octaveShift > 0 ? '+' : ''}${SYNTH.octaveShift || 0}</span></div>`;
   h += '<div class="adsr-group">';
@@ -2624,7 +2654,7 @@ function renderPlaybackControls() {
     saveSynthSettings();
   });
   el.querySelector('.stop-btn').addEventListener('click', stopPlayback);
-  el.querySelector('.kbd-btn:not(.kbd-2row-btn)').addEventListener('click', () => {
+  el.querySelector('.kbd-btn:not(.kbd-mode-btn)').addEventListener('click', () => {
     SYNTH.keyboardMode = !SYNTH.keyboardMode;
     saveSynthSettings();
     if (!SYNTH.keyboardMode) {
@@ -2632,8 +2662,8 @@ function renderPlaybackControls() {
     }
     renderPlaybackControls();
   });
-  el.querySelector('.kbd-2row-btn').addEventListener('click', () => {
-    SYNTH.kbd2Row = !SYNTH.kbd2Row;
+  el.querySelector('.kbd-mode-btn').addEventListener('click', () => {
+    SYNTH.kbdContinuous = !SYNTH.kbdContinuous;
     saveSynthSettings();
     Object.keys(SYNTH._activeKeys).forEach(k => stopKeyNote(k));
     renderPlaybackControls();
@@ -3475,9 +3505,9 @@ function setup() {
   window.addEventListener('keydown', e => {
     if (!SYNTH.keyboardMode || e.repeat) return;
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
-    if (e.key === ' ' && S.selected && S.generatorCents !== null) {
+    if ((e.key === ' ' || e.key === 'Alt') && S.selected && S.generatorCents !== null) {
       e.preventDefault();
-      const dir = e.shiftKey ? -1 : 1;
+      const dir = e.key === 'Alt' ? -1 : 1;
       handleModeButton(dir === 1 ? 'gen-up' : 'gen-down');
       return;
     }

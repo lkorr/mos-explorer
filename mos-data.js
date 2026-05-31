@@ -15,15 +15,15 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Deeptone',
     description: 'Very flat meantone. Near 1/2-comma meantone, between flattone and 7edo. 11 fifths ~= 5/4, so the optimal generator is around 689.7c.' },
 
-  { name: 'Pythagorean', mos: ['5L_2s'], genRange: [701.5, 702.4],
+  { name: 'Pythagorean', mos: ['5L_2s'], genRange: [701.5, 702.44],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Pythagorean_tuning',
     description: 'Pure 3/2 at 701.955¢. Near-just intonation of 3-limit. 53edo is especially unique in that it almost perfectly captures the 3-limit.' },
 
-  { name: 'Parapyth', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [702.4, 705.88],
+  { name: 'Parapyth', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [702.44, 705.88],
     commas: ['352/351', '364/363'], commaNames: ['minthma', 'gentle comma'],
     wikiUrl: 'https://en.xen.wiki/w/Parapyth',
-    description: 'Rank-3 (2.3.7.11.13). Near-pure, slightly sharp fifths with 7/11/13 mapping. Tempers out minthma and gentle comma. Technically parapyth is a rank-4 temperament, but the only alternative was to call this range "pepperoni" which I simply refuse to do.' },
+    description: 'Rank-3 (2.3.7.11.13). Near-pure, slightly sharp fifths with 7/11/13 mapping. Tempers out minthma and gentle comma. <br> <br> Technically parapyth is a rank-4 temperament, but the only alternative was to call this range "pepperoni" which I simply refuse to do.' },
 
   { name: 'Superpyth', mos: ['5L_2s', '5L_7s'], genRange: [705.88, 713.08],
     commas: ['64/63', '245/243'], commaNames: ['Archytas comma', 'sensamagic comma'],
@@ -131,7 +131,7 @@ const TEMPERAMENTS = [
   { name: 'Buzzard', mos: ['3L_2s', '5L_3s', '5L_8s'], genRange: [471.4, 480.0],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Buzzard',
-    description: 'Alpha tetracot (splits 3/1 into 4 steps). Given 3/1 is split into 4 steps, you probably want more than 4 steps in your scale! <br> <br> Generator ~471.4–480¢. Prototypical soft oneirotonic(5L 3s) tuning. Works well for gamelan scales.' },
+    description: 'Alpha tetracot (splits 3/1 into 4 steps). Given 3/1 is split into 4 steps, you probably want more than 4 steps in your scale! <br> <br> Generator ~471.4–480¢. Prototypical hard oneirotonic(5L 3s) tuning. Works well for gamelan scales.' },
 
 
   { name: 'Kleismic', mos: ['4L_3s', '4L_7s', '4L_11s'], genRange: [313.0, 320.0],
