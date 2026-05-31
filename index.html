@@ -1739,6 +1739,20 @@ function playKeyNote(key) {
   SYNTH._activeKeys[key.toLowerCase()] = { osc, gain, degreeInScale, glowId, noteOctave, currentCents: totalCents };
 }
 
+function findNearestDegrees(targetCents, scale, n) {
+  const candidates = [];
+  for (let d = 0; d < n; d++) {
+    const baseCents = scale.pitches[d];
+    const octEst = Math.round((targetCents - baseCents) / 1200);
+    for (let o = octEst - 1; o <= octEst + 1; o++) {
+      const c = baseCents + o * 1200;
+      candidates.push({ deg: d, oct: o, cents: c, dist: Math.abs(c - targetCents) });
+    }
+  }
+  candidates.sort((a, b) => a.dist - b.dist);
+  return candidates;
+}
+
 function updateHeldNotes() {
   if (!S.selected || S.generatorCents === null) return;
   const n = S.selected.size;
@@ -1746,27 +1760,37 @@ function updateHeldNotes() {
   const actx = SYNTH.ctx;
   if (!actx) return;
   const now = actx.currentTime;
-  for (const k in SYNTH._activeKeys) {
+  const keys = Object.keys(SYNTH._activeKeys);
+  if (!keys.length) return;
+
+  const entries = keys.map(k => {
     const entry = SYNTH._activeKeys[k];
-    const targetCents = entry.currentCents;
-    if (targetCents === undefined) {
-      const cents = scale.pitches[entry.degreeInScale % n] + entry.noteOctave * 1200;
-      entry.currentCents = cents;
-      const freq = SYNTH.baseFreq * Math.pow(2, cents / 1200);
-      entry.osc.frequency.setValueAtTime(freq, now);
-      continue;
+    if (entry.currentCents === undefined) {
+      entry.currentCents = scale.pitches[entry.degreeInScale % n] + entry.noteOctave * 1200;
     }
-    const oldDeg = entry.degreeInScale;
-    let bestDeg = 0, bestOct = 0, bestDist = Infinity;
-    for (let d = 0; d < n; d++) {
-      const baseCents = scale.pitches[d];
-      const octEst = Math.round((targetCents - baseCents) / 1200);
-      for (let o = octEst - 1; o <= octEst + 1; o++) {
-        const c = baseCents + o * 1200;
-        const dist = Math.abs(c - targetCents);
-        if (dist < bestDist) { bestDist = dist; bestDeg = d; bestOct = o; }
+    return { key: k, entry, candidates: findNearestDegrees(entry.currentCents, scale, n) };
+  });
+  entries.sort((a, b) => a.candidates[0].dist - b.candidates[0].dist);
+
+  const taken = new Set();
+  for (const e of entries) {
+    for (const c of e.candidates) {
+      const slot = c.deg + '|' + c.oct;
+      if (!taken.has(slot)) {
+        taken.add(slot);
+        e.chosen = c;
+        break;
       }
     }
+    if (!e.chosen) e.chosen = e.candidates[0];
+  }
+
+  for (const e of entries) {
+    const entry = e.entry;
+    const oldDeg = entry.degreeInScale;
+    const bestDeg = e.chosen.deg;
+    const bestOct = e.chosen.oct;
+
     if (bestDeg !== oldDeg && entry.glowId != null) {
       const oldArr = SYNTH._glows[oldDeg];
       if (oldArr) {
