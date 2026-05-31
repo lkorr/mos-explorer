@@ -1175,11 +1175,13 @@ function drawEDOs(ctx, W, H, vr) {
   const minPx = 48;
   const slots = [];
   const selSize = sel.size;
+  S._edoMarkers = [];
 
   for (const g of vis) {
     const x = c2x(g.cents);
     if (slots.some(s => Math.abs(x - s) < minPx * 0.65)) continue;
     slots.push(x);
+    S._edoMarkers.push({ x, cents: g.cents, y: baseY + 22, h: 40 });
 
     ctx.strokeStyle = '#6eb5ff44';
     ctx.lineWidth = 1;
@@ -1616,6 +1618,14 @@ function hitCircleArrow(mx, my) {
   return null;
 }
 
+function hitEDOMarker(mx, my) {
+  if (!S._edoMarkers) return null;
+  for (const m of S._edoMarkers) {
+    if (Math.abs(mx - m.x) < 24 && my >= m.y && my <= m.y + m.h) return m;
+  }
+  return null;
+}
+
 function hitCircleDot(mx, my) {
   if (!S._circleDots) return null;
   const hitR = 12;
@@ -1820,6 +1830,14 @@ function handleClick() {
   const tempBar = hitTempBar(mx, my);
   if (tempBar) {
     window.open(tempBar.url, '_blank');
+    return;
+  }
+
+  const edoMarker = hitEDOMarker(mx, my);
+  if (edoMarker && S.selected) {
+    S.generatorCents = edoMarker.cents;
+    updatePanel();
+    render();
     return;
   }
 
@@ -2365,6 +2383,10 @@ function updatePanel() {
   h += '</div>';
 
   if (gen !== null) {
+    const swUrl = buildScaleWorkshopURL();
+    if (swUrl) {
+      h += `<div style="margin-top:4px;margin-bottom:4px"><a href="${swUrl}" target="_blank" style="color:#4cc9f0;text-decoration:none;font-size:11px">&#x266B; Open in Scale Workshop</a></div>`;
+    }
     const activeTemps = getTemperamentsAtCursor(key, gen, sel.lowCents, sel.highCents);
     if (activeTemps.length) {
       h += '<div class="temp-info">';
@@ -2664,6 +2686,45 @@ function renderEDOGrid() {
   }
 }
 
+function findMatchingEDO(genCents, mosSize) {
+  for (const g of S.edos) {
+    if (Math.abs(g.cents - genCents) < 0.001) return g;
+  }
+  return null;
+}
+
+function buildScaleWorkshopURL() {
+  if (!S.selected || S.generatorCents === null) return null;
+  const gen = S.generatorCents;
+  const n = S.selected.size;
+  const baseScale = buildMOSScale(gen, n, 1200);
+  const scale = rotateMOSScale(baseScale, S.modeRotation || 0, 1200);
+  const pitches = scale.pitches.slice(1);
+
+  const edoMatch = findMatchingEDO(gen, n);
+
+  let lines;
+  let scaleName;
+  if (edoMatch) {
+    const edo = edoMatch.edo;
+    const edoPitches = pitches.map(c => Math.round(c / (1200 / edo)));
+    edoPitches.push(edo);
+    lines = edoPitches.map(s => s + '\\' + edo);
+    const mosLabel = S.selected.key.replace('_', ' ');
+    scaleName = `${edo}edo ${mosLabel} (${edoMatch.step}\\${edo} gen)`;
+  } else {
+    const centsLines = pitches.map(c => c.toFixed(3));
+    centsLines.push('1200.000');
+    lines = centsLines;
+    const mosLabel = S.selected.key.replace('_', ' ');
+    scaleName = `${mosLabel} (${gen.toFixed(2)}¢ gen)`;
+  }
+
+  const data = encodeURIComponent(lines.join('\n'));
+  const name = encodeURIComponent(scaleName);
+  return `https://scaleworkshop.plainsound.org/?name=${name}&data=${data}`;
+}
+
 function toggleRulerSort() {
   S.rulerSort = S.rulerSort === 'degree' ? 'generator' : 'degree';
   renderEDOGrid();
@@ -2867,6 +2928,8 @@ function setup() {
       } else if (hitCircleDot(mx, my)) {
         cvs.style.cursor = 'pointer';
       } else if (hitTempBar(mx, my)) {
+        cvs.style.cursor = 'pointer';
+      } else if (hitEDOMarker(mx, my)) {
         cvs.style.cursor = 'pointer';
       } else if (S.selected && hitSlider(mx, my)) {
         cvs.style.cursor = 'ew-resize';

@@ -60,12 +60,12 @@ const TEMPERAMENTS = [
   { name: 'Mohajira', mos: ['3L_4s', '7L_3s'], genRange: [342.0, 353.0],
     commas: ['81/80', '121/120', '243/242'], commaNames: ['syntonic comma', 'biyatisma', 'rastma'],
     wikiUrl: 'https://en.xen.wiki/w/Mohajira',
-    description: 'Neutral thirds temperament. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> family. Generator splits the fifth into two equal ~350¢ thirds.' },
+    description: 'Neutral thirds temperament. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. Generator splits the fifth into two equal ~350¢ thirds.' },
 
   { name: 'Suhajira', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [353.0, 365.0],
     commas: ['243/242', '2401/2400'], commaNames: ['rastma', 'breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Rastmic_clan#Suhajira',
-    description: 'Rastmic clan. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> family. Sharp neutral third generator. Two generators = 3/2.' },
+    description: 'Rastmic clan. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. Sharp neutral third generator. Two generators = 3/2.' },
 
   { name: 'Magic', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [377.0, 385.0],
     commas: ['3125/3072'], commaNames: ['magic comma'],
