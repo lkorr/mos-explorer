@@ -13,27 +13,27 @@ const TEMPERAMENTS = [
   { name: 'Deeptone', mos: ['5L_2s', '7L_5s'], genRange: [685.7, 690.9],
     commas: ['81/80'], commaNames: ['syntonic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Deeptone',
-    description: 'Very flat meantone. Near 1/2-comma meantone, between flattone and 7edo.' },
+    description: 'Very flat meantone. Near 1/2-comma meantone, between flattone and 7edo. 11 fifths ~= 5/4, so the optimal generator is around 689.7c.' },
 
   { name: 'Pythagorean', mos: ['5L_2s'], genRange: [701.5, 702.4],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Pythagorean_tuning',
-    description: 'Pure 3/2 at 701.955¢. No commas tempered — just intonation of 3-limit.' },
+    description: 'Pure 3/2 at 701.955¢. Near-just intonation of 3-limit. 53edo is especially unique in that it almost perfectly captures the 3-limit.' },
 
   { name: 'Parapyth', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [702.4, 705.88],
     commas: ['352/351', '364/363'], commaNames: ['minthma', 'gentle comma'],
     wikiUrl: 'https://en.xen.wiki/w/Parapyth',
-    description: 'Rank-3 (2.3.7.11.13). Near-pure fifths with 7/11/13 mapping. Tempers out minthma and gentle comma.' },
+    description: 'Rank-3 (2.3.7.11.13). Near-pure, slightly sharp fifths with 7/11/13 mapping. Tempers out minthma and gentle comma. Technically parapyth is a rank-4 temperament, but the only alternative was to call this range "pepperoni" which I simply refuse to do.' },
 
   { name: 'Superpyth', mos: ['5L_2s', '5L_7s'], genRange: [705.88, 713.08],
     commas: ['64/63', '245/243'], commaNames: ['Archytas comma', 'sensamagic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Superpyth',
-    description: 'Sharp fifths. Two fifths = 8/7. Opposite of meantone.' },
+    description: 'Sharp fifths. Two fifths = 8/7. Opposite of meantone. 22 and 27edo are quintissential superpyth tunings.' },
 
   { name: 'Ultrapyth', mos: ['5L_2s', '5L_7s'], genRange: [713.08, 720.0],
     commas: ['64/63'], commaNames: ['Archytas comma'],
     wikiUrl: 'https://en.xen.wiki/w/Archytas_clan#Ultrapyth',
-    description: 'Very sharp fifths near 5edo. Extends oceanfront (2.3.7.13/5). 5/4 mapped to +14 fifths.' },
+    description: 'Very sharp fifths near 5edo. Extends oceanfront (2.3.7.13/5). 5/4 mapped to +14 fifths. Melodically starts to collapse here; composition may be tricky.' },
 
   { name: 'Schismatic', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [700.0, 701.5],
     commas: ['32805/32768'], commaNames: ['schisma'],
@@ -44,7 +44,7 @@ const TEMPERAMENTS = [
   { name: 'Mavila', mos: ['2L_5s', '7L_2s', '7L_9s'], genRange: [670.0, 685.7],
     commas: ['135/128'], commaNames: ['major chroma'],
     wikiUrl: 'https://en.xen.wiki/w/Mavila',
-    description: 'Anti-diatonic. Very flat fifths, four fifths = 6/5 instead of 5/4.' },
+    description: 'Anti-diatonic. The bees knees. Very flat fifths, four fifths = 6/5 instead of 5/4. <br> <br> In this range, major chords invert into minor chords and vice versa. Diminished chords become augmented chords. Timbre matters a lot here to compensate and navigate around the fact that your 3/2 is so flat. <br> Approximates some Gamelan tunings as well.' },
 
   { name: 'Mabila', mos: ['2L_5s', '2L_7s', '9L_7s'], genRange: [666.0, 670.0],
     commas: ['268435456/263671875'], commaNames: ['mabila comma'],
@@ -87,7 +87,7 @@ const TEMPERAMENTS = [
   // === PENTATONIC (2L 3s) ===
 
   // === ANTI-PENTATONIC (3L 2s) ===
-  { name: 'Father', mos: ['3L_2s', '5L_3s'], genRange: [454.0, 471.4],
+  { name: 'Father', mos: ['3L_2s', '5L_3s'], genRange: [454.0, 461.5],
     commas: ['16/15'], commaNames: ['diatonic semitone'],
     wikiUrl: 'https://en.xen.wiki/w/Father_family',
     description: 'Tempers out 16/15, equating 5/4 with 4/3. Exotemperament.' },
@@ -123,10 +123,15 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Alphatricot_family#Alphatricot',
     description: 'Alpha ploidacot family. Generator ~628.5–640¢.' },
 
+  { name: 'A-team', mos: ['3L_2s', '5L_3s'], genRange: [461.5, 471.4],
+    commas: ['225/224', '875/864'], commaNames: ['marvel comma', 'keema'],
+    wikiUrl: 'https://en.xen.wiki/w/Subgroup_temperaments#A-team',
+    description: '2.3.5.7 subgroup. Generator between 5\\13 and 11\\28. Tempers out 225/224 and 875/864. Prototypical oneirotonic (5L 3s) temperament. Works well for gamelan scales.' },
+
   { name: 'Buzzard', mos: ['3L_2s', '5L_3s', '5L_8s'], genRange: [471.4, 480.0],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Buzzard',
-    description: 'Alpha tetracot (splits 3/1 into 4 steps). Generator ~471.4–480¢.' },
+    description: 'Alpha tetracot (splits 3/1 into 4 steps). Given 3/1 is split into 4 steps, you probably want more than 4 steps in your scale! <br> <br> Generator ~471.4–480¢. Prototypical soft oneirotonic(5L 3s) tuning. Works well for gamelan scales.' },
 
 
   { name: 'Kleismic', mos: ['4L_3s', '4L_7s', '4L_11s'], genRange: [313.0, 320.0],
@@ -274,7 +279,7 @@ const TEMP_COLORS = {
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
   'Machine': '#e8c89e', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
-  'Father': '#f0e68c', 'Squares': '#e0825a', 'Bug': '#cd853f',
+  'Father': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
   'Blackwood': '#ba55d3', 'Lemba': '#d2691e', 'Hedgehog': '#8fbc8f',

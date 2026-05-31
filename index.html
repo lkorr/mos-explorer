@@ -186,6 +186,10 @@ canvas { display: block; width: 100%; height: 100%; }
   padding: 3px 6px;
   cursor: pointer;
 }
+#selected-panel .sp-playback .kbd-btn.kbd-2row-btn {
+  font-size: 8px;
+  padding: 2px 4px;
+}
 #selected-panel .sp-playback .kbd-btn:hover { background: #2a3a5a; }
 #selected-panel .sp-playback .kbd-btn.active {
   background: #1a3a2a;
@@ -203,12 +207,48 @@ canvas { display: block; width: 100%; height: 100%; }
 #selected-panel .sp-playback .octave-row input { flex: 1; accent-color: #e94560; }
 #selected-panel .sp-playback .octave-val { color: #e94560; min-width: 18px; }
 
-#selected-panel .sp-playback .adsr-group { display: flex; flex-direction: column; gap: 1px; }
+#selected-panel .sp-playback .adsr-group { display: flex; flex-direction: column; gap: 2px; }
 #selected-panel .sp-playback .adsr-row {
   display: flex; align-items: center; gap: 4px; font-size: 10px; color: #8899bb;
 }
-#selected-panel .sp-playback .adsr-row label { min-width: 10px; font-weight: 700; }
-#selected-panel .sp-playback .adsr-row input { flex: 1; accent-color: #e94560; }
+#selected-panel .sp-playback .adsr-row label { min-width: 10px; font-weight: 700; color: #6eb5ff; }
+#selected-panel .sp-playback .adsr-row input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: linear-gradient(90deg, #0f3460, #2a3a5a);
+  border-radius: 2px;
+  outline: none;
+}
+#selected-panel .sp-playback .adsr-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e94560;
+  border: 1.5px solid #ff6b81;
+  cursor: pointer;
+  box-shadow: 0 0 4px #e9456066;
+}
+#selected-panel .sp-playback .adsr-row input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e94560;
+  border: 1.5px solid #ff6b81;
+  cursor: pointer;
+  box-shadow: 0 0 4px #e9456066;
+}
+#selected-panel .sp-playback .adsr-row input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+}
+#selected-panel .sp-playback .adsr-row input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #0f3460, #2a3a5a);
+}
 #selected-panel .sp-playback .adsr-val { color: #e94560; min-width: 30px; font-size: 9px; }
 
 #selected-panel .sp-playback .mode-section {
@@ -318,7 +358,7 @@ canvas { display: block; width: 100%; height: 100%; }
 
 #selected-panel .sp-info {
   flex-shrink: 0;
-  width: 200px;
+  width: 240px;
   align-self: stretch;
   overflow-y: auto;
   overflow-x: hidden;
@@ -411,6 +451,10 @@ canvas { display: block; width: 100%; height: 100%; }
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: #2a3a5a transparent;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 6px;
+  align-content: start;
 }
 .edo-rulers-scroll::-webkit-scrollbar { width: 4px; }
 .edo-rulers-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -514,16 +558,16 @@ canvas { display: block; width: 100%; height: 100%; }
 <div id="controls">
   <div class="ctrl-group">
     <label>Size N:</label>
-    <input type="range" id="min-size" min="2" max="30" value="2">
+    <input type="range" id="min-size" min="2" max="100" value="2">
     <span class="value-display" id="min-size-val">2</span>
     <span style="color:#556;font-size:11px">—</span>
-    <input type="range" id="max-mos-size" min="2" max="30" value="30">
+    <input type="range" id="max-mos-size" min="2" max="100" value="30">
     <span class="value-display" id="max-mos-val">30</span>
   </div>
   <div class="ctrl-group">
     <label>Max EDO:</label>
-    <input type="range" id="max-edo" min="5" max="350" value="60" style="width:600px">
-    <span class="value-display" id="max-edo-val">60</span>
+    <input type="range" id="max-edo" min="0" max="1000" value="500" style="width:150px">
+    <span class="value-display" id="max-edo-val">53</span>
   </div>
   <div class="ctrl-group">
     <label style="color:#e94560;cursor:pointer;" id="reset-zoom">[ Reset Zoom ]</label>
@@ -843,7 +887,7 @@ function getEqualizedEnd(region) {
 
 const S = {
   viewMin: 0, viewMax: 1200,
-  maxSize: 30, maxEDO: 60, minSize: 2,
+  maxSize: 30, maxEDO: 53, minSize: 2,
   regions: [], colorMap: {}, edos: [],
   hovered: null, selected: null,
   generatorCents: null,
@@ -856,6 +900,8 @@ const S = {
   _parentArrow: null, _childArrow: null, _lastClickX: undefined, _lastClickY: undefined,
   _tempBars: [],
   rulerSort: 'degree',
+  _circleRadius: null,
+  circleResizing: false, circleResizeStartX: 0, circleResizeStartY: 0, circleResizeStartR: 0,
 };
 
 function recalc() {
@@ -1325,13 +1371,14 @@ function drawGeneratorMarker(ctx, W, H) {
 // ================================================================
 
 function getMOSCircleLayout(W, H) {
-  const radius = Math.min(170, Math.min(W, H) * 0.22);
+  const defaultR = Math.min(170, Math.min(W, H) * 0.22);
+  const radius = S._circleRadius ? Math.max(60, Math.min(S._circleRadius, Math.min(W, H) * 0.45)) : defaultR;
   const cx = 20 + radius + 10;
   const cy = H - 20 - radius - 10;
   const sliderW = radius * 2 + 16;
   const sliderH = 14;
   const sliderX = cx - sliderW / 2;
-  const sliderY = cy - radius - 40;
+  const sliderY = cy - radius - 56;
   return { radius, cx, cy, sliderW, sliderH, sliderX, sliderY };
 }
 
@@ -1345,7 +1392,7 @@ function drawMOSCircle(ctx, W, H) {
 
   // Background panel
   const panelPad = 28;
-  const panelTop = sliderY - 22;
+  const panelTop = sliderY - 38;
   const panelBot = cy + radius + 36;
   const panelLeft = cx - radius - panelPad;
   const panelRight = cx + radius + panelPad;
@@ -1357,31 +1404,89 @@ function drawMOSCircle(ctx, W, H) {
   ctx.fill();
   ctx.stroke();
 
-  // Title
-  const titleY = sliderY - 8;
+  // Title line 1: 5L 2s  ratio  UDP  ModeName
+  const titleY1 = sliderY - 22;
   const titleText = sel.key.replace('_', ' ');
-  ctx.font = 'bold 13px monospace';
   ctx.textBaseline = 'middle';
   if (gen !== null) {
     const hr = computeHardness(gen, n);
     const hardStr = hr.ratio === Infinity ? '∞' : hr.ratio.toFixed(2);
-    const fullText = titleText + '  ' + hardStr;
-    const titleW = ctx.measureText(titleText + '  ').width;
-    const fullW = ctx.measureText(fullText).width;
-    const startX = cx - fullW / 2;
+    const udp = computeUDP(gen, n, S.modeRotation);
+    const modeName = getModeName(sel.key, gen, S.modeRotation);
+
+    ctx.font = 'bold 13px monospace';
+    const parts = [
+      { text: titleText + '  ', color: '#e94560' },
+      { text: hardStr + '  ', color: '#f5a623' },
+      { text: udp, color: '#f5a623' },
+    ];
+    if (modeName) parts.push({ text: '  ' + modeName, color: '#6eb5ff' });
+
+    let totalW = 0;
+    for (const p of parts) totalW += ctx.measureText(p.text).width;
+    let drawX = cx - totalW / 2;
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#e94560';
-    ctx.fillText(titleText, startX, titleY);
-    ctx.fillStyle = '#f5a623';
-    ctx.fillText(hardStr, startX + titleW, titleY);
+    for (const p of parts) {
+      ctx.fillStyle = p.color;
+      ctx.fillText(p.text, drawX, titleY1);
+      drawX += ctx.measureText(p.text).width;
+    }
   } else {
+    ctx.font = 'bold 13px monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e94560';
-    ctx.fillText(titleText, cx, titleY);
+    ctx.fillText(titleText, cx, titleY1);
   }
 
   S._parentArrow = null;
   S._childArrow = null;
+
+  // Parent/child navigation arrows below slider
+  const parentKey = findParentMOS(sel.nL, sel.nS);
+  const childKeys = getChildMOSes(sel.key);
+  const arrowY = sliderY + sliderH + 38;
+  const arrowR = 11;
+
+  if (parentKey) {
+    const ax = sliderX + arrowR;
+    ctx.fillStyle = '#f5a623';
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(ax, arrowY - arrowR);
+    ctx.lineTo(ax - arrowR, arrowY + arrowR * 0.4);
+    ctx.lineTo(ax + arrowR, arrowY + arrowR * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#f5a623';
+    ctx.fillText(parentKey.replace('_', ' '), ax + arrowR + 5, arrowY + 5);
+    S._parentArrow = { x: ax, y: arrowY, r: arrowR };
+  }
+
+  if (childKeys.length > 0) {
+    const ax = sliderX + sliderW - arrowR;
+    ctx.fillStyle = '#6eb5ff';
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(ax, arrowY + arrowR);
+    ctx.lineTo(ax - arrowR, arrowY - arrowR * 0.4);
+    ctx.lineTo(ax + arrowR, arrowY - arrowR * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    const childKey = gen !== null
+      ? childKeys.find(ck => { const m = ck.match(/(\d+)L_(\d+)s/); if (!m) return false; const sz = +m[1]+ +m[2]; return S.regions.some(r => r.key === ck && r.size === sz && gen >= r.lowCents && gen <= r.highCents); }) || childKeys[0]
+      : childKeys[0];
+    if (childKey) {
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#6eb5ff';
+      ctx.fillText(childKey.replace('_', ' '), ax - arrowR - 5, arrowY + 5);
+    }
+    S._childArrow = { x: ax, y: arrowY, r: arrowR };
+  }
 
   // Hardness slider track
   ctx.fillStyle = '#2a2a4a';
@@ -1397,6 +1502,16 @@ function drawMOSCircle(ctx, W, H) {
   ctx.textAlign = 'center';
   ctx.fillText('equalized', sliderX + sliderW * eqLabel, sliderY + sliderH + 12);
   ctx.fillText('collapsed', sliderX + sliderW * colLabel, sliderY + sliderH + 12);
+
+  if (gen !== null) {
+    const stepPat = computeStepPattern(gen, n, S.modeRotation);
+    if (stepPat) {
+      ctx.font = '11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#aab';
+      ctx.fillText(stepPat, cx, sliderY + sliderH + 24);
+    }
+  }
 
   if (gen !== null) {
     const t = (gen - sel.lowCents) / (sel.highCents - sel.lowCents);
@@ -1617,17 +1732,41 @@ function drawMOSCircle(ctx, W, H) {
     ctx.fillText(ji.ratio, cx + cos * lr, cy + sin * lr);
     ctx.globalAlpha = 1;
   }
+
+  // Resize grip at upper-right corner
+  const gripX = panelRight - 2;
+  const gripY = panelTop + 2;
+  const gripSize = 12;
+  ctx.strokeStyle = '#8899bb66';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 3; i++) {
+    const off = 3 + i * 3.5;
+    ctx.beginPath();
+    ctx.moveTo(gripX - off, gripY);
+    ctx.lineTo(gripX, gripY + off);
+    ctx.stroke();
+  }
 }
 
 // ================================================================
 //  INTERACTION — Hit testing & tooltip
 // ================================================================
 
+function hitCircleResizeGrip(mx, my) {
+  if (!S.selected) return false;
+  const { radius, cx, cy, sliderY } = getMOSCircleLayout(S.W, S.H);
+  const panelPad = 28;
+  const panelTop = sliderY - 38;
+  const panelRight = cx + radius + panelPad;
+  const hitSize = 16;
+  return mx >= panelRight - hitSize && mx <= panelRight + 4 && my >= panelTop - 4 && my <= panelTop + hitSize;
+}
+
 function hitMOSCirclePanel(mx, my) {
   if (!S.selected) return false;
   const { radius, cx, cy, sliderY } = getMOSCircleLayout(S.W, S.H);
   const panelPad = 28;
-  const panelTop = sliderY - 22;
+  const panelTop = sliderY - 38;
   const panelBot = cy + radius + 36;
   const panelLeft = cx - radius - panelPad;
   const panelRight = cx + radius + panelPad;
@@ -1696,8 +1835,20 @@ const KBD_ROWS = [
   { keys: ['1','2','3','4','5','6','7','8','9','0','-','='], octave: 2 },
 ];
 
+const KBD_2ROW = [
+  ['z','x','c','v','b','n','m',',','.','/','a','s','d','f','g','h','j','k','l',';',"'"],
+  ['q','w','e','r','t','y','u','i','o','p','[',']','1','2','3','4','5','6','7','8','9','0','-','='],
+];
+
 function getKeyMapping(key) {
   const k = key.toLowerCase();
+  if (SYNTH.kbd2Row) {
+    for (let r = 0; r < KBD_2ROW.length; r++) {
+      const idx = KBD_2ROW[r].indexOf(k);
+      if (idx !== -1) return { degree: idx, octave: r };
+    }
+    return null;
+  }
   for (const row of KBD_ROWS) {
     const idx = row.keys.indexOf(k);
     if (idx !== -1) return { degree: idx, octave: row.octave };
@@ -1986,12 +2137,32 @@ function handleClick() {
 //  INTERACTION — Navigation
 // ================================================================
 
+function ensureSizeVisible(size) {
+  let changed = false;
+  if (size < S.minSize) {
+    S.minSize = size;
+    document.getElementById('min-size').value = S.minSize;
+    document.getElementById('min-size-val').textContent = S.minSize;
+    changed = true;
+  }
+  if (size > S.maxSize) {
+    S.maxSize = size;
+    document.getElementById('max-mos-size').value = S.maxSize;
+    document.getElementById('max-mos-val').textContent = S.maxSize;
+    changed = true;
+  }
+  if (changed) recalc();
+}
+
 function navigateToParent() {
   const sel = S.selected;
   const parentKey = findParentMOS(sel.nL, sel.nS);
   if (!parentKey) return;
 
   const gen = S.generatorCents;
+  const m = parentKey.match(/(\d+)L_(\d+)s/);
+  if (m) ensureSizeVisible(+m[1] + +m[2]);
+
   const candidate = S.regions.find(r =>
     r.key === parentKey &&
     r.size >= S.minSize && r.size <= S.maxSize &&
@@ -2012,6 +2183,11 @@ function navigateToChild() {
   const sel = S.selected;
   const childKeys = getChildMOSes(sel.key);
   const gen = S.generatorCents;
+
+  for (const ck of childKeys) {
+    const m = ck.match(/(\d+)L_(\d+)s/);
+    if (m) ensureSizeVisible(+m[1] + +m[2]);
+  }
 
   let candidate = null;
   for (const ck of childKeys) {
@@ -2037,6 +2213,9 @@ function navigateToChild() {
 function navigateToChildByKey(childKey) {
   const sel = S.selected;
   const gen = S.generatorCents;
+
+  const m = childKey.match(/(\d+)L_(\d+)s/);
+  if (m) ensureSizeVisible(+m[1] + +m[2]);
 
   const candidate = S.regions.find(r =>
     r.key === childKey &&
@@ -2144,7 +2323,7 @@ function updateInfo() {
 const SYNTH_DEFAULTS = {
   waveform: 'triangle', octaveShift: 0,
   attack: 0.015, decay: 0.1, sustain: 1.0, release: 4,
-  keyboardMode: true,
+  keyboardMode: true, kbd2Row: false,
 };
 const SYNTH_KEYS = Object.keys(SYNTH_DEFAULTS);
 
@@ -2168,6 +2347,7 @@ const SYNTH = {
   waveform: 'triangle',
   baseFreq: 261.63, // C4
   keyboardMode: true,
+  kbd2Row: false,
   octaveShift: 0,
   attack: 0.015,
   decay: 0.1,
@@ -2417,11 +2597,6 @@ function renderPlaybackControls() {
 
   const n = S.selected.size;
 
-  const ordSuffix = i => {
-    if (i === 3) return '3rds';
-    return i + 'ths';
-  };
-
   let h = '';
   h += `<select class="synth-select" title="Waveform">`;
   for (const w of ['sine', 'triangle', 'sawtooth', 'square']) {
@@ -2432,14 +2607,10 @@ function renderPlaybackControls() {
 
   h += '<div class="arp-btns">';
   h += `<button class="arp-btn" data-interval="1" title="Ascending scale">▶ Scale</button>`;
-  for (let i = 3; i <= n; i++) {
-    const label = ordSuffix(i);
-    h += `<button class="arp-btn" data-interval="${i}" title="Arpeggiate in ${label}">▶ ${label}</button>`;
-  }
-  h += `<button class="arp-btn" data-interval="random" title="Play each note twice in random order">▶ Random</button>`;
   h += '</div>';
   h += '<button class="stop-btn">■ Stop</button>';
   h += `<button class="kbd-btn${SYNTH.keyboardMode ? ' active' : ''}" title="Map keyboard to scale degrees">⌨ Keyboard</button>`;
+  h += `<button class="kbd-btn kbd-2row-btn${SYNTH.kbd2Row ? ' active' : ''}" title="2 rows per octave — continuous scale across bottom two rows, then top two rows">2Row</button>`;
   h += `<div class="octave-row"><label>Oct</label><input type="range" class="octave-slider" min="-2" max="2" step="1" value="${SYNTH.octaveShift || 0}"><span class="octave-val">${SYNTH.octaveShift > 0 ? '+' : ''}${SYNTH.octaveShift || 0}</span></div>`;
   h += '<div class="adsr-group">';
   h += `<div class="adsr-row"><label>A</label><input type="range" class="adsr-slider" data-param="attack" min="0.005" max="2" step="0.005" value="${SYNTH.attack}"><span class="adsr-val">${SYNTH.attack >= 1 ? SYNTH.attack.toFixed(1) : (SYNTH.attack * 1000).toFixed(0) + 'ms'}</span></div>`;
@@ -2473,12 +2644,18 @@ function renderPlaybackControls() {
     saveSynthSettings();
   });
   el.querySelector('.stop-btn').addEventListener('click', stopPlayback);
-  el.querySelector('.kbd-btn').addEventListener('click', () => {
+  el.querySelector('.kbd-btn:not(.kbd-2row-btn)').addEventListener('click', () => {
     SYNTH.keyboardMode = !SYNTH.keyboardMode;
     saveSynthSettings();
     if (!SYNTH.keyboardMode) {
       Object.keys(SYNTH._activeKeys).forEach(k => stopKeyNote(k));
     }
+    renderPlaybackControls();
+  });
+  el.querySelector('.kbd-2row-btn').addEventListener('click', () => {
+    SYNTH.kbd2Row = !SYNTH.kbd2Row;
+    saveSynthSettings();
+    Object.keys(SYNTH._activeKeys).forEach(k => stopKeyNote(k));
     renderPlaybackControls();
   });
   el.querySelector('.octave-slider').addEventListener('input', e => {
@@ -2538,7 +2715,7 @@ function positionPanel() {
   const { radius, cx, sliderY } = getMOSCircleLayout(S.W, S.H);
   const panelPad = 28;
   const circleRight = cx + radius + panelPad + 8;
-  const defaultHeight = S.H - (sliderY - 22);
+  const defaultHeight = S.H - (sliderY - 38);
   const height = S._panelHeight ? Math.max(80, Math.min(S.H - 40, S._panelHeight)) : defaultHeight;
   panel.style.left = circleRight + 'px';
   panel.style.top = '';
@@ -3029,10 +3206,31 @@ function setup() {
     render();
   }, { passive: false });
 
+  cntr.addEventListener('dblclick', e => {
+    const rect = cvs.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    if (hitCircleResizeGrip(mx, my)) {
+      S._circleRadius = null;
+      render();
+    }
+  });
+
   cntr.addEventListener('mousedown', e => {
     const rect = cvs.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
+
+    if (hitCircleResizeGrip(mx, my)) {
+      S.circleResizing = true;
+      S.circleResizeStartX = e.clientX;
+      S.circleResizeStartY = e.clientY;
+      const { radius } = getMOSCircleLayout(S.W, S.H);
+      S.circleResizeStartR = radius;
+      cvs.style.cursor = 'nesw-resize';
+      e.preventDefault();
+      return;
+    }
 
     if (hitSizeScrollbar(mx, my)) {
       S.sizeSbDragging = true;
@@ -3083,6 +3281,15 @@ function setup() {
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
 
+    if (S.circleResizing) {
+      const dx = e.clientX - S.circleResizeStartX;
+      const dy = -(e.clientY - S.circleResizeStartY);
+      const delta = Math.max(dx, dy);
+      S._circleRadius = S.circleResizeStartR + delta;
+      render();
+      return;
+    }
+
     if (S.sizeSbDragging) {
       setSizeFromScrollbarY(my);
       return;
@@ -3108,7 +3315,7 @@ function setup() {
       S.viewMax = S.dragMax0 - dx * cpp;
       clampView();
       const sizeSensitivity = 0.05;
-      const newMin = Math.round(Math.max(2, Math.min(30, S.dragMinSize0 - dy * sizeSensitivity)));
+      const newMin = Math.round(Math.max(2, Math.min(100, S.dragMinSize0 - dy * sizeSensitivity)));
       if (newMin !== S.minSize) {
         S.minSize = newMin;
         document.getElementById('min-size').value = S.minSize;
@@ -3132,7 +3339,9 @@ function setup() {
       }
     } else {
       hitTest(mx, my, e);
-      if (hitSizeScrollbar(mx, my)) {
+      if (hitCircleResizeGrip(mx, my)) {
+        cvs.style.cursor = 'nesw-resize';
+      } else if (hitSizeScrollbar(mx, my)) {
         cvs.style.cursor = 'ns-resize';
       } else if (hitCircleArrow(mx, my)) {
         cvs.style.cursor = 'pointer';
@@ -3162,6 +3371,12 @@ function setup() {
   });
 
   window.addEventListener('mouseup', e => {
+    if (S.circleResizing) {
+      S.circleResizing = false;
+      cvs.style.cursor = '';
+      render();
+      return;
+    }
     if (S.sizeSbDragging) {
       S.sizeSbDragging = false;
       cvs.style.cursor = '';
@@ -3329,7 +3544,10 @@ function setup() {
     recalc();
   });
   document.getElementById('max-edo').addEventListener('input', e => {
-    S.maxEDO = +e.target.value;
+    const t = +e.target.value / 1000;
+    S.maxEDO = Math.round(t <= 0.5
+      ? 5 * Math.pow(53 / 5, t / 0.5)
+      : 53 * Math.pow(350 / 53, (t - 0.5) / 0.5));
     document.getElementById('max-edo-val').textContent = S.maxEDO;
     S.edos = buildEDOGenerators(S.maxEDO);
     render();
@@ -3345,6 +3563,7 @@ function setup() {
     S.selected = null;
     S.generatorCents = null;
     S._panelHeight = null;
+    S._circleRadius = null;
     updatePanel(); render();
   });
 
