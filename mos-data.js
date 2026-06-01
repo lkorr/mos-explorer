@@ -23,7 +23,7 @@ const TEMPERAMENTS = [
   { name: 'Parapyth', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [703.44, 707.69],
     commas: ['352/351', '364/363'], commaNames: ['minthma', 'gentle comma'],
     wikiUrl: 'https://en.xen.wiki/w/Parapyth',
-    description: 'Rank-3 (2.3.7.11.13). Near-pure, slightly sharp fifths with 7/11/13 mapping. Tempers out minthma and gentle comma. <br> <br> Technically parapyth is a rank-4 temperament, but the only alternative was to call this range "pepperoni" which I simply refuse to do.' },
+    description: 'Rank-3 (2.3.7.11.13). Near-pure, slightly sharp fifths with 7/11/13 mapping. Tempers out minthma and gentle comma. <br> <br> Technically parapyth is a rank-3 temperament, but the only alternative was to call this range "pepperoni" which I simply refuse to do.' },
 
   { name: 'Superpyth', mos: ['5L_2s', '5L_7s'], genRange: [707.69, 713.08],
     commas: ['64/63', '245/243'], commaNames: ['Archytas comma', 'sensamagic comma'],
@@ -121,6 +121,11 @@ const TEMPERAMENTS = [
     commas: ['256/245'], commaNames: ['squares comma'],
     wikiUrl: 'https://en.xen.wiki/w/Squares',
     description: 'Four generators stack to = 8/3. Generator is a sharp sub-fourth (~426¢).' },
+
+  { name: 'Baldi', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [200.0, 206.90],
+    commas: ['225/224', '325/324', '640/637'], commaNames: ['septimal kleisma', 'lesser diesis', '640/637'],
+    wikiUrl: 'https://en.xen.wiki/w/Subgroup_temperaments#Baldy',
+    description: '2.9.5.7.13 subgroup. Derived from every other generator of garibaldi. Generator ~200–207¢. You can also just think of this as every other generator from pythagorean - so its a wholetone scale temperament. Just a big stack of wholetones.' },
 
   { name: 'Machine', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [211.765, 218.182],
     commas: ['16807/16384'], commaNames: ['cloudy comma'],
@@ -313,7 +318,7 @@ const TEMP_COLORS = {
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
-  'Machine': '#e8c89e', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
+  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
   'Father': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
