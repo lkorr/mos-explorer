@@ -1933,6 +1933,7 @@ function hitCircleDot(mx, my) {
 
 function playCircleDot(dot) {
   stopPlayback();
+  if (SYNTH._oscCount >= MAX_OSCILLATORS) killAllNotes();
   const actx = getAudioCtx();
   const freq = centsToFreq(dot.cents);
   const now = actx.currentTime;
@@ -1949,7 +1950,12 @@ function playCircleDot(dot) {
   gain.gain.exponentialRampToValueAtTime(0.001, now + total);
   osc.start(now);
   osc.stop(now + total);
-  osc.onended = () => { gain.disconnect(); osc.disconnect(); };
+  SYNTH._oscCount++;
+  osc.onended = () => {
+    SYNTH._oscCount = Math.max(0, SYNTH._oscCount - 1);
+    gain.disconnect();
+    osc.disconnect();
+  };
   const dotGlowId = noteGlowOn(dot.degree, 0);
   setTimeout(() => noteGlowOff(dot.degree, dotGlowId), (SYNTH.attack + SYNTH.decay) * 1000);
 }
@@ -2020,8 +2026,36 @@ function getKeyMapping(key) {
 }
 
 
+function killAllNotes() {
+  const actx = SYNTH.ctx;
+  const now = actx ? actx.currentTime : 0;
+  for (const code of Object.keys(SYNTH._activeKeys)) {
+    const entry = SYNTH._activeKeys[code];
+    try {
+      if (actx) {
+        entry.gain.gain.cancelScheduledValues(now);
+        entry.gain.gain.setValueAtTime(0, now);
+      }
+      entry.osc.stop(now + 0.01);
+    } catch {}
+    try { entry.gain.disconnect(); } catch {}
+    try { entry.osc.disconnect(); } catch {}
+    if (entry.degreeInScale !== undefined) {
+      noteGlowOff(entry.degreeInScale, entry.glowId);
+    }
+  }
+  SYNTH._activeKeys = {};
+  SYNTH._oscCount = 0;
+  _chordActiveCodes = [];
+}
+
 function startNote(code, degreeInScale, noteOctave, startAt) {
   if (!S.selected || S.generatorCents === null) return;
+
+  if (SYNTH._oscCount >= MAX_OSCILLATORS) {
+    killAllNotes();
+  }
+
   const n = S.selected.size;
   const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
   const cents = scale.pitches[degreeInScale];
@@ -2041,6 +2075,12 @@ function startNote(code, degreeInScale, noteOctave, startAt) {
   gain.gain.linearRampToValueAtTime(0.15, t + attack);
   gain.gain.linearRampToValueAtTime(0.15 * SYNTH.sustain, t + attack + SYNTH.decay);
   osc.start(t);
+  SYNTH._oscCount++;
+  osc.onended = () => {
+    SYNTH._oscCount = Math.max(0, SYNTH._oscCount - 1);
+    try { gain.disconnect(); } catch {}
+    try { osc.disconnect(); } catch {}
+  };
   let glowId = null;
   if (degreeInScale < n) {
     glowId = noteGlowOn(degreeInScale, noteOctave);
@@ -2145,10 +2185,6 @@ function stopKeyNote(code) {
   entry.gain.gain.setValueAtTime(releaseFrom, now);
   entry.gain.gain.exponentialRampToValueAtTime(0.001, now + rel);
   entry.osc.stop(now + rel + 0.05);
-  entry.osc.onended = () => {
-    try { entry.gain.disconnect(); } catch {}
-    try { entry.osc.disconnect(); } catch {}
-  };
   if (entry.degreeInScale !== undefined) {
     noteGlowOff(entry.degreeInScale, entry.glowId);
   }
@@ -2515,6 +2551,8 @@ function loadSynthSettings() {
   } catch {}
 }
 
+const MAX_OSCILLATORS = 32;
+
 const SYNTH = {
   ctx: null,
   playing: false,
@@ -2527,10 +2565,11 @@ const SYNTH = {
   attack: 0.015,
   decay: 0.1,
   sustain: 1.0,
-  release: 4,
+  release: 1.5,
   _activeKeys: {},
   _glows: {},
   _glowAnimating: false,
+  _oscCount: 0,
 };
 
 const OCTAVE_GLOW_COLORS = {
@@ -2666,6 +2705,7 @@ function centsToFreq(cents) {
 }
 
 function playNote(actx, freq, startTime, duration, waveform) {
+  if (SYNTH._oscCount >= MAX_OSCILLATORS) return;
   const osc = actx.createOscillator();
   const gain = actx.createGain();
   osc.type = waveform;
@@ -2682,7 +2722,12 @@ function playNote(actx, freq, startTime, duration, waveform) {
 
   osc.start(startTime);
   osc.stop(startTime + duration);
-  osc.onended = () => { gain.disconnect(); osc.disconnect(); };
+  SYNTH._oscCount++;
+  osc.onended = () => {
+    SYNTH._oscCount = Math.max(0, SYNTH._oscCount - 1);
+    gain.disconnect();
+    osc.disconnect();
+  };
 }
 
 function buildArpSequence(pitches, interval) {
@@ -2772,6 +2817,7 @@ function playArpeggiation(interval) {
     clearTimeout(endTimer);
     noteTimers.forEach(t => clearTimeout(t));
     SYNTH._glows = {};
+    killAllNotes();
     render();
     actx.close();
     SYNTH.ctx = null;
@@ -2892,46 +2938,6 @@ const JI_POOL = [];
   JI_POOL.sort((a, b) => a.cents - b.cents);
 })();
 
-function lcm(a, b) { return (a / gcd(a, b)) * b; }
-
-function ratioToIntNotation(ratioList) {
-  const L = ratioList.reduce((acc, r) => lcm(acc, r[1]), 1);
-  const nums = ratioList.map(r => r[0] * (L / r[1]));
-  const g = nums.reduce(gcd);
-  return nums.map(v => v / g);
-}
-
-// Get canonical (root position) form of an integer notation chord
-function chordCanonical(intNot) {
-  const nums = intNot.split(':').map(Number);
-  // Try all rotations (inversions), return the one with smallest first ratio
-  let best = nums;
-  let bestRoot = nums[0];
-  const len = nums.length;
-  for (let rot = 1; rot < len; rot++) {
-    // Invert: take note at position rot as new bass, octave-complete
-    const rotated = [];
-    for (let i = 0; i < len; i++) {
-      const idx = (rot + i) % len;
-      let val = nums[idx];
-      if (i > 0 && rotated.length > 0) {
-        while (val <= rotated[rotated.length - 1]) val *= 2;
-      } else if (i === 0) {
-        // bass note as-is
-      }
-      rotated.push(val);
-    }
-    // Normalize
-    const g = rotated.reduce(gcd);
-    const normed = rotated.map(v => v / g);
-    if (normed[0] < bestRoot || (normed[0] === bestRoot && normed.join(':') < best.join(':'))) {
-      best = normed;
-      bestRoot = normed[0];
-    }
-  }
-  return best.join(':');
-}
-
 // Binary search: find index of first JI_POOL entry with cents >= target
 function jiPoolLowerBound(target) {
   let lo = 0, hi = JI_POOL.length;
@@ -2942,79 +2948,164 @@ function jiPoolLowerBound(target) {
   return lo;
 }
 
-function computeRMS(errors) {
-  let sum = 0, sumSq = 0;
-  for (let i = 0; i < errors.length; i++) { sum += errors[i]; }
-  const mean = sum / errors.length;
-  for (let i = 0; i < errors.length; i++) { const d = errors[i] - mean; sumSq += d * d; }
-  return Math.sqrt(sumSq / errors.length);
+function _intNotation3(n1, d1, n2, d2) {
+  let L = d1;
+  const g1 = gcd(L, d2);
+  L = (L / g1) * d2;
+  const a = L, b = n1 * (L / d1), c = n2 * (L / d2);
+  const g2 = gcd(a, gcd(b, c));
+  return [a / g2, b / g2, c / g2];
 }
 
-function findScaleChords(scalePitches, maxErr, maxCx) {
+function _intNotation4(n1, d1, n2, d2, n3, d3) {
+  let L = d1;
+  let g = gcd(L, d2); L = (L / g) * d2;
+  g = gcd(L, d3); L = (L / g) * d3;
+  const a = L, b = n1 * (L / d1), c = n2 * (L / d2), d = n3 * (L / d3);
+  const g2 = gcd(a, gcd(b, gcd(c, d)));
+  return [a / g2, b / g2, c / g2, d / g2];
+}
+
+function _canonKey3(a, b, c) {
+  let bestA = a, bestB = b, bestC = c;
+  let r1a = b, r1b = c, r1c = a;
+  while (r1c <= r1b) r1c *= 2;
+  let g = gcd(r1a, gcd(r1b, r1c));
+  let na = r1a/g, nb = r1b/g, nc = r1c/g;
+  if (na < bestA || (na === bestA && (nb < bestB || (nb === bestB && nc < bestC)))) {
+    bestA = na; bestB = nb; bestC = nc;
+  }
+  r1a = c; r1b = a; r1c = b;
+  while (r1b <= r1a) r1b *= 2;
+  while (r1c <= r1b) r1c *= 2;
+  g = gcd(r1a, gcd(r1b, r1c));
+  na = r1a/g; nb = r1b/g; nc = r1c/g;
+  if (na < bestA || (na === bestA && (nb < bestB || (nb === bestB && nc < bestC)))) {
+    bestA = na; bestB = nb; bestC = nc;
+  }
+  return bestA + ':' + bestB + ':' + bestC;
+}
+
+function _canonKey4(a, b, c, d) {
+  let bestA = a, bestB = b, bestC = c, bestD = d;
+  const vals = [a, b, c, d];
+  for (let rot = 1; rot < 4; rot++) {
+    const r = [vals[rot]];
+    for (let i = 1; i < 4; i++) {
+      let v = vals[(rot + i) % 4];
+      while (v <= r[r.length - 1]) v *= 2;
+      r.push(v);
+    }
+    const g = gcd(r[0], gcd(r[1], gcd(r[2], r[3])));
+    const na = r[0]/g, nb = r[1]/g, nc = r[2]/g, nd = r[3]/g;
+    if (na < bestA || (na === bestA && (nb < bestB || (nb === bestB && (nc < bestC || (nc === bestC && nd < bestD)))))) {
+      bestA = na; bestB = nb; bestC = nc; bestD = nd;
+    }
+  }
+  return bestA + ':' + bestB + ':' + bestC + ':' + bestD;
+}
+
+function findScaleChords(scalePitches, maxErr, maxCx, typeFilter) {
   if (!scalePitches || scalePitches.length < 3) return [];
   const n = scalePitches.length;
-  const inversionMap = {};
   const poolLen = JI_POOL.length;
+  const doTriads = typeFilter !== 4;
+  const doTetrads = typeFilter !== 3;
+
+  const triadMap = {};
+  const tetradMap = {};
 
   for (let root = 0; root < n; root++) {
-    const approxByDeg = {};
+    const approxByDeg = new Array(n);
+    const activeDegKeys = [];
     for (let deg = 1; deg < n; deg++) {
       const targetDeg = (root + deg) % n;
       let cents = scalePitches[targetDeg] - scalePitches[root];
       if (cents <= 0) cents += 1200;
       const lo = jiPoolLowerBound(cents - maxErr);
+      let list = null;
       for (let ji_i = lo; ji_i < poolLen; ji_i++) {
         const ji = JI_POOL[ji_i];
         if (ji.cents > cents + maxErr) break;
         if (ji.complexity > maxCx) continue;
-        const signedErr = cents - ji.cents;
-        const entry = { deg: targetDeg, stepDeg: deg, cents, ji, error: Math.abs(signedErr), signedError: signedErr };
-        if (!approxByDeg[deg]) approxByDeg[deg] = [];
-        approxByDeg[deg].push(entry);
+        if (!list) { list = []; approxByDeg[deg] = list; activeDegKeys.push(deg); }
+        list.push(targetDeg, deg, cents, ji.n, ji.d, ji.cents, cents - ji.cents);
       }
     }
-    const degKeys = Object.keys(approxByDeg).map(Number).sort((a,b) => a - b);
+    const dkLen = activeDegKeys.length;
 
-    // Triads
-    for (let di = 0; di < degKeys.length; di++) {
-      for (let dj = di + 1; dj < degKeys.length; dj++) {
-        const list1 = approxByDeg[degKeys[di]], list2 = approxByDeg[degKeys[dj]];
-        for (const iv1 of list1) {
-          for (const iv2 of list2) {
-            if (iv2.cents - iv1.cents < 50) continue;
-            const ratios = [[1,1],[iv1.ji.n, iv1.ji.d],[iv2.ji.n, iv2.ji.d]];
-            const intNot = ratioToIntNotation(ratios).join(':');
-            const canon = chordCanonical(intNot);
-            if (!inversionMap[canon]) inversionMap[canon] = { canonical: canon, inversions: {}, maxNum: 0 };
-            if (!inversionMap[canon].inversions[intNot]) {
-              const rms3 = computeRMS([0, iv1.signedError, iv2.signedError]);
-              inversionMap[canon].inversions[intNot] = { notation: intNot, type: 3, roots: [], rmsError: rms3 };
+    if (doTriads) {
+      for (let di = 0; di < dkLen; di++) {
+        const list1 = approxByDeg[activeDegKeys[di]];
+        const l1Len = list1.length;
+        for (let dj = di + 1; dj < dkLen; dj++) {
+          const list2 = approxByDeg[activeDegKeys[dj]];
+          const l2Len = list2.length;
+          for (let i1 = 0; i1 < l1Len; i1 += 7) {
+            const c1 = list1[i1 + 2], n1 = list1[i1 + 3], d1 = list1[i1 + 4], se1 = list1[i1 + 6];
+            const deg1 = list1[i1];
+            for (let i2 = 0; i2 < l2Len; i2 += 7) {
+              const c2 = list2[i2 + 2];
+              if (c2 - c1 < 50) continue;
+              const n2 = list2[i2 + 3], d2 = list2[i2 + 4], se2 = list2[i2 + 6];
+              const deg2 = list2[i2];
+              const nums = _intNotation3(n1, d1, n2, d2);
+              const intKey = nums[0] + ':' + nums[1] + ':' + nums[2];
+              const canonKey = _canonKey3(nums[0], nums[1], nums[2]);
+              let group = triadMap[canonKey];
+              if (!group) {
+                group = { canonKey, inversions: {}, type: 3 };
+                triadMap[canonKey] = group;
+              }
+              let inv = group.inversions[intKey];
+              if (!inv) {
+                const mean = (se1 + se2) / 3;
+                const rms = Math.sqrt((mean * mean + (se1 - mean) * (se1 - mean) + (se2 - mean) * (se2 - mean)) / 3);
+                inv = { notation: intKey, type: 3, roots: [], rmsError: rms, maxNum: Math.max(nums[0], nums[1], nums[2]) };
+                group.inversions[intKey] = inv;
+              }
+              inv.roots.push({ root, degrees: [root, deg1, deg2] });
             }
-            inversionMap[canon].inversions[intNot].roots.push({ root, degrees: [root, iv1.deg, iv2.deg] });
           }
         }
       }
     }
 
-    // Tetrads
-    for (let di = 0; di < degKeys.length; di++) {
-      for (let dj = di + 1; dj < degKeys.length; dj++) {
-        for (let dk = dj + 1; dk < degKeys.length; dk++) {
-          const list1 = approxByDeg[degKeys[di]], list2 = approxByDeg[degKeys[dj]], list3 = approxByDeg[degKeys[dk]];
-          for (const iv1 of list1) {
-            for (const iv2 of list2) {
-              if (iv2.cents - iv1.cents < 50) continue;
-              for (const iv3 of list3) {
-                if (iv3.cents - iv2.cents < 50) continue;
-                const ratios = [[1,1],[iv1.ji.n,iv1.ji.d],[iv2.ji.n,iv2.ji.d],[iv3.ji.n,iv3.ji.d]];
-                const intNot = ratioToIntNotation(ratios).join(':');
-                const canon = chordCanonical(intNot);
-                if (!inversionMap[canon]) inversionMap[canon] = { canonical: canon, inversions: {}, maxNum: 0 };
-                if (!inversionMap[canon].inversions[intNot]) {
-                  const rms4 = computeRMS([0, iv1.signedError, iv2.signedError, iv3.signedError]);
-                  inversionMap[canon].inversions[intNot] = { notation: intNot, type: 4, roots: [], rmsError: rms4 };
+    if (doTetrads && n >= 4) {
+      for (let di = 0; di < dkLen; di++) {
+        const list1 = approxByDeg[activeDegKeys[di]];
+        const l1Len = list1.length;
+        for (let dj = di + 1; dj < dkLen; dj++) {
+          const list2 = approxByDeg[activeDegKeys[dj]];
+          const l2Len = list2.length;
+          for (let dk = dj + 1; dk < dkLen; dk++) {
+            const list3 = approxByDeg[activeDegKeys[dk]];
+            const l3Len = list3.length;
+            for (let i1 = 0; i1 < l1Len; i1 += 7) {
+              const c1 = list1[i1 + 2], n1 = list1[i1 + 3], d1 = list1[i1 + 4], se1 = list1[i1 + 6];
+              const deg1 = list1[i1];
+              for (let i2 = 0; i2 < l2Len; i2 += 7) {
+                const c2 = list2[i2 + 2];
+                if (c2 - c1 < 50) continue;
+                const n2 = list2[i2 + 3], d2 = list2[i2 + 4], se2 = list2[i2 + 6];
+                const deg2 = list2[i2];
+                for (let i3 = 0; i3 < l3Len; i3 += 7) {
+                  const c3 = list3[i3 + 2];
+                  if (c3 - c2 < 50) continue;
+                  const n3 = list3[i3 + 3], d3 = list3[i3 + 4], se3 = list3[i3 + 6];
+                  const deg3 = list3[i3];
+                  const nums = _intNotation4(n1, d1, n2, d2, n3, d3);
+                  const intKey = nums[0] + ':' + nums[1] + ':' + nums[2] + ':' + nums[3];
+                  const canonKey = _canonKey4(nums[0], nums[1], nums[2], nums[3]);
+                  if (!tetradMap[canonKey]) tetradMap[canonKey] = { canonKey, inversions: {}, type: 4 };
+                  const group = tetradMap[canonKey];
+                  if (!group.inversions[intKey]) {
+                    const mean = (se1 + se2 + se3) / 4;
+                    const rms = Math.sqrt((mean*mean + (se1-mean)*(se1-mean) + (se2-mean)*(se2-mean) + (se3-mean)*(se3-mean)) / 4);
+                    group.inversions[intKey] = { notation: intKey, type: 4, roots: [], rmsError: rms, maxNum: Math.max(nums[0], nums[1], nums[2], nums[3]) };
+                  }
+                  group.inversions[intKey].roots.push({ root, degrees: [root, deg1, deg2, deg3] });
                 }
-                inversionMap[canon].inversions[intNot].roots.push({ root, degrees: [root, iv1.deg, iv2.deg, iv3.deg] });
               }
             }
           }
@@ -3023,53 +3114,91 @@ function findScaleChords(scalePitches, maxErr, maxCx) {
     }
   }
 
-  // Deduplicate roots within each inversion, pre-compute numeric fields
-  const groups = Object.values(inversionMap);
-  for (const g of groups) {
-    const canonNums = g.canonical.split(':').map(Number);
-    g.maxNum = Math.max.apply(null, canonNums);
-    g.lowestRoot = Math.min.apply(null, canonNums);
-    let bestErr = Infinity;
-    for (const inv of Object.values(g.inversions)) {
-      const seen = new Set();
-      inv.roots = inv.roots.filter(r => {
-        const key = r.degrees.slice().sort((a,b)=>a-b).join(',');
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      const invNums = inv.notation.split(':').map(Number);
-      inv.maxNum = Math.max.apply(null, invNums);
-      if (inv.rmsError < bestErr) bestErr = inv.rmsError;
-    }
-    g.invList = Object.values(g.inversions);
-    g.invList.sort((a, b) => {
-      const aN = a.notation.split(':').map(Number);
-      const bN = b.notation.split(':').map(Number);
-      return Math.min.apply(null, aN) - Math.min.apply(null, bN);
-    });
-    g.bestError = bestErr;
+  const allGroups = [];
+  for (const key in triadMap) {
+    const g = triadMap[key];
+    _finalizeGroup(g, g.canonKey.split(':').map(Number), g.canonKey);
+    allGroups.push(g);
+  }
+  for (const key in tetradMap) {
+    const g = tetradMap[key];
+    _finalizeGroup(g, g.canonKey.split(':').map(Number), g.canonKey);
+    allGroups.push(g);
   }
 
-  groups.sort((a, b) => a.lowestRoot - b.lowestRoot || a.bestError - b.bestError);
-  return groups;
+  allGroups.sort((a, b) => a.lowestRoot - b.lowestRoot || a.bestError - b.bestError);
+  return allGroups;
 }
 
-let _cachedChords = [];
-let _cachedChordScale = null;
+function _finalizeGroup(g, canonNums, canonical) {
+  g.canonical = canonical;
+  g.maxNum = Math.max.apply(null, canonNums);
+  g.lowestRoot = Math.min.apply(null, canonNums);
+  let bestErr = Infinity;
+  const invList = [];
+  for (const key in g.inversions) {
+    const inv = g.inversions[key];
+    const seen = new Set();
+    const filtered = [];
+    for (const r of inv.roots) {
+      const k = r.degrees.slice().sort((a,b)=>a-b).join(',');
+      if (!seen.has(k)) { seen.add(k); filtered.push(r); }
+    }
+    inv.roots = filtered;
+    if (inv.rmsError < bestErr) bestErr = inv.rmsError;
+    invList.push(inv);
+  }
+  invList.sort((a, b) => {
+    const aN = a.notation.split(':').map(Number);
+    const bN = b.notation.split(':').map(Number);
+    return Math.min.apply(null, aN) - Math.min.apply(null, bN);
+  });
+  g.invList = invList;
+  g.bestError = bestErr;
+  delete g.inversions;
+}
+
+let _cachedTriads = [];
+let _cachedTetrads = [];
+let _cachedTriadScale = null;
+let _cachedTetradScale = null;
 let _chordLastRenderTime = 0;
 let _chordTrailingTimer = null;
 const _chordThrottleMs = 30;
 
-function getChords() {
-  if (!S.selected || S.generatorCents === null) return [];
+function _getScaleKey() {
+  if (!S.selected || S.generatorCents === null) return null;
   const n = S.selected.size;
   const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
-  const scaleKey = scale.pitches.map(p => p.toFixed(1)).join(',');
-  if (scaleKey === _cachedChordScale) return _cachedChords;
-  _cachedChordScale = scaleKey;
-  _cachedChords = findScaleChords(scale.pitches, 35, 200);
-  return _cachedChords;
+  return { key: scale.pitches.map(p => p.toFixed(1)).join(','), pitches: scale.pitches };
+}
+
+function getChords() {
+  if (!S.selected || S.generatorCents === null) return [];
+  const sk = _getScaleKey();
+  if (!sk) return [];
+  const needTriads = !_chordShowTetrads;
+  const needTetrads = _chordShowTetrads;
+
+  if (needTriads && sk.key !== _cachedTriadScale) {
+    _cachedTriadScale = sk.key;
+    _cachedTriads = findScaleChords(sk.pitches, 35, 200, 3);
+  }
+  if (needTetrads && sk.key !== _cachedTetradScale) {
+    _cachedTetradScale = sk.key;
+    _cachedTetrads = findScaleChords(sk.pitches, 35, 200, 4);
+  }
+  return needTetrads ? _cachedTetrads : _cachedTriads;
+}
+
+function _getAllCachedChords() {
+  const sk = _getScaleKey();
+  if (!sk) return [];
+  if (sk.key === _cachedTriadScale && sk.key === _cachedTetradScale)
+    return _cachedTriads.concat(_cachedTetrads);
+  if (sk.key === _cachedTriadScale) return _cachedTriads;
+  if (sk.key === _cachedTetradScale) return _cachedTetrads;
+  return [];
 }
 
 let _chordMaxRoot = 50;
@@ -3082,12 +3211,14 @@ function ensureChordFilters(container) {
   let filterEl = document.getElementById('chord-filter-bar');
   if (filterEl) return;
   let h = '<div id="chord-filter-bar">';
-  h += '<div class="sp-chords-title"><span id="chord-type-label">Triads</span> <span id="active-chord-label" style="color:#ff6;font-weight:400;font-size:10px"></span></div>';
+  h += '<div class="sp-chords-title"><span id="chord-type-label">Triads</span></div>';
   h += '<div class="sp-chords-filter">';
   h += `<label>Max</label><input type="range" id="chord-max-root" min="6" max="200" step="1" value="${_chordMaxRoot}"><span class="cf-val" id="chord-max-root-val">${_chordMaxRoot}</span>`;
   h += `<label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" step="1" value="${_chordMaxRMS}"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span>`;
   h += `<span class="cf-toggle${_chordShowTetrads ? ' active' : ''}" id="chord-show-tetrads">Tetrads</span>`;
-  h += '</div></div>';
+  h += '</div>';
+  h += '<div id="active-chord-label" style="color:#ff6;font-weight:600;font-size:13px;line-height:1.4;min-height:20px;text-align:center;padding:4px 0"></div>';
+  h += '</div>';
   h += '<div id="chord-table-body"></div>';
   container.innerHTML = h;
   _chordFiltersBound = false;
@@ -3115,7 +3246,6 @@ function renderChordsPanel() {
   const typeLabel = document.getElementById('chord-type-label');
 
   const groups = getChords();
-  const filtered = groups.filter(g => g.maxNum <= _chordMaxRoot && g.bestError <= _chordMaxRMS);
   const n = S.selected.size;
   const targetType = _chordShowTetrads ? 4 : 3;
   if (typeLabel) typeLabel.textContent = _chordShowTetrads ? 'Tetrads' : 'Triads';
@@ -3123,10 +3253,11 @@ function renderChordsPanel() {
   if (tetBtn) tetBtn.classList.toggle('active', _chordShowTetrads);
 
   const chordGroupsOut = [];
-  for (const g of filtered) {
+  for (const g of groups) {
     const matching = g.invList.filter(inv => inv.type === targetType && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
     if (!matching.length) continue;
-    chordGroupsOut.push({ canonical: g.canonical, bestError: g.bestError, invList: matching });
+    const bestMatchErr = Math.min.apply(null, matching.map(inv => inv.rmsError));
+    chordGroupsOut.push({ canonical: g.canonical, bestError: bestMatchErr, invList: matching });
     if (chordGroupsOut.length >= 60) break;
   }
 
@@ -3269,10 +3400,6 @@ function killChordNotes() {
       entry.gain.gain.linearRampToValueAtTime(0, now + _killFadeMs);
       entry.osc.stop(now + _killFadeMs + 0.01);
     } catch {}
-    entry.osc.onended = () => {
-      try { entry.gain.disconnect(); } catch {}
-      try { entry.osc.disconnect(); } catch {}
-    };
     if (entry.degreeInScale !== undefined) {
       noteGlowOff(entry.degreeInScale, entry.glowId);
     }
@@ -3313,7 +3440,7 @@ function renderChordHighlights() {
   const label = document.getElementById('active-chord-label');
   if (!activeDegrees.length) {
     for (const row of allRows) row.classList.remove('active');
-    if (label) label.textContent = '';
+    if (label) label.innerHTML = '';
     return;
   }
 
@@ -3326,7 +3453,8 @@ function renderChordHighlights() {
   }
   const bassDegree = lowestEntry.degreeInScale;
 
-  let activeLabel = '';
+  const activeLabels = [];
+  const seenNotations = new Set();
   for (const row of allRows) {
     const invs = JSON.parse(row.dataset.invs || '[]');
     let matchedInvIdx = -1;
@@ -3347,7 +3475,6 @@ function renderChordHighlights() {
 
     if (active && matchedInvIdx >= 0) {
       const currentIdx = +row.dataset.invIdx || 0;
-      // Switch row to show the matched inversion if it's different
       if (matchedInvIdx !== currentIdx) {
         const inv = invs[matchedInvIdx];
         row.dataset.invIdx = matchedInvIdx;
@@ -3375,9 +3502,10 @@ function renderChordHighlights() {
         const allDegs = inv.roots.map(r => r.degrees);
         row.dataset.allDegrees = JSON.stringify(allDegs);
       }
-      if (!activeLabel) {
-        const inv = invs[matchedInvIdx];
-        activeLabel = inv.notation + ' (' + inv.rms + '¢)';
+      const inv = invs[matchedInvIdx];
+      if (!seenNotations.has(inv.notation)) {
+        seenNotations.add(inv.notation);
+        activeLabels.push(inv.notation + ' (' + inv.rms + '¢)');
       }
     }
 
@@ -3387,24 +3515,26 @@ function renderChordHighlights() {
       el.classList.toggle('active', matchedRoots.has(degs[0]));
     }
   }
-  // If no visible row matched, search all cached chords for a label
-  if (!activeLabel && _cachedChords.length) {
-    for (const g of _cachedChords) {
-      let found = false;
+  if (!activeLabels.length) {
+    const allChords = _getAllCachedChords();
+    const targetType = _chordShowTetrads ? 4 : 3;
+    for (const g of allChords) {
       for (const inv of g.invList) {
+        if (inv.type !== targetType || inv.maxNum > _chordMaxRoot || inv.rmsError > _chordMaxRMS) continue;
         for (const r of inv.roots) {
           if (r.root === bassDegree && r.degrees.every(d => activeDegrees.includes(d))) {
-            activeLabel = inv.notation + ' (' + inv.rmsError.toFixed(1) + '¢)';
-            found = true;
-            break;
+            if (!seenNotations.has(inv.notation)) {
+              seenNotations.add(inv.notation);
+              activeLabels.push(inv.notation + ' (' + inv.rmsError.toFixed(1) + '¢)');
+            }
           }
         }
-        if (found) break;
       }
-      if (found) break;
     }
   }
-  if (label) label.textContent = activeLabel;
+  if (label) label.innerHTML = activeLabels.map(l =>
+    '<div>' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</div>'
+  ).join('');
 }
 
 // ================================================================
@@ -4262,6 +4392,12 @@ function setup() {
     if (!SYNTH.keyboardMode) return;
     if (SYNTH._activeKeys[e.code]) {
       stopKeyNote(e.code);
+    }
+  });
+
+  window.addEventListener('blur', () => {
+    for (const code of Object.keys(SYNTH._activeKeys)) {
+      if (!code.startsWith('_chord_')) stopKeyNote(code);
     }
   });
 
