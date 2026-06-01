@@ -57,17 +57,22 @@ const TEMPERAMENTS = [
     description: 'Starling family. Generator is a sharp 11/8 (~545¢). Two generators = 6/5.' },
 
   // === MOSH / NEUTRAL THIRDS (3L 4s) ===
-  { name: 'Amity', mos: ['3L_4s', '7L_3s'], genRange: [338.5, 342.86],
+  { name: 'Sixix', mos: ['3L_4s', '7L_3s'], genRange: [333.33, 338.46],
+    commas: ['3125/2916'], commaNames: ['sixix comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Archytas_clan#Sixix',
+    description: 'Sharp 6/5 generator. 3rd and 5th harmonics reached by going down, inverting typical chord construction.' },
+
+  { name: 'Amity', mos: ['3L_4s', '7L_3s'], genRange: [338.46, 342.86],
     commas: ['1600000/1594323'], commaNames: ['amity comma'],
     wikiUrl: 'https://en.xen.wiki/w/Amity',
     description: 'Five generators = 4/3. Generator is a flat neutral third (~339¢). Works well in 39edo.' },
 
-  { name: 'Mohajira', mos: ['3L_4s', '7L_3s'], genRange: [342.86, 353.0],
+  { name: 'Mohajira', mos: ['3L_4s', '7L_3s'], genRange: [342.86, 350.0],
     commas: ['81/80', '121/120', '243/242'], commaNames: ['syntonic comma', 'biyatisma', 'rastma'],
     wikiUrl: 'https://en.xen.wiki/w/Mohajira',
     description: 'Neutral thirds temperament. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. Generator splits the fifth into two equal ~350¢ thirds.' },
 
-  { name: 'Suhajira', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [353.0, 365.0],
+  { name: 'Suhajira', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [350.0, 365.0],
     commas: ['243/242', '2401/2400'], commaNames: ['rastma', 'breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Rastmic_clan#Suhajira',
     description: 'Rastmic clan. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. Sharp neutral third generator. Two generators = 3/2.' },
@@ -291,7 +296,7 @@ const TEMP_COLORS = {
   'Meantone': '#50c878', 'Flattone': '#3da86a', 'Deeptone': '#2d8a55',
   'Pythagorean': '#ffd700', 'Parapyth': '#ffec40', 'Superpyth': '#ff6347', 'Ultrapyth': '#ff8247',
   'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84', 'Casablanca': '#15968a',
-  'Amity': '#c490c4', 'Mohajira': '#dda0dd',
+  'Sixix': '#b080b0', 'Amity': '#c490c4', 'Mohajira': '#dda0dd',
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a', 'Orgone': '#4a9a6a',
   'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
