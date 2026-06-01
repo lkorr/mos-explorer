@@ -99,10 +99,15 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Shibboleth_family',
     description: 'Sharp minor third. Three generators = 7/4.' },
 
-  { name: 'Orgone', mos: ['4L_3s', '4L_7s'], genRange: [323.08, 327.3],
+  { name: 'Orgone', mos: ['4L_3s', '4L_7s'], genRange: [323.08, 327.27],
     commas: ['65536/65219'], commaNames: ['orgonisma'],
     wikiUrl: 'https://en.xen.wiki/w/Orgone',
     description: '2.7.11 subgroup. Generator is ~77/64. Two generators = 16/11, three = 7/4.' },
+
+  { name: 'Rarity', mos: ['4L_3s', '4L_7s'], genRange: [327.27, 333.33],
+    commas: ['1035/1024', '16875/16606', '192375/188416'], commaNames: ['rarity comma', '16875/16606', '192375/188416'],
+    wikiUrl: 'https://en.xen.wiki/w/No-sevens_subgroup_temperaments#Rarity',
+    description: '2.3.5.19.23 subgroup. Generator is ~368/225. Offers a 7L 4s scale of reasonable hardness in the 5-limit among small edos.' },
 
   // === PENTATONIC (2L 3s) ===
 
@@ -301,7 +306,7 @@ const TEMP_COLORS = {
   'Meantone': '#50c878', 'Flattone': '#3da86a', 'Deeptone': '#2d8a55',
   'Pythagorean': '#ffd700', 'Parapyth': '#ffec40', 'Superpyth': '#ff6347', 'Ultrapyth': '#ff8247',
   'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84', 'Casablanca': '#15968a',
-  'Sixix': '#b080b0', 'Amity': '#c490c4', 'Mohajira': '#dda0dd', 'Hemififths': '#d4b0d4',
+  'Rarity': '#6a8aaa', 'Sixix': '#b080b0', 'Amity': '#c490c4', 'Mohajira': '#dda0dd', 'Hemififths': '#d4b0d4',
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a', 'Orgone': '#4a9a6a',
   'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
