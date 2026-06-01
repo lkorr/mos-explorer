@@ -115,32 +115,21 @@ canvas { display: block; width: 100%; height: 100%; }
   overflow: hidden;
 }
 
-#synth-panel {
-  position: absolute;
-  z-index: 55;
-  display: none;
+#selected-panel .sp-synth-col {
+  flex-shrink: 0;
+  width: 260px;
+  align-self: stretch;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #2a3a5a transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-#synth-header {
-  background: #16213ef0;
-  border: 1px solid #0f3460;
-  border-radius: 4px;
-  padding: 3px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #e94560;
-  cursor: pointer;
-  user-select: none;
-}
-#synth-header:hover { background: #1e2a4ef0; }
 #synth-body {
-  display: none;
-  background: #16213ef0;
-  border: 1px solid #0f3460;
-  border-top: none;
-  border-radius: 0 0 4px 4px;
-  padding: 6px 10px;
+  display: flex; flex-direction: column; gap: 4px;
 }
-#synth-body.open { display: flex; flex-direction: column; gap: 4px; }
 
 #synth-body .sp-playback {
   display: flex;
@@ -218,6 +207,25 @@ canvas { display: block; width: 100%; height: 100%; }
   background: #1a3a2a;
   border-color: #50c878;
   color: #50c878;
+}
+
+.sp-playback .synth-sliders-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.sp-playback .synth-sliders-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sp-playback .synth-kbd-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
 }
 
 .sp-playback .octave-row {
@@ -320,15 +328,14 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 
 #selected-panel .sp-chords-col {
-  flex-shrink: 0;
-  width: 260px;
-  align-self: stretch;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: #2a3a5a transparent;
-  border-left: 1px solid #2a3a5a;
-  padding-left: 10px;
+  border-top: 1px solid #2a3a5a;
+  padding-top: 6px;
 }
 #selected-panel .sp-chords-col::-webkit-scrollbar { width: 4px; }
 #selected-panel .sp-chords-col::-webkit-scrollbar-track { background: transparent; }
@@ -337,11 +344,14 @@ canvas { display: block; width: 100%; height: 100%; }
   font-size: 11px; font-weight: 700; color: #e94560; margin-bottom: 4px;
 }
 #selected-panel .sp-chords-filter {
-  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-bottom: 6px;
   font-size: 10px; color: #8899bb;
 }
+#selected-panel .sp-chords-filter .cf-row {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+}
 #selected-panel .sp-chords-filter input[type="range"] {
-  width: 130px; height: 20px; accent-color: #e94560; cursor: pointer;
+  flex: 1; height: 20px; accent-color: #e94560; cursor: pointer;
 }
 #selected-panel .sp-chords-filter .cf-toggle {
   background: #1e2a4a;
@@ -423,6 +433,8 @@ canvas { display: block; width: 100%; height: 100%; }
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: #2a3a5a transparent;
+  border-left: 1px solid #2a3a5a;
+  padding-left: 10px;
 }
 
 #selected-panel .sp-title { font-weight: 700; color: #e94560; font-size: 17px; margin-bottom: 4px; }
@@ -643,16 +655,15 @@ canvas { display: block; width: 100%; height: 100%; }
 
 <div id="canvas-container">
   <canvas id="main-canvas"></canvas>
-  <div id="synth-panel">
-    <div id="synth-header">Synth ▸</div>
-    <div id="synth-body"></div>
-  </div>
   <div id="selected-panel">
     <div class="sp-resize-handle" id="sp-resize-handle"></div>
     <span class="sp-close" id="sp-close">&times;</span>
     <div class="sp-layout">
+      <div class="sp-synth-col" id="sp-synth-col">
+        <div id="synth-body"></div>
+        <div class="sp-chords-col" id="sp-chords-col"></div>
+      </div>
       <div class="sp-info" id="sp-info"></div>
-      <div class="sp-chords-col" id="sp-chords-col"></div>
       <div class="sp-edo-container" id="sp-edo-container"></div>
     </div>
   </div>
@@ -2534,7 +2545,7 @@ function updateInfo() {
 const SYNTH_DEFAULTS = {
   waveform: 'triangle', octaveShift: 0,
   attack: 0.015, decay: 0.1, sustain: 1.0, release: 4,
-  keyboardMode: true, kbdContinuous: false,
+  keyboardMode: true, kbdContinuous: false, kbdLatch: false,
 };
 const SYNTH_KEYS = Object.keys(SYNTH_DEFAULTS);
 
@@ -2561,6 +2572,7 @@ const SYNTH = {
   baseFreq: 261.63, // C4
   keyboardMode: true,
   kbdContinuous: false,
+  kbdLatch: false,
   octaveShift: 0,
   attack: 0.015,
   decay: 0.1,
@@ -2836,6 +2848,7 @@ function renderPlaybackControls() {
   const n = S.selected.size;
 
   let h = '<div class="sp-playback">';
+  h += '<div style="font-size:11px;font-weight:700;color:#e94560;margin-bottom:2px">Synth</div>';
   h += `<select class="synth-select" title="Waveform">`;
   for (const w of ['sine', 'triangle', 'sawtooth', 'square']) {
     const sel = w === SYNTH.waveform ? ' selected' : '';
@@ -2847,21 +2860,22 @@ function renderPlaybackControls() {
   h += `<button class="arp-btn" data-interval="1" title="Ascending scale">▶ Scale</button>`;
   h += '</div>';
   h += '<button class="stop-btn">■ Stop</button>';
-  h += `<button class="kbd-btn${SYNTH.keyboardMode ? ' active' : ''}" title="Map keyboard to scale degrees">⌨ Keyboard</button>`;
-  const modeLabel = SYNTH.kbdContinuous ? 'Cont' : '1Row';
-  h += `<button class="kbd-btn kbd-mode-btn${SYNTH.kbdContinuous ? ' active' : ''}" title="Toggle continuous vs 1-row-per-octave">${modeLabel}</button>`;
-  if (SYNTH.keyboardMode) {
-    const kbdHelp = SYNTH.kbdContinuous
-      ? 'A=root, continuous up/down'
-      : 'Each row = 1 octave, A=root';
-    h += `<div style="font-size:9px;color:#667;line-height:1.3;margin-top:2px">${kbdHelp}<br>Space/Alt = rotate mode</div>`;
-  }
+  h += '<div class="synth-sliders-row">';
+  h += '<div class="synth-sliders-left">';
   h += `<div class="octave-row"><label>Oct</label><input type="range" class="octave-slider" min="-2" max="2" step="1" value="${SYNTH.octaveShift || 0}"><span class="octave-val">${SYNTH.octaveShift > 0 ? '+' : ''}${SYNTH.octaveShift || 0}</span></div>`;
   h += '<div class="adsr-group">';
   h += `<div class="adsr-row"><label>A</label><input type="range" class="adsr-slider" data-param="attack" min="0.005" max="2" step="0.005" value="${SYNTH.attack}"><span class="adsr-val">${SYNTH.attack >= 1 ? SYNTH.attack.toFixed(1) : (SYNTH.attack * 1000).toFixed(0) + 'ms'}</span></div>`;
   h += `<div class="adsr-row"><label>D</label><input type="range" class="adsr-slider" data-param="decay" min="0.01" max="2" step="0.01" value="${SYNTH.decay}"><span class="adsr-val">${SYNTH.decay >= 1 ? SYNTH.decay.toFixed(1) : (SYNTH.decay * 1000).toFixed(0) + 'ms'}</span></div>`;
   h += `<div class="adsr-row"><label>S</label><input type="range" class="adsr-slider" data-param="sustain" min="0" max="1" step="0.01" value="${SYNTH.sustain}"><span class="adsr-val">${(SYNTH.sustain * 100).toFixed(0)}%</span></div>`;
   h += `<div class="adsr-row"><label>R</label><input type="range" class="adsr-slider" data-param="release" min="0.05" max="8" step="0.05" value="${SYNTH.release}"><span class="adsr-val">${SYNTH.release.toFixed(1)}s</span></div>`;
+  h += '</div>';
+  h += '</div>';
+  h += '<div class="synth-kbd-btns">';
+  h += `<button class="kbd-btn${SYNTH.keyboardMode ? ' active' : ''}" title="Map keyboard to scale degrees">⌨ Kbd</button>`;
+  const modeLabel = SYNTH.kbdContinuous ? 'Cont' : '1Row';
+  h += `<button class="kbd-btn kbd-mode-btn${SYNTH.kbdContinuous ? ' active' : ''}" title="Toggle continuous vs 1-row-per-octave">${modeLabel}</button>`;
+  h += `<button class="kbd-btn kbd-latch-btn${SYNTH.kbdLatch ? ' active' : ''}" title="Latch: press to toggle notes on/off (avoids keyboard ghosting)">Latch</button>`;
+  h += '</div>';
   h += '</div>';
   h += '</div>';
 
@@ -2873,7 +2887,7 @@ function renderPlaybackControls() {
     saveSynthSettings();
   });
   el.querySelector('.stop-btn').addEventListener('click', stopPlayback);
-  el.querySelector('.kbd-btn:not(.kbd-mode-btn)').addEventListener('click', () => {
+  el.querySelector('.kbd-btn:not(.kbd-mode-btn):not(.kbd-latch-btn)').addEventListener('click', () => {
     SYNTH.keyboardMode = !SYNTH.keyboardMode;
     saveSynthSettings();
     if (!SYNTH.keyboardMode) {
@@ -2885,6 +2899,14 @@ function renderPlaybackControls() {
     SYNTH.kbdContinuous = !SYNTH.kbdContinuous;
     saveSynthSettings();
     Object.keys(SYNTH._activeKeys).forEach(k => stopKeyNote(k));
+    renderPlaybackControls();
+  });
+  el.querySelector('.kbd-latch-btn').addEventListener('click', () => {
+    SYNTH.kbdLatch = !SYNTH.kbdLatch;
+    saveSynthSettings();
+    if (!SYNTH.kbdLatch) {
+      Object.keys(SYNTH._activeKeys).forEach(k => stopKeyNote(k));
+    }
     renderPlaybackControls();
   });
   el.querySelector('.octave-slider').addEventListener('input', e => {
@@ -3107,8 +3129,8 @@ function ensureChordFilters(container) {
   let h = '<div id="chord-filter-bar">';
   h += '<div class="sp-chords-title">Chords</div>';
   h += '<div class="sp-chords-filter">';
-  h += `<label>Max</label><input type="range" id="chord-max-root" min="6" max="200" step="1" value="${_chordMaxRoot}"><span class="cf-val" id="chord-max-root-val">${_chordMaxRoot}</span>`;
-  h += `<label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" step="1" value="${_chordMaxRMS}"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span>`;
+  h += `<div class="cf-row"><label>Max</label><input type="range" id="chord-max-root" min="6" max="200" step="1" value="${_chordMaxRoot}"><span class="cf-val" id="chord-max-root-val">${_chordMaxRoot}</span></div>`;
+  h += `<div class="cf-row"><label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" step="1" value="${_chordMaxRMS}"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span></div>`;
   h += '</div>';
   h += '</div>';
   h += '<div id="active-chord-label" style="color:#ff6;font-weight:600;font-size:15px;line-height:1.5;text-align:center;padding:8px 0;font-family:monospace"></div>';
@@ -3321,12 +3343,33 @@ function playChordDegrees(degrees) {
   setTimeout(() => { for (const c of codes) stopKeyNote(c); }, holdMs + (_killFadeMs * 1000));
 }
 
+let _chordSlots = [];
+
+const _chordNameMap = {};
+const _chordNameExact = { '6:8:9': 'sus4', '8:9:12': 'sus2' };
+(function() {
+  const defs = [
+    [[4,5,6], 'major'],
+    [[10,12,15], 'minor'],
+    [[5,6,7], 'dim'],
+    [[14,18,21], 'supermajor'],
+    [[6,7,9], 'subminor'],
+    [[26,30,39], 'inframinor'],
+    [[10,13,15], 'ultramajor'],
+    [[22,26,33], 'minthmic minor'],
+    [[22,28,33], 'pentacircle major'],
+  ];
+  for (const [nums, name] of defs) {
+    _chordNameMap[_canonKey3(nums[0], nums[1], nums[2])] = name;
+  }
+})();
+
 function renderChordHighlights() {
   const label = document.getElementById('active-chord-label');
   const activeEntries = Object.values(SYNTH._activeKeys);
   const activeDegrees = activeEntries.map(e => e.degreeInScale);
   if (!activeDegrees.length) {
-    if (label) label.innerHTML = '';
+    if (label) _renderChordSlots(label);
     return;
   }
 
@@ -3339,7 +3382,7 @@ function renderChordHighlights() {
   }
   const bassDegree = lowestEntry.degreeInScale;
 
-  const activeLabels = [];
+  const activeChords = [];
   const seenNotations = new Set();
   for (const g of _cachedTriads) {
     for (const inv of g.invList) {
@@ -3348,15 +3391,52 @@ function renderChordHighlights() {
         if (r.root === bassDegree && r.degrees.every(d => activeDegrees.includes(d))) {
           if (!seenNotations.has(inv.notation)) {
             seenNotations.add(inv.notation);
-            activeLabels.push(inv.notation + ' (' + inv.rmsError.toFixed(1) + '¢)');
+            activeChords.push({ notation: inv.notation, rms: inv.rmsError.toFixed(1), name: _chordNameExact[inv.notation] || _chordNameMap[g.canonical] || '' });
           }
         }
       }
     }
   }
-  if (label) label.innerHTML = activeLabels.map(l =>
-    '<div>' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</div>'
-  ).join('');
+
+  if (!activeChords.length) {
+    if (label) _renderChordSlots(label);
+    return;
+  }
+
+  const activeSet = new Set(activeChords.map(ch => ch.notation));
+  for (let i = 0; i < _chordSlots.length; i++) {
+    if (_chordSlots[i] && !activeSet.has(_chordSlots[i].notation)) {
+      _chordSlots[i] = null;
+    }
+  }
+  for (const ch of activeChords) {
+    const existingIdx = _chordSlots.findIndex(s => s && s.notation === ch.notation);
+    if (existingIdx !== -1) { _chordSlots[existingIdx] = ch; continue; }
+    let placed = false;
+    for (let i = 0; i < _chordSlots.length; i++) {
+      if (_chordSlots[i] === null) { _chordSlots[i] = ch; placed = true; break; }
+    }
+    if (!placed) _chordSlots.push(ch);
+  }
+  while (_chordSlots.length && _chordSlots[_chordSlots.length - 1] === null) _chordSlots.pop();
+
+  if (label) _renderChordSlots(label);
+}
+
+function _renderChordSlots(label) {
+  let html = '';
+  for (let i = 0; i < _chordSlots.length; i++) {
+    const s = _chordSlots[i];
+    if (s) {
+      const url = 'https://en.xen.wiki/w/' + encodeURIComponent(s.notation);
+      const escaped = s.notation.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      const nameTag = s.name ? `<span style="color:#8899bb;font-size:12px">${s.name} </span>` : '';
+      html += `<div>${nameTag}<a href="${url}" target="_blank" style="color:#ff6;text-decoration:underline">${escaped}</a> <span style="color:#8899bb">(${s.rms}¢)</span></div>`;
+    } else {
+      html += '<div style="visibility:hidden">&nbsp;</div>';
+    }
+  }
+  label.innerHTML = html;
 }
 
 // ================================================================
@@ -3365,7 +3445,6 @@ function renderChordHighlights() {
 
 function positionPanel() {
   const panel = document.getElementById('selected-panel');
-  const synthPanel = document.getElementById('synth-panel');
   if (!panel || panel.style.display === 'none') return;
   const { radius, cx, cy, sliderY } = getMOSCircleLayout(S.W, S.H);
   const panelPad = 28;
@@ -3378,17 +3457,6 @@ function positionPanel() {
   panel.style.height = height + 'px';
   panel.style.display = 'flex';
 
-  if (synthPanel) {
-    const synthLeft = cx - radius - panelPad;
-    const synthWidth = (radius + panelPad) * 2;
-    const panelTop = sliderY - 38;
-    synthPanel.style.left = Math.max(4, synthLeft) + 'px';
-    synthPanel.style.width = synthWidth + 'px';
-    synthPanel.style.bottom = (S.H - panelTop + 4) + 'px';
-    synthPanel.style.top = '';
-    synthPanel.style.display = 'block';
-  }
-
 }
 
 function updatePanel() {
@@ -3396,10 +3464,8 @@ function updatePanel() {
   const panel = document.getElementById('selected-panel');
   const infoEl = document.getElementById('sp-info');
   const edoEl = document.getElementById('sp-edo-container');
-  const synthPanel = document.getElementById('synth-panel');
   if (!S.selected) {
     panel.style.display = 'none';
-    if (synthPanel) synthPanel.style.display = 'none';
     stopPlayback();
     return;
   }
@@ -4205,14 +4271,22 @@ function setup() {
     const noteKey = codeToKey(e.code);
     if (!noteKey) return;
     const mapping = getKeyMapping(noteKey);
-    if (mapping && !SYNTH._activeKeys[e.code]) {
+    if (!mapping) return;
+    if (SYNTH.kbdLatch) {
+      e.preventDefault();
+      if (SYNTH._activeKeys[e.code]) {
+        stopKeyNote(e.code);
+      } else {
+        playKeyNote(noteKey, e.code);
+      }
+    } else if (!SYNTH._activeKeys[e.code]) {
       e.preventDefault();
       playKeyNote(noteKey, e.code);
     }
   });
 
   window.addEventListener('keyup', e => {
-    if (!SYNTH.keyboardMode) return;
+    if (!SYNTH.keyboardMode || SYNTH.kbdLatch) return;
     if (SYNTH._activeKeys[e.code]) {
       stopKeyNote(e.code);
     }
@@ -4269,16 +4343,6 @@ function setup() {
     S._panelHeight = null;
     S._circleRadius = null;
     updatePanel(); render();
-  });
-
-  document.getElementById('synth-header').addEventListener('click', () => {
-    const body = document.getElementById('synth-body');
-    const header = document.getElementById('synth-header');
-    const open = body.classList.toggle('open');
-    header.textContent = open ? 'Synth ▾' : 'Synth ▸';
-  });
-  document.getElementById('synth-panel').addEventListener('mousedown', e => {
-    e.stopPropagation();
   });
 
   // Panel resize handle
