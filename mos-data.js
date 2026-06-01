@@ -87,7 +87,7 @@ const TEMPERAMENTS = [
   // === PENTATONIC (2L 3s) ===
 
   // === ANTI-PENTATONIC (3L 2s) ===
-  { name: 'Father', mos: ['3L_2s', '5L_3s'], genRange: [454.0, 461.5],
+  { name: 'Father', mos: ['3L_2s', '5L_3s'], genRange: [445.7, 461.5],
     commas: ['16/15'], commaNames: ['diatonic semitone'],
     wikiUrl: 'https://en.xen.wiki/w/Father_family',
     description: 'Tempers out 16/15, equating 5/4 with 4/3. Exotemperament.' },
@@ -139,13 +139,13 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Kleismic_family',
     description: 'Alpha hexacot (splits 3/1 into 6 steps). Generator ~314.3–320¢.' },
 
-  // === SENSOID (3L 5s) ===
+  // === CHECKERTONIC (3L 5s) ===
   { name: 'Porcupine', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [150.0, 171.43],
     commas: ['250/243'], commaNames: ['porcupine comma'],
     wikiUrl: 'https://en.xen.wiki/w/Porcupine',
     description: 'Two generators = 6/5, three = 4/3. ~163¢ generator.' },
 
-  { name: 'Sensi', mos: ['3L_5s', '8L_3s', '8L_11s'], genRange: [435.0, 454.0],
+  { name: 'Sensi', mos: ['3L_5s', '8L_3s', '8L_11s'], genRange: [442.0, 445.7],
     commas: ['78732/78125'], commaNames: ['sensipent comma'],
     wikiUrl: 'https://en.xen.wiki/w/Sensipent_family',
     description: 'Half a major sixth generator. Two generators = 5/3, seven = 6/1.' },
@@ -155,7 +155,7 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Wurschmidt',
     description: 'Sharp major third generator. Eight generators = 6/1.' },
 
-  // === ORWELLOID (4L 5s) ===
+  // === GRAMITONIC (4L 5s) ===
   { name: 'Neominor', mos: ['4L_5s', '4L_9s', '4L_13s'], genRange: [280.0, 285.5],
     commas: ['2401/2400'], commaNames: ['breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Breedsmic_temperaments#Neominor',
@@ -296,19 +296,20 @@ const MOS_NAMES = {
   '3L_4s': 'Mosh', '4L_3s': 'Smitonic',
   '6L_1s': 'Archeotonic', '1L_6s': 'Onyx',
   '5L_2s': 'Diatonic', '2L_5s': 'Anti-diatonic',
-  '3L_5s': 'Sensoid', '5L_3s': 'Oneirotonic',
-  '4L_5s': 'Orwelloid', '5L_4s': 'Semiquartal',
+  '3L_5s': 'Checkertonic', '5L_3s': 'Oneirotonic',
+  '4L_5s': 'Gramitonic', '5L_4s': 'Semiquartal',
   '7L_1s': 'Pine', '1L_7s': 'Antipine',
-  '7L_2s': 'Superdiatonic', '2L_7s': 'Balzanoid',
+  '8L_1s': 'Subneutralic', '1L_8s': 'Antisubneutralic',
+  '7L_2s': 'Superdiatonic', '2L_7s': 'Balzano',
   '6L_3s': 'Hyrulic', '3L_6s': 'Tcherepninoid',
-  '7L_3s': 'Dicoid', '3L_7s': 'Dicoid',
+  '7L_3s': 'Dicoid', '3L_7s': 'Sephiroid',
   '5L_5s': 'Decanoid',
   '7L_4s': 'Undecoid', '4L_7s': 'Undecoid',
   '6L_5s': 'Undecoid', '5L_6s': 'Undecoid',
   '7L_5s': 'Chromatic', '5L_7s': 'Chromatic',
-  '8L_3s': 'Sephiroid', '3L_8s': 'Sephiroid',
+  '8L_3s': 'Flanatonic', '3L_8s': 'Isodiaphoric',
   '8L_4s': 'Triskaidecoid', '4L_8s': 'Triskaidecoid',
-  '8L_5s': 'Triskaidecoid', '5L_8s': 'Triskaidecoid',
+  '8L_5s': 'Triskaidecoid',
   '9L_1s': 'Sinatonic', '1L_9s': 'Antisinatonic',
   '10L_1s': 'Decatonic', '1L_10s': 'Antidecatonic',
   '10L_2s': 'Jaric', '2L_10s': 'Jaric',
@@ -317,7 +318,7 @@ const MOS_NAMES = {
   '10L_5s': 'Pentadecoid', '5L_10s': 'Pentadecoid',
   '10L_11s': 'Miracloid', '11L_10s': 'Miracloid',
   '9L_10s': 'Negric', '10L_9s': 'Negric',
-  '12L_5s': 'Schismatoid', '5L_12s': 'Schismatoid',
+
   '12L_7s': 'Enneadecoid', '7L_12s': 'Enneadecoid',
   '4L_9s': 'Orwelloid', '9L_4s': 'Orwelloid',
   '4L_11s': 'Hansonoid', '11L_4s': 'Hansonoid',
@@ -329,7 +330,7 @@ const MOS_NAMES = {
 const MODE_NAMES = {
   '5L_2s': ['Lydian', 'Ionian', 'Mixolydian', 'Dorian', 'Aeolian', 'Phrygian', 'Locrian'],
   '2L_5s': ['Anti-Locrian', 'Anti-Phrygian', 'Anti-Aeolian', 'Anti-Dorian', 'Anti-Mixolydian', 'Anti-Ionian', 'Anti-Lydian'],
-  '3L_4s': ['Himal', 'Pamiri', 'Mohajira', 'Rast', 'Hijaz', 'Yakah', 'Buzurg'],
+  '3L_4s': ['Dalmatian', 'Galatian', 'Cilician', 'Bithynian', 'Pisidian', 'Illyrian', 'Lycian'],
   '4L_3s': ['Smitonic', 'Glamorganic', 'Aeolimic', 'Mixosmitic', 'Lydic', 'Dorimic', 'Phrygimic'],
   '2L_3s': ['Major pentatonic', 'Suspended', 'Blues minor', 'Minor pentatonic', 'Man Gong'],
   '3L_2s': ['Anti-pentatonic mode 1', 'Anti-pentatonic mode 2', 'Anti-pentatonic mode 3', 'Anti-pentatonic mode 4', 'Anti-pentatonic mode 5'],
