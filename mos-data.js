@@ -140,12 +140,22 @@ const TEMPERAMENTS = [
     description: 'Alpha hexacot (splits 3/1 into 6 steps). Generator ~314.3–320¢.' },
 
   // === CHECKERTONIC (3L 5s) ===
-  { name: 'Porcupine', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [150.0, 171.43],
+  { name: 'Porcupine', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [160.0, 166.67],
     commas: ['250/243'], commaNames: ['porcupine comma'],
     wikiUrl: 'https://en.xen.wiki/w/Porcupine',
     description: 'Two generators = 6/5, three = 4/3. ~163¢ generator.' },
 
-  { name: 'Sensi', mos: ['3L_5s', '8L_3s', '8L_11s'], genRange: [442.0, 445.7],
+  { name: 'Superpine', mos: ['7L_1s', '7L_8s', '8L_7s'], genRange: [166.67, 171.43],
+    commas: ['250/243'], commaNames: ['porcupine comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Meantone_family#Superpine',
+    description: 'Like porcupine but favors flat fifths. Generator is 1/3 of a fourth (~35/32). Needs 15-tone MOS (7L 8s) for harmonics beyond 3.' },
+
+  { name: 'Sensamagic', mos: ['3L_5s', '8L_3s', '8L_11s'], genRange: [436.36, 442.11],
+    commas: ['245/243'], commaNames: ['sensamagic comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Sensamagic',
+    description: 'Tempers out 245/243. Two generators of ~440¢ approximate 6/5 + 9/7. Divides 3/2 into 7/6 and 10/9.' },
+
+  { name: 'Sensi', mos: ['3L_5s', '8L_3s', '8L_11s'], genRange: [442.11, 445.7],
     commas: ['78732/78125'], commaNames: ['sensipent comma'],
     wikiUrl: 'https://en.xen.wiki/w/Sensipent_family',
     description: 'Half a major sixth generator. Two generators = 5/3, seven = 6/1.' },
@@ -274,7 +284,7 @@ const TEMP_COLORS = {
   'Mohajira': '#dda0dd',
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a',
-  'Porcupine': '#7fff00', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
+  'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
