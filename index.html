@@ -1943,6 +1943,16 @@ function hitCircleDot(mx, my) {
 }
 
 function playCircleDot(dot) {
+  const latchCode = '_dot_' + dot.degree;
+  if (SYNTH.kbdLatch) {
+    if (SYNTH._activeKeys[latchCode]) {
+      stopKeyNote(latchCode);
+    } else {
+      startNote(latchCode, dot.degree, SYNTH.octaveShift);
+      renderChordHighlights();
+    }
+    return;
+  }
   stopPlayback();
   if (SYNTH._oscCount >= MAX_OSCILLATORS) killAllNotes();
   const actx = getAudioCtx();
