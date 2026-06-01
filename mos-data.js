@@ -51,7 +51,7 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Mabila_family',
     description: 'Flat fifths like mavila but three generators = 5/2. Ten bad fifths reach a good one. 9L 7s MOS has good triads. <br> <br> Basically mavila but you can consider it even flatter, I guess?' },
 
-  { name: 'Wilsec', mos: ['2L_5s', '2L_7s', '2L_9s'], genRange: [535.7, 540.0],
+  { name: 'Wilsec', mos: ['2L_5s', '2L_7s', '2L_9s'], genRange: [534, 540.0],
     commas: ['49/48'], commaNames: ['semaphoresma'],
     wikiUrl: 'https://en.xen.wiki/w/Semaphoresmic_clan#Wilsec',
     description: '2.3.7 subgroup. Divides the 12th harmonic into 8 equal parts. Tempers out 49/48, equating 7/6 and 8/7.' },
@@ -75,17 +75,17 @@ const TEMPERAMENTS = [
   { name: 'Mohajira', mos: ['3L_4s', '7L_3s'], genRange: [342.86, 350.0],
     commas: ['81/80', '121/120', '243/242'], commaNames: ['syntonic comma', 'biyatisma', 'rastma'],
     wikiUrl: 'https://en.xen.wiki/w/Mohajira',
-    description: 'Neutral thirds temperament. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. This is this as the "flat" portion of neutral third temperaments, which when stacked, gives you meantone (the flat fifth temperament). Contains the just 11/9 neutral third, which is the lowest complexity neutral interval, which gives it extra sauce.' },
+    description: 'Neutral thirds temperament. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. <br> <br>  Think of this as the "flat" portion of neutral third temperaments, which when stacked, gives you meantone (the flat fifth temperament). Contains the just 11/9 neutral third, which is the lowest complexity neutral interval, which gives it extra sauce.' },
 
   { name: 'Hemififths', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [350.0, 352.94],
     commas: ['5120/5103', '10976/10935'], commaNames: ['hemifamity comma', 'hemimage comma'],
     wikiUrl: 'https://en.xen.wiki/w/Hemififths',
-    description: '7-limit neutral third generator. Two generators = 3/2. Excellent no-fives temperament. This is the "accurate" neutral third temperament, where stacking a third gives you a pythagorean fifth. Imagine the diatonic scale with pure fifths, and then just clone it and offset the clone by ~350c.' },
+    description: '7-limit neutral third generator. Two generators = 3/2. Excellent no-fives temperament. <br> <br>  This is the "accurate" neutral third temperament, where stacking a third gives you a pythagorean fifth. Imagine the diatonic scale with pure fifths, and then just clone it and offset the clone by ~350c.' },
 
   { name: 'Suhajira', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [352.94, 365.0],
     commas: ['243/242', '2401/2400'], commaNames: ['rastma', 'breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Rastmic_clan#Suhajira',
-    description: 'Rastmic clan. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. This is the "sharp" neutral third temperament, which when stacked, gives you superpyth fifths. Evil twin of mohajira.' },
+    description: 'Rastmic clan. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. <br> <br>  This is the "sharp" neutral third temperament, which when stacked, gives you superpyth fifths. Evil twin of mohajira.' },
 
   { name: 'Magic', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [377.0, 385.0],
     commas: ['3125/3072'], commaNames: ['magic comma'],
@@ -150,7 +150,7 @@ const TEMPERAMENTS = [
   { name: 'Tricot / Slendric', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [228.57, 240.0],
     commas: ['1029/1024'], commaNames: ['gamelisma'],
     wikiUrl: 'https://en.xen.wiki/w/Slendric',
-    description: 'Three 8/7 generators = 3/2. 2.3.7 subgroup. Very accurate. <br> <br> Historically this temperament has been called slendric, because in the Indonesian Gamelan scale Slendro, some might say their fifth is ~roughly~ divided into 3 steps - even though the step sizes aren&#39t evenly spaced at all. It&#39s a bit chauvinistic if you think about it. Imagine if you will, an alien species coming to earth and they analyze all of western classical music theory. They then fly away and tell the rest of the universe that the earthlings play music in 7edo, and name 7edo "Diatonic". <br> <br> So just call it tricot, will you?' },
+    description: 'Three 8/7 generators = 3/2. 2.3.7 subgroup. Very accurate. <br> <br> Historically this temperament has been called slendric, because in the Indonesian Gamelan scale Slendro, some might say their fifth is ~roughly~ divided into 3 steps - even though the step sizes aren&#39t evenly spaced at all. <br> <br> It&#39s a bit chauvinistic if you ask me. Imagine if you will, an alien species coming to earth and they analyze all of western classical music theory. They then fly away and tell the rest of the universe that the earthlings play music in 7edo, and name 7edo "Diatonic". <br> <br> So just call it tricot, will you?' },
 
   { name: 'Glacier / Pentacot', mos: ['1L_7s', '8L_1s'], genRange: [137.0, 144.0],
     commas: [], commaNames: [],
@@ -229,7 +229,7 @@ const TEMPERAMENTS = [
   { name: 'Neominor', mos: ['4L_5s', '4L_9s', '4L_13s'], genRange: [280.0, 285.5],
     commas: ['2401/2400'], commaNames: ['breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Breedsmic_temperaments#Neominor',
-    description: 'Breedsmic temperament. Generator is a subminor third. 4L 5s, 4L 9s, 4L 13s MOS family.' },
+    description: 'Breedsmic temperament. Generator is a subminor third. 4L 5s, 4L 9s, 4L 13s MOS family. <br> <br>  Seriously who comes up with these names? <i> Breedsmic </i> ' },
 
   { name: 'Orwell', mos: ['4L_5s', '4L_9s', '13L_9s'], genRange: [269.0, 275.0],
     commas: ['225/224', '1728/1715'], commaNames: ['marvel comma', 'orwellisma'],
