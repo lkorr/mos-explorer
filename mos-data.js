@@ -88,9 +88,9 @@ const TEMPERAMENTS = [
     description: 'Rastmic clan. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. <br> <br>  This is the "sharp" neutral third temperament, which when stacked, gives you superpyth fifths. Evil twin of mohajira.' },
 
   { name: 'Sephiroth', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [360.0, 377.14],
-    commas: ['245/243', '3125/3087'], commaNames: ['sensamagic comma', 'rastma'],
+    commas: ['65/64', '170/169', '221/220'], commaNames: ['wilsorma', '', ''],
     wikiUrl: 'https://en.xen.wiki/w/Chromatic_pairs#Sephiroth',
-    description: 'Chromatic pairs. Generator is a sharp neutral third between 360¢ and 377¢. 10-note MOS is the sweet spot.' },
+    description: 'A no-3s and no-7s restriction of magic. Generator is a sharp neutral third between 360¢ and 377¢ - so sharp that your fifth extends past 5edo into oneirotonic territory. 10-note MOS is the sweet spot. <br> <br>  Named after the final fantasy character. I know. ' },
 
   { name: 'Magic', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [377.14, 385.0],
     commas: ['3125/3072'], commaNames: ['magic comma'],
