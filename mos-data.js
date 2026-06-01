@@ -51,6 +51,11 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Mabila_family',
     description: 'Flat fifths like mavila but three generators = 5/2. Ten bad fifths reach a good one. 9L 7s MOS has good triads.' },
 
+  { name: 'Wilsec', mos: ['2L_5s', '2L_7s', '2L_9s'], genRange: [535.7, 540.0],
+    commas: ['49/48'], commaNames: ['semaphoresma'],
+    wikiUrl: 'https://en.xen.wiki/w/Semaphoresmic_clan#Wilsec',
+    description: '2.3.7 subgroup. Divides the 12th harmonic into 8 equal parts. Tempers out 49/48, equating 7/6 and 8/7.' },
+
   { name: 'Casablanca', mos: ['2L_5s', '2L_7s', '2L_9s'], genRange: [540.0, 550.0],
     commas: ['126/125'], commaNames: ['starling comma'],
     wikiUrl: 'https://en.xen.wiki/w/Starling_temperaments#Casablanca',
@@ -122,15 +127,25 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Squares',
     description: 'Four generators stack to = 8/3. Generator is a sharp sub-fourth (~426¢).' },
 
-  { name: 'Baldi', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [200.0, 206.90],
+  { name: 'Baldi', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [200.0, 208.70],
     commas: ['225/224', '325/324', '640/637'], commaNames: ['septimal kleisma', 'lesser diesis', '640/637'],
     wikiUrl: 'https://en.xen.wiki/w/Subgroup_temperaments#Baldy',
     description: '2.9.5.7.13 subgroup. Derived from every other generator of garibaldi. Generator ~200–207¢. You can also just think of this as every other generator from pythagorean - so its a wholetone scale temperament. Just a big stack of wholetones.' },
 
-  { name: 'Machine', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [211.765, 218.182],
+  { name: 'Machine', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [208.7, 218.182],
     commas: ['16807/16384'], commaNames: ['cloudy comma'],
     wikiUrl: 'https://en.xen.wiki/w/Subgroup_temperaments#Machine',
     description: '2.7 subgroup. Generator is a flat 8/7. Five generators = octave minus a comma.' },
+
+  { name: 'Kumonga', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [218.18, 222.22],
+    commas: ['126/125'], commaNames: ['starling comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Starling_temperaments#Kumonga',
+    description: 'Starling family. Generator is a sharp 8/7. Tempers out 126/125.' },
+
+  { name: 'Hemisensi', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [222.22, 228.57],
+    commas: ['78732/78125'], commaNames: ['sensipent comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Sensipent_family#Hemisensi',
+    description: 'Sensipent family. Splits the 9/7 generator into two equal parts, each ~25/22.' },
 
   { name: 'Tricot / Slendric', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [228.57, 240.0],
     commas: ['1029/1024'], commaNames: ['gamelisma'],
@@ -310,7 +325,7 @@ const TEMPERAMENTS = [
 const TEMP_COLORS = {
   'Meantone': '#50c878', 'Flattone': '#3da86a', 'Deeptone': '#2d8a55',
   'Pythagorean': '#ffd700', 'Parapyth': '#ffec40', 'Superpyth': '#ff6347', 'Ultrapyth': '#ff8247',
-  'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84', 'Casablanca': '#15968a',
+  'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84', 'Wilsec': '#1aaa96', 'Casablanca': '#15968a',
   'Rarity': '#6a8aaa', 'Sixix': '#b080b0', 'Amity': '#c490c4', 'Mohajira': '#dda0dd', 'Hemififths': '#d4b0d4',
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a', 'Orgone': '#4a9a6a',
@@ -318,7 +333,7 @@ const TEMP_COLORS = {
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
-  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
+  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
   'Father': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
