@@ -57,7 +57,12 @@ const TEMPERAMENTS = [
     description: 'Starling family. Generator is a sharp 11/8 (~545¢). Two generators = 6/5.' },
 
   // === MOSH / NEUTRAL THIRDS (3L 4s) ===
-  { name: 'Mohajira', mos: ['3L_4s', '7L_3s'], genRange: [342.0, 353.0],
+  { name: 'Amity', mos: ['3L_4s', '7L_3s'], genRange: [338.5, 342.86],
+    commas: ['1600000/1594323'], commaNames: ['amity comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Amity',
+    description: 'Five generators = 4/3. Generator is a flat neutral third (~339¢). Works well in 39edo.' },
+
+  { name: 'Mohajira', mos: ['3L_4s', '7L_3s'], genRange: [342.86, 353.0],
     commas: ['81/80', '121/120', '243/242'], commaNames: ['syntonic comma', 'biyatisma', 'rastma'],
     wikiUrl: 'https://en.xen.wiki/w/Mohajira',
     description: 'Neutral thirds temperament. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. Generator splits the fifth into two equal ~350¢ thirds.' },
@@ -79,10 +84,15 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Myna',
     description: 'Minor third generator. Named after starling family (126/125).' },
 
-  { name: 'Superkleismic', mos: ['4L_3s', '4L_7s'], genRange: [320.0, 326.0],
+  { name: 'Superkleismic', mos: ['4L_3s', '4L_7s'], genRange: [320.0, 323.08],
     commas: ['875/864'], commaNames: ['keema'],
     wikiUrl: 'https://en.xen.wiki/w/Shibboleth_family',
     description: 'Sharp minor third. Three generators = 7/4.' },
+
+  { name: 'Orgone', mos: ['4L_3s', '4L_7s'], genRange: [323.08, 327.3],
+    commas: ['65536/65219'], commaNames: ['orgonisma'],
+    wikiUrl: 'https://en.xen.wiki/w/Orgone',
+    description: '2.7.11 subgroup. Generator is ~77/64. Two generators = 16/11, three = 7/4.' },
 
   // === PENTATONIC (2L 3s) ===
 
@@ -281,9 +291,9 @@ const TEMP_COLORS = {
   'Meantone': '#50c878', 'Flattone': '#3da86a', 'Deeptone': '#2d8a55',
   'Pythagorean': '#ffd700', 'Parapyth': '#ffec40', 'Superpyth': '#ff6347', 'Ultrapyth': '#ff8247',
   'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84', 'Casablanca': '#15968a',
-  'Mohajira': '#dda0dd',
+  'Amity': '#c490c4', 'Mohajira': '#dda0dd',
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
-  'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a',
+  'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a', 'Orgone': '#4a9a6a',
   'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
