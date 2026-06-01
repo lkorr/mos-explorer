@@ -163,7 +163,12 @@ const TEMPERAMENTS = [
     description: 'Related to Bohlen-Pierce with octave period. 13 generators = 3rd harmonic, 19 = 5th, 23 = 7th. <br> <br> Basically someone took the bohlen pierce scale, where you divide 3/1 into 13 even steps, and fudged it up so that it fits into 12edo. Fun stuff.' },
 
 
-  { name: 'Tritonic', mos: ['2L_1s', '2L_3s', '2L_5s'], genRange: [617.0, 624.0],
+  { name: 'Neptune', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [582.86, 587.76],
+    commas: ['2401/2400'], commaNames: ['breedsma'],
+    wikiUrl: 'https://en.xen.wiki/w/Gammic_family#Neptune',
+    description: 'Gammic family. 7 bright generator stacks give you a fifth. Generator is a flat 7/5 tritone (~585¢).' },
+
+  { name: 'Tritonic', mos: ['2L_1s', '2L_3s', '2L_5s'], genRange: [617.14, 624.0],
     commas: ['225/224'], commaNames: ['marvel comma'],
     wikiUrl: 'https://en.xen.wiki/w/Marvel_temperaments#Tritonic',
     description: 'Marvel family. Generator is a 10/7 tritone (~617.5¢). 5 generators = 6th harmonic. Pretty much at the absolute limit of listenable music. <br> <br> <i>&#39;Oops! All tritones!&#39;</i>' },
@@ -348,7 +353,7 @@ const TEMP_COLORS = {
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
-  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
+  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Neptune': '#4169e1', 'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
   'Father': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
