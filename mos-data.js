@@ -80,14 +80,19 @@ const TEMPERAMENTS = [
   { name: 'Hemififths', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [350.0, 352.94],
     commas: ['5120/5103', '10976/10935'], commaNames: ['hemifamity comma', 'hemimage comma'],
     wikiUrl: 'https://en.xen.wiki/w/Hemififths',
-    description: '7-limit neutral third generator. Two generators = 3/2. Excellent no-fives temperament. <br> <br>  This is the "accurate" neutral third temperament, where stacking a third gives you a pythagorean fifth. Imagine the diatonic scale with pure fifths, and then just clone it and offset the clone by ~350c.' },
+    description: 'Dicot; Two generators = 3/2. Excellent no-fives temperament. <br> <br>  This is the "accurate" neutral third temperament, where stacking a third gives you a pythagorean fifth. Imagine the diatonic scale with pure fifths, and then just clone it and offset the clone by ~350c.' },
 
   { name: 'Suhajira', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [352.94, 360.0],
     commas: ['243/242', '2401/2400'], commaNames: ['rastma', 'breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Rastmic_clan#Suhajira',
     description: 'Rastmic clan. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. <br> <br>  This is the "sharp" neutral third temperament, which when stacked, gives you superpyth fifths. Evil twin of mohajira.' },
 
-  { name: 'Magic', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [377.0, 385.0],
+  { name: 'Sephiroth', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [360.0, 377.14],
+    commas: ['245/243', '3125/3087'], commaNames: ['sensamagic comma', 'rastma'],
+    wikiUrl: 'https://en.xen.wiki/w/Chromatic_pairs#Sephiroth',
+    description: 'Chromatic pairs. Generator is a sharp neutral third between 360¢ and 377¢. 10-note MOS is the sweet spot.' },
+
+  { name: 'Magic', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [377.14, 385.0],
     commas: ['3125/3072'], commaNames: ['magic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Magic_family',
     description: 'Five major thirds = a twelfth (3/1). Best 9-odd-limit in this complexity range.' },
@@ -368,6 +373,7 @@ const TEMP_COLORS = {
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
   'Blackwood': '#ba55d3', 'Lemba': '#d2691e', 'Hedgehog': '#8fbc8f',
+  'Sephiroth': '#7b68ee',
   'Escape': '#a8d8ea', 'Octacot': '#56c9a0', 'Passion': '#d4637a', 'Valentine': '#ff6b81', 'Miracle': '#ff4500', 'Negri': '#9370db',
 };
 
