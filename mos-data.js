@@ -132,7 +132,7 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Subgroup_temperaments#Baldy',
     description: '2.9.5.7.13 subgroup. Derived from every other generator of garibaldi. Generator ~200–207¢. You can also just think of this as every other generator from pythagorean - so its a wholetone scale temperament. Just a big stack of wholetones.' },
 
-  { name: 'Machine', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [208.7, 218.182],
+  { name: 'Machine', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [208.7, 218.18],
     commas: ['16807/16384'], commaNames: ['cloudy comma'],
     wikiUrl: 'https://en.xen.wiki/w/Subgroup_temperaments#Machine',
     description: '2.7 subgroup. Generator is a flat 8/7. Five generators = octave minus a comma.' },
