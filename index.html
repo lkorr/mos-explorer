@@ -921,7 +921,7 @@ function getEqualizedEnd(region) {
 
 const S = {
   viewMin: 0, viewMax: 1200,
-  maxSize: 30, maxEDO: 53, minSize: 2,
+  maxSize: 18, maxEDO: 53, minSize: 2,
   regions: [], colorMap: {}, edos: [],
   hovered: null, selected: null,
   generatorCents: null,
@@ -3198,12 +3198,15 @@ const _chordNameExact = { '6:8:9': 'sus4', '8:9:12': 'sus2' };
   }
 })();
 
+let _lastTriadSlots = [];
+let _lastDyadSlots = [];
+
 function renderChordHighlights() {
   const label = document.getElementById('active-chord-label');
   const activeEntries = Object.values(SYNTH._activeKeys);
   const activeDegrees = activeEntries.map(e => e.degreeInScale);
   if (!activeDegrees.length) {
-    if (label) _renderChordSlots(label);
+    if (label) _renderCombinedSlots(label);
     return;
   }
 
@@ -3216,7 +3219,8 @@ function renderChordHighlights() {
   }
   const bassDegree = lowestEntry.degreeInScale;
 
-  const activeChords = [];
+  const activeTriads = [];
+  const activeDyads = [];
   const seenNotations = new Set();
   for (const g of _cachedTriads) {
     for (const inv of g.invList) {
@@ -3225,15 +3229,14 @@ function renderChordHighlights() {
         if (r.root === bassDegree && r.degrees.every(d => activeDegrees.includes(d))) {
           if (!seenNotations.has(inv.notation)) {
             seenNotations.add(inv.notation);
-            activeChords.push({ notation: inv.notation, rms: inv.rmsError.toFixed(1), name: _chordNameExact[inv.notation] || _chordNameMap[g.canonical] || '', type: 'triad' });
+            activeTriads.push({ notation: inv.notation, rms: inv.rmsError.toFixed(1), name: _chordNameExact[inv.notation] || _chordNameMap[g.canonical] || '', type: 'triad' });
           }
         }
       }
     }
   }
 
-  const hasTriads = activeChords.some(c => c.type === 'triad');
-  if (!hasTriads && activeDegrees.length >= 2 && S.selected && S.generatorCents !== null) {
+  if (!activeTriads.length && activeDegrees.length >= 2 && S.selected && S.generatorCents !== null) {
     const n = S.selected.size;
     const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
     const bassCents = scale.pitches[lowestEntry.degreeInScale] + lowestEntry.noteOctave * 1200;
@@ -3255,50 +3258,38 @@ function renderChordHighlights() {
         const notation = best.n + '/' + best.d;
         if (!seenNotations.has(notation)) {
           seenNotations.add(notation);
-          activeChords.push({ notation, rms: best.err.toFixed(1), name: '', type: 'dyad' });
+          activeDyads.push({ notation, rms: best.err.toFixed(1), name: '', type: 'dyad' });
         }
       }
     }
   }
 
-  if (!activeChords.length) {
-    if (label) _renderChordSlots(label);
-    return;
+  if (activeTriads.length) {
+    _lastTriadSlots = activeTriads;
+  }
+  if (activeDyads.length) {
+    _lastDyadSlots = activeDyads;
   }
 
-  const activeSet = new Set(activeChords.map(ch => ch.notation));
-  for (let i = 0; i < _chordSlots.length; i++) {
-    if (_chordSlots[i] && !activeSet.has(_chordSlots[i].notation)) {
-      _chordSlots[i] = null;
-    }
-  }
-  for (const ch of activeChords) {
-    const existingIdx = _chordSlots.findIndex(s => s && s.notation === ch.notation);
-    if (existingIdx !== -1) { _chordSlots[existingIdx] = ch; continue; }
-    let placed = false;
-    for (let i = 0; i < _chordSlots.length; i++) {
-      if (_chordSlots[i] === null) { _chordSlots[i] = ch; placed = true; break; }
-    }
-    if (!placed) _chordSlots.push(ch);
-  }
-  while (_chordSlots.length && _chordSlots[_chordSlots.length - 1] === null) _chordSlots.pop();
+  _chordSlots = [];
+  for (const ch of _lastTriadSlots) _chordSlots.push(ch);
+  for (const ch of _lastDyadSlots) _chordSlots.push(ch);
 
-  if (label) _renderChordSlots(label);
+  if (label) _renderCombinedSlots(label);
 }
 
-function _renderChordSlots(label) {
+function _renderCombinedSlots(label) {
   let html = '';
-  for (let i = 0; i < _chordSlots.length; i++) {
-    const s = _chordSlots[i];
-    if (s) {
-      const url = 'https://en.xen.wiki/w/' + encodeURIComponent(s.notation);
-      const escaped = s.notation.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-      const nameTag = s.name ? `<span style="color:#8899bb;font-size:12px">${s.name} </span>` : '';
-      const color = s.type === 'dyad' ? '#8cf' : '#ff6';
-      html += `<div>${nameTag}<a href="${url}" target="_blank" style="color:${color};text-decoration:underline">${escaped}</a> <span style="color:#8899bb">(${s.rms}¢)</span></div>`;
-    } else {
-      html += '<div style="visibility:hidden">&nbsp;</div>';
-    }
+  for (const s of _lastTriadSlots) {
+    const url = 'https://en.xen.wiki/w/' + encodeURIComponent(s.notation);
+    const escaped = s.notation.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const nameTag = s.name ? `<span style="color:#8899bb;font-size:12px">${s.name} </span>` : '';
+    html += `<div>${nameTag}<a href="${url}" target="_blank" style="color:#ff6;text-decoration:underline">${escaped}</a> <span style="color:#8899bb">(${s.rms}¢)</span></div>`;
+  }
+  for (const s of _lastDyadSlots) {
+    const url = 'https://en.xen.wiki/w/' + encodeURIComponent(s.notation);
+    const escaped = s.notation.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    html += `<div><a href="${url}" target="_blank" style="color:#8cf;text-decoration:underline">${escaped}</a> <span style="color:#8899bb">(${s.rms}¢)</span></div>`;
   }
   label.innerHTML = html;
 }
