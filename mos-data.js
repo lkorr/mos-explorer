@@ -157,6 +157,11 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Glacier',
     description: 'Pentacot tuning (divides 3/2 into 5 steps). Generator ~137–144¢.' },
 
+  { name: 'Bohpier', mos: ['1L_7s', '8L_1s', '8L_9s'], genRange: [144, 146.94],
+    commas: ['245/243', '3125/3087'], commaNames: ['sensamagic comma', 'gariboh comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Bohpier',
+    description: 'Related to Bohlen-Pierce with octave period. 13 generators = 3rd harmonic, 19 = 5th, 23 = 7th.' },
+
 
   { name: 'Tritonic', mos: ['2L_1s', '2L_3s', '2L_5s'], genRange: [617.0, 624.0],
     commas: ['225/224'], commaNames: ['marvel comma'],
@@ -185,6 +190,16 @@ const TEMPERAMENTS = [
     description: 'Alpha hexacot (splits 3/1 into 6 steps). Generator ~314.3–320¢.' },
 
   // === CHECKERTONIC (3L 5s) ===
+  { name: 'Nusecond', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [146.94, 156.502],
+    commas: ['126/125'], commaNames: ['starling comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Starling_temperaments#Nusecond',
+    description: 'Starling family. Generator is ~49/45 neutral second. Two generators = 6/5. Exotic Middle Eastern sound from abundant neutral seconds.' },
+
+  { name: 'Hemikleismic', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [156.502, 160.0],
+    commas: ['4000/3969', '15625/15552'], commaNames: ['4000/3969', 'kleisma'],
+    wikiUrl: 'https://en.xen.wiki/w/Kleismic_family#Hemikleismic',
+    description: 'Kleismic family. Splits 6/5 in half, generating a neutral second of 35/32.' },
+
   { name: 'Porcupine', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [160.0, 166.67],
     commas: ['250/243'], commaNames: ['porcupine comma'],
     wikiUrl: 'https://en.xen.wiki/w/Porcupine',
@@ -221,7 +236,7 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Orwell',
     description: 'Subminor third (7/6) generator. Seven generators = twelfth. Excellent 11-limit.' },
 
-  { name: 'Semaphore', mos: ['5L_4s', '5L_9s'], genRange: [933, 960.0],
+  { name: 'Semaphore', mos: ['5L_4s', '5L_9s'], genRange: [933.33, 960.0],
     commas: ['49/48'], commaNames: ['slendro diesis'],
     wikiUrl: 'https://en.xen.wiki/w/Semaphore_and_godzilla',
     description: 'Semi-fourth: two generators = 4/3. Equates 7/6 and 8/7.' },
@@ -329,7 +344,7 @@ const TEMP_COLORS = {
   'Rarity': '#6a8aaa', 'Sixix': '#b080b0', 'Amity': '#c490c4', 'Mohajira': '#dda0dd', 'Hemififths': '#d4b0d4',
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a', 'Orgone': '#4a9a6a',
-  'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
+  'Bohpier': '#a0c060', 'Nusecond': '#6abf3a', 'Hemikleismic': '#58cf20', 'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
