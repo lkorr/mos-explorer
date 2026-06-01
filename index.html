@@ -142,6 +142,19 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 #synth-body.open { display: flex; flex-direction: column; gap: 4px; }
 
+#active-chord-label {
+  position: absolute;
+  z-index: 55;
+  display: none;
+  color: #ff6;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+  font-family: monospace;
+}
+
 #synth-body .sp-playback {
   display: flex;
   flex-direction: column;
@@ -320,15 +333,7 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 
 #selected-panel .sp-chords-col {
-  flex-shrink: 0;
-  width: 440px;
-  align-self: stretch;
-  overflow-y: auto;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #2a3a5a transparent;
-  border-left: 1px solid #2a3a5a;
-  padding-left: 10px;
+  display: none;
 }
 #selected-panel .sp-chords-col::-webkit-scrollbar { width: 4px; }
 #selected-panel .sp-chords-col::-webkit-scrollbar-track { background: transparent; }
@@ -647,6 +652,7 @@ canvas { display: block; width: 100%; height: 100%; }
     <div id="synth-header">Synth ▸</div>
     <div id="synth-body"></div>
   </div>
+  <div id="active-chord-label"></div>
   <div id="selected-panel">
     <div class="sp-resize-handle" id="sp-resize-handle"></div>
     <span class="sp-close" id="sp-close">&times;</span>
@@ -3118,6 +3124,10 @@ function ensureChordFilters(container) {
 }
 
 function renderChordsPanel() {
+  // Chord table disabled — chords shown live via renderChordHighlights
+  if (S.selected && S.generatorCents !== null) getChords();
+  return;
+  /* disabled chord table code below */
   const colEl = document.getElementById('sp-chords-col');
   if (!S.selected || S.generatorCents === null) {
     colEl.innerHTML = '';
@@ -3312,12 +3322,10 @@ function playChordDegrees(degrees) {
 }
 
 function renderChordHighlights() {
+  const label = document.getElementById('active-chord-label');
   const activeEntries = Object.values(SYNTH._activeKeys);
   const activeDegrees = activeEntries.map(e => e.degreeInScale);
-  const allRows = document.querySelectorAll('#sp-chords-col .chord-row');
-  const label = document.getElementById('active-chord-label');
   if (!activeDegrees.length) {
-    for (const row of allRows) row.classList.remove('active');
     if (label) label.innerHTML = '';
     return;
   }
@@ -3333,77 +3341,14 @@ function renderChordHighlights() {
 
   const activeLabels = [];
   const seenNotations = new Set();
-  for (const row of allRows) {
-    const invs = JSON.parse(row.dataset.invs || '[]');
-    let matchedInvIdx = -1;
-    const matchedRoots = new Set();
-
-    for (let ii = 0; ii < invs.length; ii++) {
-      for (const r of invs[ii].roots) {
+  for (const g of _cachedTriads) {
+    for (const inv of g.invList) {
+      if (inv.maxNum > _chordMaxRoot || inv.rmsError > _chordMaxRMS) continue;
+      for (const r of inv.roots) {
         if (r.root === bassDegree && r.degrees.every(d => activeDegrees.includes(d))) {
-          matchedRoots.add(r.root);
-          if (matchedInvIdx < 0) matchedInvIdx = ii;
-        }
-      }
-      if (matchedInvIdx >= 0) break;
-    }
-
-    const active = matchedRoots.size > 0;
-    row.classList.toggle('active', active);
-
-    if (active && matchedInvIdx >= 0) {
-      const currentIdx = +row.dataset.invIdx || 0;
-      if (matchedInvIdx !== currentIdx) {
-        const inv = invs[matchedInvIdx];
-        row.dataset.invIdx = matchedInvIdx;
-        const nameEl = row.querySelector('.cm-chord-name');
-        if (nameEl) {
-          nameEl.textContent = inv.notation;
-          nameEl.href = 'https://en.xen.wiki/w/' + inv.notation;
-        }
-        const errEl = row.querySelector('.cm-err');
-        if (errEl) errEl.textContent = inv.rms;
-        const rSet = new Set(inv.roots.map(r => r.root));
-        const rDegMap = {};
-        for (const r of inv.roots) rDegMap[r.root] = r.degrees;
-        const cells = row.querySelectorAll('td:not(.cm-label):not(.cm-err)');
-        for (let d = 0; d < cells.length; d++) {
-          if (rSet.has(d)) {
-            const degs = rDegMap[d].join(',');
-            cells[d].innerHTML = `<span class="cm-dot cr-root" data-degrees="${degs}">●</span>`;
-            cells[d].className = '';
-          } else {
-            cells[d].innerHTML = '·';
-            cells[d].className = 'cm-empty';
-          }
-        }
-        const allDegs = inv.roots.map(r => r.degrees);
-        row.dataset.allDegrees = JSON.stringify(allDegs);
-      }
-      const inv = invs[matchedInvIdx];
-      if (!seenNotations.has(inv.notation)) {
-        seenNotations.add(inv.notation);
-        activeLabels.push(inv.notation + ' (' + inv.rms + '¢)');
-      }
-    }
-
-    const dotEls = row.querySelectorAll('.cm-dot');
-    for (const el of dotEls) {
-      const degs = el.dataset.degrees.split(',').map(Number);
-      el.classList.toggle('active', matchedRoots.has(degs[0]));
-    }
-  }
-  if (!activeLabels.length) {
-    const allChords = _cachedTriads;
-    for (const g of allChords) {
-      for (const inv of g.invList) {
-        if (inv.maxNum > _chordMaxRoot || inv.rmsError > _chordMaxRMS) continue;
-        for (const r of inv.roots) {
-          if (r.root === bassDegree && r.degrees.every(d => activeDegrees.includes(d))) {
-            if (!seenNotations.has(inv.notation)) {
-              seenNotations.add(inv.notation);
-              activeLabels.push(inv.notation + ' (' + inv.rmsError.toFixed(1) + '¢)');
-            }
+          if (!seenNotations.has(inv.notation)) {
+            seenNotations.add(inv.notation);
+            activeLabels.push(inv.notation + ' (' + inv.rmsError.toFixed(1) + '¢)');
           }
         }
       }
@@ -3443,6 +3388,16 @@ function positionPanel() {
     synthPanel.style.top = '';
     synthPanel.style.display = 'block';
   }
+
+  const chordLabel = document.getElementById('active-chord-label');
+  if (chordLabel) {
+    const labelWidth = (radius + panelPad) * 2;
+    const labelLeft = cx - radius - panelPad;
+    chordLabel.style.left = Math.max(4, labelLeft) + 'px';
+    chordLabel.style.width = labelWidth + 'px';
+    chordLabel.style.bottom = '8px';
+    chordLabel.style.display = S.selected ? 'block' : 'none';
+  }
 }
 
 function updatePanel() {
@@ -3454,6 +3409,8 @@ function updatePanel() {
   if (!S.selected) {
     panel.style.display = 'none';
     if (synthPanel) synthPanel.style.display = 'none';
+    const chordLabel = document.getElementById('active-chord-label');
+    if (chordLabel) { chordLabel.style.display = 'none'; chordLabel.innerHTML = ''; }
     stopPlayback();
     return;
   }
