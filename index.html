@@ -3363,7 +3363,7 @@ function positionPanel() {
   const { radius, cx, cy, sliderY } = getMOSCircleLayout(S.W, S.H);
   const panelPad = 28;
   const circleRight = cx + radius + panelPad + 8;
-  const defaultHeight = (S.H - (sliderY - 38)) * 0.65;
+  const defaultHeight = (S.H - (sliderY - 38)) * 0.70;
   const height = S._panelHeight ? Math.max(80, Math.min(S.H - 40, S._panelHeight)) : defaultHeight;
   panel.style.left = circleRight + 'px';
   panel.style.top = '';
