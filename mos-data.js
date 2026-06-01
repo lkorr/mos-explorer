@@ -173,7 +173,7 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Marvel_temperaments#Tritonic',
     description: 'Marvel family. Generator is a 10/7 tritone (~617.5¢). 5 generators = 6th harmonic. Pretty much at the absolute limit of listenable music. <br> <br> <i>&#39;Oops! All tritones!&#39;</i>' },
 
-  { name: 'Alpha Tricot', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [628.5, 640.0],
+  { name: 'Alpha Tricot', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [628.57, 640.0],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Alphatricot_family#Alphatricot',
     description: 'Alpha ploidacot family. Generator ~628.5–640¢. <br> <br> This temperament used to just be called tricot. However it behaved completely differently from all over n-cot tunings, and instead of dividing 3/2 into 3, it divided 3/1 into 3.   <br> Which is dumb and I hate it. <br> So after endless complaining and petitioning on forums and wiki spaces, Tricot was renamed to Alpha Tricot (Alpha n-cot divides 3/1 into n), and Slendro is now correctly being named tricot.' },
@@ -225,10 +225,15 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Sensipent_family',
     description: 'Half a major sixth generator. Two generators = 5/3, seven = 6/1.' },
 
-  { name: 'Würschmidt', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [385.0, 390.0],
+  { name: 'Würschmidt', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [385.0, 389.61],
     commas: ['393216/390625'], commaNames: ['Würschmidt comma'],
     wikiUrl: 'https://en.xen.wiki/w/Wurschmidt',
     description: 'Sharp major third generator. Eight generators = 6/1.' },
+
+  { name: 'Magus', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [389.61, 392.73],
+    commas: ['245/243', '28672/28125'], commaNames: ['sensamagic comma', 'sazoquingu'],
+    wikiUrl: 'https://en.xen.wiki/w/Sensamagic_clan#Magus',
+    description: 'Sharper analogue of Würschmidt in the sensamagic clan. Generator is a sharp ~5/4. Three generators reach 128/125 short of the octave; eleven generators reach 3/2.' },
 
   // === GRAMITONIC (4L 5s) ===
   { name: 'Neominor', mos: ['4L_5s', '4L_9s', '4L_13s'], genRange: [280.0, 285.5],
@@ -349,7 +354,7 @@ const TEMP_COLORS = {
   'Rarity': '#6a8aaa', 'Sixix': '#b080b0', 'Amity': '#c490c4', 'Mohajira': '#dda0dd', 'Hemififths': '#d4b0d4',
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a', 'Orgone': '#4a9a6a',
-  'Bohpier': '#a0c060', 'Nusecond': '#6abf3a', 'Hemikleismic': '#58cf20', 'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030',
+  'Bohpier': '#a0c060', 'Nusecond': '#6abf3a', 'Hemikleismic': '#58cf20', 'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030', 'Magus': '#c4922a',
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
