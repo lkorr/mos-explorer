@@ -319,6 +319,10 @@ canvas { display: block; width: 100%; height: 100%; }
   color: #f5a623;
   font-family: monospace;
   font-weight: 600;
+  text-decoration: none;
+}
+#selected-panel .sp-info .temp-comma:hover {
+  text-decoration: underline;
 }
 #selected-panel .sp-info .temp-comma-name {
   color: #777;
@@ -438,7 +442,7 @@ canvas { display: block; width: 100%; height: 100%; }
 
 #selected-panel .sp-info {
   flex-shrink: 0;
-  width: 240px;
+  width: 440px;
   align-self: stretch;
   overflow-y: auto;
   overflow-x: hidden;
@@ -461,6 +465,8 @@ canvas { display: block; width: 100%; height: 100%; }
   align-items: stretch;
   user-select: none;
   overflow: hidden;
+  border-left: 1px solid #2a3a5a;
+  padding-left: 10px;
 }
 
 .edo-ruler-header {
@@ -2274,7 +2280,7 @@ function hitTest(mx, my, e) {
       const col = TEMP_COLORS[t.name] || '#50c878';
       html += `<div class="tt-temp"><span style="color:${col};font-weight:700">${t.name}</span> — ${t.description}</div>`;
       if (t.commas && t.commas.length) {
-        html += `<div class="tt-temp" style="color:#999;font-size:10px">Commas: ${t.commas.map((c, i) => `<span style="color:#f5a623">${c}</span>${t.commaNames[i] ? ' ('+t.commaNames[i]+')' : ''}`).join(', ')}</div>`;
+        html += `<div class="tt-temp" style="color:#999;font-size:10px">Commas: ${t.commas.map((c, i) => `<a href="https://en.xen.wiki/w/${c}" target="_blank" style="color:#f5a623;text-decoration:none">${c}</a>${t.commaNames[i] ? ' ('+t.commaNames[i]+')' : ''}`).join(', ')}</div>`;
       }
     }
 
@@ -3357,7 +3363,7 @@ function positionPanel() {
   const { radius, cx, cy, sliderY } = getMOSCircleLayout(S.W, S.H);
   const panelPad = 28;
   const circleRight = cx + radius + panelPad + 8;
-  const defaultHeight = S.H - (sliderY - 38);
+  const defaultHeight = (S.H - (sliderY - 38)) * 0.65;
   const height = S._panelHeight ? Math.max(80, Math.min(S.H - 40, S._panelHeight)) : defaultHeight;
   panel.style.left = circleRight + 'px';
   panel.style.top = '';
@@ -3434,7 +3440,7 @@ function updatePanel() {
         h += `<div class="temp-info-desc">${t.description}</div>`;
         if (t.commas && t.commas.length) {
           h += '<div class="temp-info-commas">Commas: ';
-          h += t.commas.map((c, i) => `<span class="temp-comma">${c}</span>${t.commaNames[i] ? ' <span class="temp-comma-name">(' + t.commaNames[i] + ')</span>' : ''}`).join(', ');
+          h += t.commas.map((c, i) => `<a href="https://en.xen.wiki/w/${c}" target="_blank" class="temp-comma">${c}</a>${t.commaNames[i] ? ' <span class="temp-comma-name">(' + t.commaNames[i] + ')</span>' : ''}`).join(', ');
           h += '</div>';
         }
         const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
@@ -3803,6 +3809,21 @@ function setupRulerGlobalHandlers() {
   });
 }
 
+// ================================================================
+//  INTERACTION — Context menu helpers
+// ================================================================
+
+let _ctxOpenTime = 0;
+function hideCtxMenu() { document.getElementById('ctx-menu').style.display = 'none'; }
+function showCtxMenu() {
+  document.getElementById('ctx-menu').style.display = 'block';
+  _ctxOpenTime = Date.now();
+}
+document.addEventListener('mousedown', e => {
+  if (Date.now() - _ctxOpenTime < 100) return;
+  if (!e.target.closest('#ctx-menu')) hideCtxMenu();
+}, true);
+
 function setupRulerInteraction(edoEl) {
   const track = edoEl.querySelector('.gen-track');
   if (!track) return;
@@ -3826,7 +3847,7 @@ function setupRulerInteraction(edoEl) {
       const ctxMenu = document.getElementById('ctx-menu');
       ctxMenu.innerHTML = `<div class="ctx-header">Degree ${+idx + 1} — ${cents.toFixed(1)}¢</div>`
         + `<div class="ctx-item" data-action="move-gen">Move generator to this interval</div>`;
-      ctxMenu.style.display = 'block';
+      showCtxMenu();
 
       let left = e.clientX;
       let top = e.clientY;
@@ -4123,8 +4144,6 @@ function setup() {
   // Right-click context menu — divide generator
   const ctxMenu = document.getElementById('ctx-menu');
 
-  function hideCtxMenu() { ctxMenu.style.display = 'none'; }
-
   function findNearestMOSAtCents(cents, targetSize) {
     const candidates = S.regions.filter(r =>
       cents >= r.lowCents && cents <= r.highCents &&
@@ -4184,7 +4203,7 @@ function setup() {
 
     ctxMenu.innerHTML = `<div class="ctx-header">${cc.toFixed(2)}¢</div>`
       + `<div class="ctx-columns">${divCol}${mulCol}</div>`;
-    ctxMenu.style.display = 'block';
+    showCtxMenu();
 
     const menuW = ctxMenu.offsetWidth;
     const menuH = ctxMenu.offsetHeight;
@@ -4199,10 +4218,6 @@ function setup() {
       const item = ev.target.closest('.ctx-item');
       if (item) teleportTo(+item.dataset.target);
     };
-  });
-
-  window.addEventListener('mousedown', e => {
-    if (!e.target.closest('#ctx-menu')) hideCtxMenu();
   });
 
   // Touch

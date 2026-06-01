@@ -166,7 +166,7 @@ const TEMPERAMENTS = [
   { name: 'Neptune', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [582.86, 587.76],
     commas: ['2401/2400'], commaNames: ['breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Gammic_family#Neptune',
-    description: 'Gammic family. 7 bright generator stacks give you a fifth. Generator is a flat 7/5 tritone (~585¢).' },
+    description: 'Gammic family. 7 bright generator stacks give you a fifth. Generator is a flat 7/5 tritone (~585¢). <br> <br> Named neptune because triton. Tritone. Get it? Anyways, this temperament is notable because its built on a near-just 7/5; otherwise, it is just terrible to compose in. Hats off to you if you make this one work.' },
 
   { name: 'Tritonic', mos: ['2L_1s', '2L_3s', '2L_5s'], genRange: [617.14, 624.0],
     commas: ['225/224'], commaNames: ['marvel comma'],
@@ -267,6 +267,11 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Hemimean_clan#Emka',
     description: 'Hemimean clan. Generator is near 11/8. 11 and 13 note MOS scales. <br> <br> Can make some pretty gnarly 11 and 13 limit sounds. Check out the 2L 7s scale if you want to scrunch some faces..' },
 
+  { name: 'Thuja', mos: ['2L_11s', '2L_13s', '15L_2s'], genRange: [553.85, 560.0],
+    commas: ['126/125', '65536/64827'], commaNames: ['starling comma', 'buzzardsmic comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Buzzardsmic_clan#Thuja',
+    description: 'Buzzardsmic clan. Generator is ~11/8 (~558.6¢). Twelve generators reach 3/1. Starling tempered. 15 and 43edo are canonical tunings.' },
+
   { name: 'Octacot', mos: ['1L_13s', '14L_1s', '14L_13s'], genRange: [85.7, 90.0],
     commas: ['20000/19683'], commaNames: ['tetracot comma'],
     wikiUrl: 'https://en.xen.wiki/w/Tetracot_family#Octacot',
@@ -358,7 +363,7 @@ const TEMP_COLORS = {
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
-  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Neptune': '#4169e1', 'Tritonic': '#c4b896', 'Alphatricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
+  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Neptune': '#4169e1', 'Tritonic': '#c4b896', 'Alphatricot': '#d4aa70', 'Buzzard': '#c89e64', 'Thuja': '#b8944e', 'Kleismic': '#b0864c',
   'Father': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
