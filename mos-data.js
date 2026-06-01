@@ -33,7 +33,7 @@ const TEMPERAMENTS = [
   { name: 'Ultrapyth', mos: ['5L_2s', '5L_7s'], genRange: [713.08, 720.0],
     commas: ['64/63'], commaNames: ['Archytas comma'],
     wikiUrl: 'https://en.xen.wiki/w/Archytas_clan#Ultrapyth',
-    description: 'Very sharp fifths near 5edo. Extends oceanfront (2.3.7.13/5). 5/4 mapped to +14 fifths. Melodically starts to collapse here; composition may be tricky. Some weird stuff can happen where the extremely small comma-step can give you a just 3/2 again, by correcting your very sharp superpyth fifth.' },
+    description: 'Very sharp fifths near 5edo. Extends oceanfront (2.3.7.13/5). 5/4 mapped to +14 fifths. <br> <br> The diatonic scale starts to collapse melodically here; composition may be tricky.<br> <br>  Some weird stuff can happen where the extremely small comma-step can give you a just 3/2 again, by correcting your very sharp superpyth fifth.' },
 
 //  { name: 'Schismatic', mos: ['5L_2s', '5L_7s', '12L_5s'], genRange: [700.0, 701.5],
 //    commas: ['32805/32768'], commaNames: ['schisma'],
