@@ -330,7 +330,7 @@ const TEMPERAMENTS = [
     description: 'Half-octave period. Porcupine-family. 22edo is the canonical tuning.' },
 
   // === LARGER SCALES ===
-  { name: 'Miracle', mos: ['1L_9s', '10L_1s', '10L_11s'], genRange: [111.0, 120.0],
+  { name: 'Miracle', mos: ['1L_9s', '10L_1s', '10L_11s'], genRange: [114.29, 120.0],
     commas: ['225/224', '1029/1024'], commaNames: ['marvel comma', 'gamelisma'],
     wikiUrl: 'https://en.xen.wiki/w/Miracle',
     description: 'The secor (~116.7¢). Six secors = a fifth. Exceptional 11-limit efficiency.' },
