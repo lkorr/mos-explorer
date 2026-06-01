@@ -2957,14 +2957,6 @@ function _intNotation3(n1, d1, n2, d2) {
   return [a / g2, b / g2, c / g2];
 }
 
-function _intNotation4(n1, d1, n2, d2, n3, d3) {
-  let L = d1;
-  let g = gcd(L, d2); L = (L / g) * d2;
-  g = gcd(L, d3); L = (L / g) * d3;
-  const a = L, b = n1 * (L / d1), c = n2 * (L / d2), d = n3 * (L / d3);
-  const g2 = gcd(a, gcd(b, gcd(c, d)));
-  return [a / g2, b / g2, c / g2, d / g2];
-}
 
 function _canonKey3(a, b, c) {
   let bestA = a, bestB = b, bestC = c;
@@ -2986,34 +2978,12 @@ function _canonKey3(a, b, c) {
   return bestA + ':' + bestB + ':' + bestC;
 }
 
-function _canonKey4(a, b, c, d) {
-  let bestA = a, bestB = b, bestC = c, bestD = d;
-  const vals = [a, b, c, d];
-  for (let rot = 1; rot < 4; rot++) {
-    const r = [vals[rot]];
-    for (let i = 1; i < 4; i++) {
-      let v = vals[(rot + i) % 4];
-      while (v <= r[r.length - 1]) v *= 2;
-      r.push(v);
-    }
-    const g = gcd(r[0], gcd(r[1], gcd(r[2], r[3])));
-    const na = r[0]/g, nb = r[1]/g, nc = r[2]/g, nd = r[3]/g;
-    if (na < bestA || (na === bestA && (nb < bestB || (nb === bestB && (nc < bestC || (nc === bestC && nd < bestD)))))) {
-      bestA = na; bestB = nb; bestC = nc; bestD = nd;
-    }
-  }
-  return bestA + ':' + bestB + ':' + bestC + ':' + bestD;
-}
 
-function findScaleChords(scalePitches, maxErr, maxCx, typeFilter) {
+function findScaleChords(scalePitches, maxErr, maxCx) {
   if (!scalePitches || scalePitches.length < 3) return [];
   const n = scalePitches.length;
   const poolLen = JI_POOL.length;
-  const doTriads = typeFilter !== 4;
-  const doTetrads = typeFilter !== 3;
-
   const triadMap = {};
-  const tetradMap = {};
 
   for (let root = 0; root < n; root++) {
     const approxByDeg = new Array(n);
@@ -3034,80 +3004,36 @@ function findScaleChords(scalePitches, maxErr, maxCx, typeFilter) {
     }
     const dkLen = activeDegKeys.length;
 
-    if (doTriads) {
-      for (let di = 0; di < dkLen; di++) {
-        const list1 = approxByDeg[activeDegKeys[di]];
-        const l1Len = list1.length;
-        for (let dj = di + 1; dj < dkLen; dj++) {
-          const list2 = approxByDeg[activeDegKeys[dj]];
-          const l2Len = list2.length;
-          for (let i1 = 0; i1 < l1Len; i1 += 7) {
-            const c1 = list1[i1 + 2], n1 = list1[i1 + 3], d1 = list1[i1 + 4], se1 = list1[i1 + 6];
-            const deg1 = list1[i1];
-            for (let i2 = 0; i2 < l2Len; i2 += 7) {
-              const c2 = list2[i2 + 2];
-              if (c2 - c1 < 50) continue;
-              const n2 = list2[i2 + 3], d2 = list2[i2 + 4], se2 = list2[i2 + 6];
-              const deg2 = list2[i2];
-              const nums = _intNotation3(n1, d1, n2, d2);
-              const intKey = nums[0] + ':' + nums[1] + ':' + nums[2];
-              const canonKey = _canonKey3(nums[0], nums[1], nums[2]);
-              let group = triadMap[canonKey];
-              if (!group) {
-                group = { canonKey, inversions: {}, type: 3 };
-                triadMap[canonKey] = group;
-              }
-              let inv = group.inversions[intKey];
-              if (!inv) {
-                const mean = (se1 + se2) / 3;
-                const rms = Math.sqrt((mean * mean + (se1 - mean) * (se1 - mean) + (se2 - mean) * (se2 - mean)) / 3);
-                inv = { notation: intKey, type: 3, roots: [], rmsError: rms, maxNum: Math.max(nums[0], nums[1], nums[2]) };
-                group.inversions[intKey] = inv;
-              }
-              inv.roots.push({ root, degrees: [root, deg1, deg2] });
+    for (let di = 0; di < dkLen; di++) {
+      const list1 = approxByDeg[activeDegKeys[di]];
+      const l1Len = list1.length;
+      for (let dj = di + 1; dj < dkLen; dj++) {
+        const list2 = approxByDeg[activeDegKeys[dj]];
+        const l2Len = list2.length;
+        for (let i1 = 0; i1 < l1Len; i1 += 7) {
+          const c1 = list1[i1 + 2], n1 = list1[i1 + 3], d1 = list1[i1 + 4], se1 = list1[i1 + 6];
+          const deg1 = list1[i1];
+          for (let i2 = 0; i2 < l2Len; i2 += 7) {
+            const c2 = list2[i2 + 2];
+            if (c2 - c1 < 50) continue;
+            const n2 = list2[i2 + 3], d2 = list2[i2 + 4], se2 = list2[i2 + 6];
+            const deg2 = list2[i2];
+            const nums = _intNotation3(n1, d1, n2, d2);
+            const intKey = nums[0] + ':' + nums[1] + ':' + nums[2];
+            const canonKey = _canonKey3(nums[0], nums[1], nums[2]);
+            let group = triadMap[canonKey];
+            if (!group) {
+              group = { canonKey, inversions: {}, type: 3 };
+              triadMap[canonKey] = group;
             }
-          }
-        }
-      }
-    }
-
-    if (doTetrads && n >= 4) {
-      for (let di = 0; di < dkLen; di++) {
-        const list1 = approxByDeg[activeDegKeys[di]];
-        const l1Len = list1.length;
-        for (let dj = di + 1; dj < dkLen; dj++) {
-          const list2 = approxByDeg[activeDegKeys[dj]];
-          const l2Len = list2.length;
-          for (let dk = dj + 1; dk < dkLen; dk++) {
-            const list3 = approxByDeg[activeDegKeys[dk]];
-            const l3Len = list3.length;
-            for (let i1 = 0; i1 < l1Len; i1 += 7) {
-              const c1 = list1[i1 + 2], n1 = list1[i1 + 3], d1 = list1[i1 + 4], se1 = list1[i1 + 6];
-              const deg1 = list1[i1];
-              for (let i2 = 0; i2 < l2Len; i2 += 7) {
-                const c2 = list2[i2 + 2];
-                if (c2 - c1 < 50) continue;
-                const n2 = list2[i2 + 3], d2 = list2[i2 + 4], se2 = list2[i2 + 6];
-                const deg2 = list2[i2];
-                for (let i3 = 0; i3 < l3Len; i3 += 7) {
-                  const c3 = list3[i3 + 2];
-                  if (c3 - c2 < 50) continue;
-                  const n3 = list3[i3 + 3], d3 = list3[i3 + 4], se3 = list3[i3 + 6];
-                  const deg3 = list3[i3];
-                  const nums = _intNotation4(n1, d1, n2, d2, n3, d3);
-                  const intKey = nums[0] + ':' + nums[1] + ':' + nums[2] + ':' + nums[3];
-                  const canonKey = _canonKey4(nums[0], nums[1], nums[2], nums[3]);
-                  if (!tetradMap[canonKey]) tetradMap[canonKey] = { canonKey, inversions: {}, type: 4 };
-                  const group = tetradMap[canonKey];
-                  if (!group.inversions[intKey]) {
-                    const mean = (se1 + se2 + se3) / 4;
-                    const rms = Math.sqrt((mean*mean + (se1-mean)*(se1-mean) + (se2-mean)*(se2-mean) + (se3-mean)*(se3-mean)) / 4);
-                    group.inversions[intKey] = { notation: intKey, type: 4, roots: [], rmsError: rms, maxNum: Math.max(nums[0], nums[1], nums[2], nums[3]) };
-                  }
-                  group.inversions[intKey].roots.push({ root, degrees: [root, deg1, deg2, deg3] });
-                }
-              }
+            let inv = group.inversions[intKey];
+            if (!inv) {
+              const mean = (se1 + se2) / 3;
+              const rms = Math.sqrt((mean * mean + (se1 - mean) * (se1 - mean) + (se2 - mean) * (se2 - mean)) / 3);
+              inv = { notation: intKey, type: 3, roots: [], rmsError: rms, maxNum: Math.max(nums[0], nums[1], nums[2]) };
+              group.inversions[intKey] = inv;
             }
+            inv.roots.push({ root, degrees: [root, deg1, deg2] });
           }
         }
       }
@@ -3117,11 +3043,6 @@ function findScaleChords(scalePitches, maxErr, maxCx, typeFilter) {
   const allGroups = [];
   for (const key in triadMap) {
     const g = triadMap[key];
-    _finalizeGroup(g, g.canonKey.split(':').map(Number), g.canonKey);
-    allGroups.push(g);
-  }
-  for (const key in tetradMap) {
-    const g = tetradMap[key];
     _finalizeGroup(g, g.canonKey.split(':').map(Number), g.canonKey);
     allGroups.push(g);
   }
@@ -3159,52 +3080,25 @@ function _finalizeGroup(g, canonNums, canonical) {
 }
 
 let _cachedTriads = [];
-let _cachedTetrads = [];
 let _cachedTriadScale = null;
-let _cachedTetradScale = null;
 let _chordLastRenderTime = 0;
 let _chordTrailingTimer = null;
 const _chordThrottleMs = 30;
 
-function _getScaleKey() {
-  if (!S.selected || S.generatorCents === null) return null;
-  const n = S.selected.size;
-  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
-  return { key: scale.pitches.map(p => p.toFixed(1)).join(','), pitches: scale.pitches };
-}
-
 function getChords() {
   if (!S.selected || S.generatorCents === null) return [];
-  const sk = _getScaleKey();
-  if (!sk) return [];
-  const needTriads = !_chordShowTetrads;
-  const needTetrads = _chordShowTetrads;
-
-  if (needTriads && sk.key !== _cachedTriadScale) {
-    _cachedTriadScale = sk.key;
-    _cachedTriads = findScaleChords(sk.pitches, 35, 200, 3);
+  const n = S.selected.size;
+  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
+  const scaleKey = scale.pitches.map(p => p.toFixed(1)).join(',');
+  if (scaleKey !== _cachedTriadScale) {
+    _cachedTriadScale = scaleKey;
+    _cachedTriads = findScaleChords(scale.pitches, 35, 200);
   }
-  if (needTetrads && sk.key !== _cachedTetradScale) {
-    _cachedTetradScale = sk.key;
-    _cachedTetrads = findScaleChords(sk.pitches, 35, 200, 4);
-  }
-  return needTetrads ? _cachedTetrads : _cachedTriads;
-}
-
-function _getAllCachedChords() {
-  const sk = _getScaleKey();
-  if (!sk) return [];
-  if (sk.key === _cachedTriadScale && sk.key === _cachedTetradScale)
-    return _cachedTriads.concat(_cachedTetrads);
-  if (sk.key === _cachedTriadScale) return _cachedTriads;
-  if (sk.key === _cachedTetradScale) return _cachedTetrads;
-  return [];
+  return _cachedTriads;
 }
 
 let _chordMaxRoot = 50;
 let _chordMaxRMS = 15;
-let _chordShowTetrads = false;
-
 let _chordFiltersBound = false;
 
 function ensureChordFilters(container) {
@@ -3215,7 +3109,6 @@ function ensureChordFilters(container) {
   h += '<div class="sp-chords-filter">';
   h += `<label>Max</label><input type="range" id="chord-max-root" min="6" max="200" step="1" value="${_chordMaxRoot}"><span class="cf-val" id="chord-max-root-val">${_chordMaxRoot}</span>`;
   h += `<label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" step="1" value="${_chordMaxRMS}"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span>`;
-  h += `<span class="cf-toggle${_chordShowTetrads ? ' active' : ''}" id="chord-show-tetrads">Tetrads</span>`;
   h += '</div>';
   h += '<div id="active-chord-label" style="color:#ff6;font-weight:600;font-size:13px;line-height:1.4;min-height:20px;text-align:center;padding:4px 0"></div>';
   h += '</div>';
@@ -3247,14 +3140,9 @@ function renderChordsPanel() {
 
   const groups = getChords();
   const n = S.selected.size;
-  const targetType = _chordShowTetrads ? 4 : 3;
-  if (typeLabel) typeLabel.textContent = _chordShowTetrads ? 'Tetrads' : 'Triads';
-  const tetBtn = document.getElementById('chord-show-tetrads');
-  if (tetBtn) tetBtn.classList.toggle('active', _chordShowTetrads);
-
   const chordGroupsOut = [];
   for (const g of groups) {
-    const matching = g.invList.filter(inv => inv.type === targetType && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
+    const matching = g.invList.filter(inv => inv.type === 3 && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
     if (!matching.length) continue;
     const bestMatchErr = Math.min.apply(null, matching.map(inv => inv.rmsError));
     chordGroupsOut.push({ canonical: g.canonical, bestError: bestMatchErr, invList: matching });
@@ -3320,11 +3208,6 @@ function _bindChordFilter() {
     document.getElementById('chord-max-rms-val').textContent = _chordMaxRMS + '¢';
     _updateChordTable();
   });
-  const tetBtn = document.getElementById('chord-show-tetrads');
-  if (tetBtn) tetBtn.addEventListener('click', () => {
-    _chordShowTetrads = !_chordShowTetrads;
-    _updateChordTable();
-  });
   // Click on root degree to play chord, or invert button to cycle inversion
   const col = document.getElementById('sp-chords-col');
   if (col) col.addEventListener('click', e => {
@@ -3373,11 +3256,6 @@ function _bindChordFilter() {
 }
 
 function _updateChordTable() {
-  const typeLabel = document.getElementById('chord-type-label');
-  const tetBtn = document.getElementById('chord-show-tetrads');
-  if (typeLabel) typeLabel.textContent = _chordShowTetrads ? 'Tetrads' : 'Triads';
-  if (tetBtn) tetBtn.classList.toggle('active', _chordShowTetrads);
-  // Force table rebuild by calling renderChordsPanel but filters already exist
   _chordLastRenderTime = 0;
   renderChordsPanel();
 }
@@ -3516,11 +3394,10 @@ function renderChordHighlights() {
     }
   }
   if (!activeLabels.length) {
-    const allChords = _getAllCachedChords();
-    const targetType = _chordShowTetrads ? 4 : 3;
+    const allChords = _cachedTriads;
     for (const g of allChords) {
       for (const inv of g.invList) {
-        if (inv.type !== targetType || inv.maxNum > _chordMaxRoot || inv.rmsError > _chordMaxRMS) continue;
+        if (inv.maxNum > _chordMaxRoot || inv.rmsError > _chordMaxRMS) continue;
         for (const r of inv.roots) {
           if (r.root === bassDegree && r.degrees.every(d => activeDegrees.includes(d))) {
             if (!seenNotations.has(inv.notation)) {
