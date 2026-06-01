@@ -193,7 +193,7 @@ const TEMPERAMENTS = [
   { name: 'Nusecond', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [146.94, 156.502],
     commas: ['126/125'], commaNames: ['starling comma'],
     wikiUrl: 'https://en.xen.wiki/w/Starling_temperaments#Nusecond',
-    description: 'Starling family. Generator is ~49/45 neutral second. Two generators = 6/5. Exotic Middle Eastern sound from abundant neutral seconds.' },
+    description: 'Starling family. Generator is ~49/45 neutral second. Two generators = 6/5. It&#39s made up of neutral seconds, if you could believe it.' },
 
   { name: 'Hemikleismic', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [156.502, 160.0],
     commas: ['4000/3969', '15625/15552'], commaNames: ['4000/3969', 'kleisma'],
@@ -229,7 +229,7 @@ const TEMPERAMENTS = [
   { name: 'Neominor', mos: ['4L_5s', '4L_9s', '4L_13s'], genRange: [280.0, 285.5],
     commas: ['2401/2400'], commaNames: ['breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Breedsmic_temperaments#Neominor',
-    description: 'Breedsmic temperament. Generator is a subminor third. 4L 5s, 4L 9s, 4L 13s MOS family. <br> <br>  Seriously who comes up with these names? <i> Breedsmic </i> ' },
+    description: 'Breedsmic temperament. Generator is a subminor third. 4L 5s, 4L 9s, 4L 13s MOS family. <br> <br> <i> Breedsmic </i> Seriously who comes up with these names?  ' },
 
   { name: 'Orwell', mos: ['4L_5s', '4L_9s', '13L_9s'], genRange: [269.0, 275.0],
     commas: ['225/224', '1728/1715'], commaNames: ['marvel comma', 'orwellisma'],
