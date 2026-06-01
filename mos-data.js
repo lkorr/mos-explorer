@@ -173,10 +173,10 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Marvel_temperaments#Tritonic',
     description: 'Marvel family. Generator is a 10/7 tritone (~617.5¢). 5 generators = 6th harmonic. Pretty much at the absolute limit of listenable music. <br> <br> <i>&#39;Oops! All tritones!&#39;</i>' },
 
-  { name: 'Alpha Tricot', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [628.57, 640.0],
+  { name: 'Alphatricot', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [628.57, 640.0],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Alphatricot_family#Alphatricot',
-    description: 'Alpha ploidacot family. Generator ~628.5–640¢. <br> <br> This temperament used to just be called tricot. However it behaved completely differently from all over n-cot tunings, and instead of dividing 3/2 into 3, it divided 3/1 into 3.   <br> Which is dumb and I hate it. <br> So after endless complaining and petitioning on forums and wiki spaces, Tricot was renamed to Alpha Tricot (Alpha n-cot divides 3/1 into n), and Slendro is now correctly being named tricot.' },
+    description: 'Divides 3/1 into 3 equal approximations of 13/9 (~636.6c). Generator ~628.5–640¢. <br> <br> This temperament used to just be called tricot. However it behaved completely differently from all over n-cot tunings, and instead of dividing 3/2 into 3, it divided 3/1 into 3.   <br> Which is dumb and I hate it. <br> So after endless complaining and petitioning on forums and wiki spaces, Tricot was renamed to Alphatricot (Alpha n-cot divides 3/1 into n), and Slendro is now correctly being named tricot.' },
 
   { name: 'A-team', mos: ['3L_2s', '5L_3s'], genRange: [461.5, 471.4],
     commas: ['225/224', '875/864'], commaNames: ['marvel comma', 'keema'],
@@ -358,7 +358,7 @@ const TEMP_COLORS = {
   'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
-  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Neptune': '#4169e1', 'Tritonic': '#c4b896', 'Alpha Tricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
+  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Neptune': '#4169e1', 'Tritonic': '#c4b896', 'Alphatricot': '#d4aa70', 'Buzzard': '#c89e64', 'Kleismic': '#b0864c',
   'Father': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
