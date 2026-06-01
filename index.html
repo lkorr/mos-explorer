@@ -142,19 +142,6 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 #synth-body.open { display: flex; flex-direction: column; gap: 4px; }
 
-#active-chord-label {
-  position: absolute;
-  z-index: 55;
-  display: none;
-  color: #ff6;
-  font-weight: 600;
-  font-size: 15px;
-  line-height: 1.4;
-  text-align: center;
-  pointer-events: none;
-  font-family: monospace;
-}
-
 #synth-body .sp-playback {
   display: flex;
   flex-direction: column;
@@ -333,7 +320,15 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 
 #selected-panel .sp-chords-col {
-  display: none;
+  flex-shrink: 0;
+  width: 260px;
+  align-self: stretch;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #2a3a5a transparent;
+  border-left: 1px solid #2a3a5a;
+  padding-left: 10px;
 }
 #selected-panel .sp-chords-col::-webkit-scrollbar { width: 4px; }
 #selected-panel .sp-chords-col::-webkit-scrollbar-track { background: transparent; }
@@ -652,7 +647,6 @@ canvas { display: block; width: 100%; height: 100%; }
     <div id="synth-header">Synth ▸</div>
     <div id="synth-body"></div>
   </div>
-  <div id="active-chord-label"></div>
   <div id="selected-panel">
     <div class="sp-resize-handle" id="sp-resize-handle"></div>
     <span class="sp-close" id="sp-close">&times;</span>
@@ -3111,29 +3105,34 @@ function ensureChordFilters(container) {
   let filterEl = document.getElementById('chord-filter-bar');
   if (filterEl) return;
   let h = '<div id="chord-filter-bar">';
-  h += '<div class="sp-chords-title"><span id="chord-type-label">Triads</span></div>';
+  h += '<div class="sp-chords-title">Chords</div>';
   h += '<div class="sp-chords-filter">';
   h += `<label>Max</label><input type="range" id="chord-max-root" min="6" max="200" step="1" value="${_chordMaxRoot}"><span class="cf-val" id="chord-max-root-val">${_chordMaxRoot}</span>`;
   h += `<label>RMS</label><input type="range" id="chord-max-rms" min="1" max="30" step="1" value="${_chordMaxRMS}"><span class="cf-val" id="chord-max-rms-val">${_chordMaxRMS}¢</span>`;
   h += '</div>';
-  h += '<div id="active-chord-label" style="color:#ff6;font-weight:600;font-size:13px;line-height:1.4;min-height:20px;text-align:center;padding:4px 0"></div>';
   h += '</div>';
-  h += '<div id="chord-table-body"></div>';
+  h += '<div id="active-chord-label" style="color:#ff6;font-weight:600;font-size:15px;line-height:1.5;text-align:center;padding:8px 0;font-family:monospace"></div>';
   container.innerHTML = h;
   _chordFiltersBound = false;
 }
 
 function renderChordsPanel() {
-  // Chord table disabled — chords shown live via renderChordHighlights
-  if (S.selected && S.generatorCents !== null) getChords();
-  return;
-  /* disabled chord table code below */
   const colEl = document.getElementById('sp-chords-col');
   if (!S.selected || S.generatorCents === null) {
     colEl.innerHTML = '';
     _chordFiltersBound = false;
     return;
   }
+  getChords();
+  ensureChordFilters(colEl);
+  if (!_chordFiltersBound) {
+    _chordFiltersBound = true;
+    _bindChordFilter();
+  }
+  renderChordHighlights();
+  return;
+  /* disabled chord table code below */
+  if (false) {
   const now = performance.now();
   const elapsed = now - _chordLastRenderTime;
   if (elapsed < _chordThrottleMs) {
@@ -3203,6 +3202,7 @@ function renderChordsPanel() {
     _bindChordFilter();
   }
   renderChordHighlights();
+  } /* end if(false) disabled block */
 }
 
 function _bindChordFilter() {
@@ -3389,15 +3389,6 @@ function positionPanel() {
     synthPanel.style.display = 'block';
   }
 
-  const chordLabel = document.getElementById('active-chord-label');
-  if (chordLabel) {
-    const labelWidth = (radius + panelPad) * 2;
-    const labelLeft = cx - radius - panelPad;
-    chordLabel.style.left = Math.max(4, labelLeft) + 'px';
-    chordLabel.style.width = labelWidth + 'px';
-    chordLabel.style.bottom = '8px';
-    chordLabel.style.display = S.selected ? 'block' : 'none';
-  }
 }
 
 function updatePanel() {
@@ -3409,8 +3400,6 @@ function updatePanel() {
   if (!S.selected) {
     panel.style.display = 'none';
     if (synthPanel) synthPanel.style.display = 'none';
-    const chordLabel = document.getElementById('active-chord-label');
-    if (chordLabel) { chordLabel.style.display = 'none'; chordLabel.innerHTML = ''; }
     stopPlayback();
     return;
   }
