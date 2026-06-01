@@ -75,6 +75,57 @@ canvas { display: block; width: 100%; height: 100%; }
 #tooltip .tt-edo { color: #6eb5ff; margin-top: 2px; }
 #tooltip .tt-hard { color: #f5a623; }
 
+#ctx-menu {
+  position: fixed;
+  background: #16213ef0;
+  border: 1px solid #6eb5ff;
+  border-radius: 6px;
+  padding: 4px 0;
+  font-size: 13px;
+  display: none;
+  z-index: 200;
+  min-width: 160px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.5);
+}
+#ctx-menu .ctx-header {
+  padding: 6px 12px 4px;
+  color: #a0a0c0;
+  font-size: 11px;
+  border-bottom: 1px solid #2a3a5a;
+  margin-bottom: 2px;
+}
+#ctx-menu .ctx-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #e0e0ff;
+  white-space: nowrap;
+}
+#ctx-menu .ctx-item:hover {
+  background: #2a3a5a;
+  color: #fff;
+}
+#ctx-menu .ctx-item .ctx-result {
+  color: #6eb5ff;
+  margin-left: 6px;
+}
+#ctx-menu .ctx-columns {
+  display: flex;
+  gap: 0;
+}
+#ctx-menu .ctx-col {
+  flex: 1;
+  min-width: 0;
+}
+#ctx-menu .ctx-col + .ctx-col {
+  border-left: 1px solid #2a3a5a;
+}
+#ctx-menu .ctx-col-header {
+  padding: 4px 12px 2px;
+  color: #a0a0c0;
+  font-size: 10px;
+  text-align: center;
+}
+
 #selected-panel {
   position: absolute;
   bottom: 0;
@@ -530,6 +581,7 @@ canvas { display: block; width: 100%; height: 100%; }
   border-radius: 4px;
   background: #0d1528;
   border: 1px solid #1e2a4a;
+  cursor: pointer;
 }
 
 .interval-ruler-track.gen-track {
@@ -630,6 +682,7 @@ canvas { display: block; width: 100%; height: 100%; }
 </div>
 
 <div id="tooltip"></div>
+<div id="ctx-menu"></div>
 
 <script src="mos-data.js"></script>
 <script>
@@ -3756,6 +3809,62 @@ function setupRulerInteraction(edoEl) {
 
   setupRulerGlobalHandlers();
 
+  const scrollArea = edoEl.querySelector('.edo-rulers-scroll');
+  if (scrollArea) {
+    scrollArea.addEventListener('click', e => {
+      const trackEl = e.target.closest('.interval-ruler-track');
+      if (!trackEl || !S.selected) return;
+      const ruler = trackEl.closest('.interval-ruler');
+      if (!ruler) return;
+      const idx = ruler.dataset.ruler;
+      if (idx === 'gen') return;
+      const centsEl = ruler.querySelector('.degree-cents');
+      if (!centsEl) return;
+      const cents = parseFloat(centsEl.textContent);
+      if (isNaN(cents)) return;
+
+      const ctxMenu = document.getElementById('ctx-menu');
+      ctxMenu.innerHTML = `<div class="ctx-header">Degree ${+idx + 1} — ${cents.toFixed(1)}¢</div>`
+        + `<div class="ctx-item" data-action="move-gen">Move generator to this interval</div>`;
+      ctxMenu.style.display = 'block';
+
+      let left = e.clientX;
+      let top = e.clientY;
+      const menuW = ctxMenu.offsetWidth;
+      const menuH = ctxMenu.offsetHeight;
+      if (left + menuW > window.innerWidth) left = window.innerWidth - menuW - 4;
+      if (top + menuH > window.innerHeight) top = window.innerHeight - menuH - 4;
+      ctxMenu.style.left = left + 'px';
+      ctxMenu.style.top = top + 'px';
+
+      ctxMenu.onclick = ev => {
+        const item = ev.target.closest('.ctx-item');
+        if (item && item.dataset.action === 'move-gen') {
+          const target = cents;
+          const currentSize = S.selected ? S.selected.size : 7;
+          const candidates = S.regions.filter(r =>
+            target >= r.lowCents && target <= r.highCents &&
+            r.size >= S.minSize && r.size <= S.maxSize
+          );
+          if (candidates.length) {
+            candidates.sort((a, b) => Math.abs(a.size - currentSize) - Math.abs(b.size - currentSize));
+            const region = candidates[0];
+            ensureSizeVisible(region.size);
+            S.selected = S.regions.find(r =>
+              r.key === region.key &&
+              Math.abs(r.lowCents - region.lowCents) < 0.01 &&
+              Math.abs(r.highCents - region.highCents) < 0.01
+            ) || region;
+            S.generatorCents = target;
+            updatePanel();
+            render();
+          }
+          ctxMenu.style.display = 'none';
+        }
+      };
+    });
+  }
+
   track.addEventListener('mousedown', e => {
     if (!S.selected) return;
     S._rulerDragging = true;
@@ -4009,6 +4118,91 @@ function setup() {
         handleClick();
       }
     }
+  });
+
+  // Right-click context menu — divide generator
+  const ctxMenu = document.getElementById('ctx-menu');
+
+  function hideCtxMenu() { ctxMenu.style.display = 'none'; }
+
+  function findNearestMOSAtCents(cents, targetSize) {
+    const candidates = S.regions.filter(r =>
+      cents >= r.lowCents && cents <= r.highCents &&
+      r.size >= S.minSize && r.size <= S.maxSize
+    );
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => Math.abs(a.size - targetSize) - Math.abs(b.size - targetSize));
+    return candidates[0];
+  }
+
+  function teleportTo(target) {
+    target = ((target % 1200) + 1200) % 1200;
+    if (target <= 0 || target >= 1200) return;
+    const currentSize = S.selected ? S.selected.size : 7;
+    const region = findNearestMOSAtCents(target, currentSize);
+    if (region) {
+      ensureSizeVisible(region.size);
+      S.selected = S.regions.find(r =>
+        r.key === region.key &&
+        Math.abs(r.lowCents - region.lowCents) < 0.01 &&
+        Math.abs(r.highCents - region.highCents) < 0.01
+      ) || region;
+      S.generatorCents = target;
+      updatePanel();
+      render();
+    }
+    hideCtxMenu();
+  }
+
+  cntr.addEventListener('contextmenu', e => {
+    const rect = cvs.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const cc = x2c(mx);
+
+    if (!isOnAxisBar(my) || cc < 0 || cc > 1200) return;
+    e.preventDefault();
+
+    const ops = [2, 3, 5];
+    let divCol = '<div class="ctx-col"><div class="ctx-col-header">÷</div>';
+    for (const d of ops) {
+      const result = cc / d;
+      if (result > 0 && result < 1200) {
+        divCol += `<div class="ctx-item" data-target="${result}">÷${d}<span class="ctx-result">${result.toFixed(2)}¢</span></div>`;
+      }
+    }
+    divCol += '</div>';
+
+    let mulCol = '<div class="ctx-col"><div class="ctx-col-header">×</div>';
+    for (const m of ops) {
+      const result = ((cc * m) % 1200 + 1200) % 1200;
+      if (result > 0 && result < 1200) {
+        mulCol += `<div class="ctx-item" data-target="${result}">×${m}<span class="ctx-result">${result.toFixed(2)}¢</span></div>`;
+      }
+    }
+    mulCol += '</div>';
+
+    ctxMenu.innerHTML = `<div class="ctx-header">${cc.toFixed(2)}¢</div>`
+      + `<div class="ctx-columns">${divCol}${mulCol}</div>`;
+    ctxMenu.style.display = 'block';
+
+    const menuW = ctxMenu.offsetWidth;
+    const menuH = ctxMenu.offsetHeight;
+    let left = e.clientX;
+    let top = e.clientY;
+    if (left + menuW > window.innerWidth) left = window.innerWidth - menuW - 4;
+    if (top + menuH > window.innerHeight) top = window.innerHeight - menuH - 4;
+    ctxMenu.style.left = left + 'px';
+    ctxMenu.style.top = top + 'px';
+
+    ctxMenu.onclick = ev => {
+      const item = ev.target.closest('.ctx-item');
+      if (item) teleportTo(+item.dataset.target);
+    };
+  });
+
+  window.addEventListener('mousedown', e => {
+    if (!e.target.closest('#ctx-menu')) hideCtxMenu();
   });
 
   // Touch

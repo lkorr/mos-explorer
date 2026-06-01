@@ -82,7 +82,7 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Hemififths',
     description: '7-limit neutral third generator. Two generators = 3/2. Excellent no-fives temperament. <br> <br>  This is the "accurate" neutral third temperament, where stacking a third gives you a pythagorean fifth. Imagine the diatonic scale with pure fifths, and then just clone it and offset the clone by ~350c.' },
 
-  { name: 'Suhajira', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [352.94, 365.0],
+  { name: 'Suhajira', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [352.94, 360.0],
     commas: ['243/242', '2401/2400'], commaNames: ['rastma', 'breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Rastmic_clan#Suhajira',
     description: 'Rastmic clan. <a href="https://en.xen.wiki/w/Dicot_family" target="_blank" style="color:#c49bd4;text-decoration:none">Dicot</a> tuning, e.g. this divides the fifth into 2 parts. <br> <br>  This is the "sharp" neutral third temperament, which when stacked, gives you superpyth fifths. Evil twin of mohajira.' },
