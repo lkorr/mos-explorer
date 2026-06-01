@@ -661,6 +661,52 @@ canvas { display: block; width: 100%; height: 100%; }
   <div class="ctrl-group">
     <label style="color:#e94560;cursor:pointer;" id="reset-zoom">[ Reset Zoom ]</label>
   </div>
+  <div class="ctrl-group" style="margin-left:auto;">
+    <label id="help-btn" style="color:#6eb5ff;cursor:pointer;font-size:15px;font-weight:700;border:1px solid #6eb5ff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;">?</label>
+  </div>
+</div>
+
+<div id="help-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;">
+  <div style="background:#16213e;border:1px solid #0f3460;border-radius:10px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;padding:24px 28px;color:#ccc;font-size:13px;line-height:1.7;scrollbar-width:thin;scrollbar-color:#2a3a5a transparent;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:18px;font-weight:700;color:#e94560;">MOS / Temperament Finder</span>
+      <span id="help-close" style="cursor:pointer;color:#888;font-size:20px;">&times;</span>
+    </div>
+    <p style="margin-bottom:10px;">This app visualizes <b style="color:#6eb5ff">MOS (Moment of Symmetry)</b> scales across the generator spectrum from 0¢ to 1200¢. Each colored band is a MOS pattern.</p>
+    <p style="margin-bottom:10px;"><b style="color:#f5a623;">To get started:</b> click a colored band to select a MOS, then click the <b style="color:#e94560">number line</b> (the cent axis at the top with tick marks) to set your generator size. This opens the full explorer with a circle diagram, synth, temperament info, and interval rulers.</p>
+    <p style="margin-bottom:14px;">The <b style="color:#e94560">cent axis</b> is the main horizontal number line running across the top of the screen — it shows generator size in cents.</p>
+
+    <div style="font-size:14px;font-weight:700;color:#e94560;margin-bottom:6px;">Navigation</div>
+    <table style="width:100%;font-size:12px;margin-bottom:14px;border-collapse:collapse;">
+      <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Scroll</td><td style="padding:3px 8px;">Zoom in/out on the cent axis</td></tr>
+      <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Drag</td><td style="padding:3px 8px;">Pan the cent axis left/right</td></tr>
+      <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Click band</td><td style="padding:3px 8px;">Select a MOS scale to explore</td></tr>
+      <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Click number line</td><td style="padding:3px 8px;">Set the generator to that cent value</td></tr>
+      <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Right-click number line</td><td style="padding:3px 8px;">Divide/multiply generator menu</td></tr>
+    </table>
+
+    <div style="font-size:14px;font-weight:700;color:#e94560;margin-bottom:6px;">Hotkeys <span style="font-size:11px;color:#888;font-weight:400;">(when a MOS is selected)</span></div>
+    <table style="width:100%;font-size:12px;margin-bottom:14px;border-collapse:collapse;">
+      <tr><td style="padding:3px 8px;color:#f5a623;white-space:nowrap;">← →</td><td style="padding:3px 8px;">Rotate mode by step (change root note)</td></tr>
+      <tr><td style="padding:3px 8px;color:#f5a623;white-space:nowrap;">↑ ↓</td><td style="padding:3px 8px;">Rotate mode by generator</td></tr>
+      <tr><td style="padding:3px 8px;color:#f5a623;white-space:nowrap;">Space</td><td style="padding:3px 8px;">Rotate mode up by generator</td></tr>
+      <tr><td style="padding:3px 8px;color:#f5a623;white-space:nowrap;">Alt</td><td style="padding:3px 8px;">Rotate mode down by generator</td></tr>
+    </table>
+
+    <div style="font-size:14px;font-weight:700;color:#e94560;margin-bottom:6px;">Synthesizer</div>
+    <table style="width:100%;font-size:12px;margin-bottom:14px;border-collapse:collapse;">
+      <tr><td style="padding:3px 8px;color:#50c878;white-space:nowrap;">⌨ Kbd</td><td style="padding:3px 8px;">Toggle keyboard-to-scale mapping (type to play notes)</td></tr>
+      <tr><td style="padding:3px 8px;color:#50c878;white-space:nowrap;">Latch</td><td style="padding:3px 8px;">Toggle notes on/off instead of hold-to-play</td></tr>
+    </table>
+
+    <div style="font-size:14px;font-weight:700;color:#e94560;margin-bottom:6px;">Circle Diagram</div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse;">
+      <tr><td style="padding:3px 8px;color:#dda0dd;white-space:nowrap;">Drag slider</td><td style="padding:3px 8px;">Move generator between equalized and collapsed</td></tr>
+      <tr><td style="padding:3px 8px;color:#dda0dd;white-space:nowrap;">▲ parent / ▼ child</td><td style="padding:3px 8px;">Navigate MOS family tree</td></tr>
+      <tr><td style="padding:3px 8px;color:#dda0dd;white-space:nowrap;">Drag circle edge</td><td style="padding:3px 8px;">Resize the circle diagram</td></tr>
+      <tr><td style="padding:3px 8px;color:#dda0dd;white-space:nowrap;">Ruler right-click</td><td style="padding:3px 8px;">Move generator to that interval</td></tr>
+    </table>
+  </div>
 </div>
 
 <div id="info-bar">
@@ -1535,11 +1581,26 @@ function drawMOSCircle(ctx, W, H) {
   S._parentArrow = null;
   S._childArrow = null;
 
-  // Mode rotation arrows at top corners of panel
+  // Mode rotation arrows flanking the title
   S._modeButtons = [];
   if (gen !== null) {
-    const modeY = panelTop + 12;
     const btnW = 18, btnH = 14, btnGap = 3;
+    const modeY = titleY1 - btnH / 2;
+    const pairW = btnW * 2 + btnGap;
+
+    ctx.font = 'bold 13px monospace';
+    let totalW = 0;
+    const titleParts = [
+      { text: titleText + '  ' },
+      { text: (computeHardness(gen, n).ratio === Infinity ? '∞' : computeHardness(gen, n).ratio.toFixed(2)) + '  ' },
+      { text: computeUDP(gen, n, S.modeRotation) },
+    ];
+    const modeName = getModeName(sel.key, gen, S.modeRotation);
+    if (modeName) titleParts.push({ text: '  ' + modeName });
+    for (const p of titleParts) totalW += ctx.measureText(p.text).width;
+
+    const genPairX = cx - totalW / 2 - pairW - 10;
+    const stepPairX = cx + totalW / 2 + 10;
 
     const drawBtnPair = (x, label, actions) => {
       ctx.font = '9px monospace';
@@ -1565,8 +1626,8 @@ function drawMOSCircle(ctx, W, H) {
       ctx.textBaseline = 'alphabetic';
     };
 
-    drawBtnPair(panelLeft + 6, 'gen', ['gen-down', 'gen-up']);
-    drawBtnPair(panelRight - 6 - btnW * 2 - btnGap, 'step', ['step-down', 'step-up']);
+    drawBtnPair(genPairX, 'gen', ['gen-down', 'gen-up']);
+    drawBtnPair(stepPairX, 'step', ['step-down', 'step-up']);
   }
 
   // Parent/child navigation arrows below slider
@@ -2355,14 +2416,9 @@ function handleClick() {
       updatePanel();
       render();
     } else {
-      const prevGen = S.generatorCents;
       S.selected = S.hovered;
-      if (prevGen !== null &&
-          prevGen >= S.hovered.lowCents && prevGen <= S.hovered.highCents) {
-        S.generatorCents = prevGen;
-      } else {
-        S.generatorCents = null;
-      }
+      const cc = x2c(mx);
+      S.generatorCents = Math.max(S.hovered.lowCents, Math.min(S.hovered.highCents, cc));
       updatePanel();
       render();
     }
@@ -3915,6 +3971,7 @@ function setup() {
 
   // Zoom
   cntr.addEventListener('wheel', e => {
+    if (e.target.closest('.sp-info')) return;
     e.preventDefault();
     if (S.genDragging || S.sliderDragging) return;
     const rect = cvs.getBoundingClientRect();
@@ -4400,6 +4457,17 @@ function setup() {
     S.edos = buildEDOGenerators(S.maxEDO);
     render();
   });
+  const helpModal = document.getElementById('help-modal');
+  document.getElementById('help-btn').addEventListener('click', () => {
+    helpModal.style.display = 'flex';
+  });
+  document.getElementById('help-close').addEventListener('click', () => {
+    helpModal.style.display = 'none';
+  });
+  helpModal.addEventListener('click', e => {
+    if (e.target === helpModal) helpModal.style.display = 'none';
+  });
+
   document.getElementById('reset-zoom').addEventListener('click', () => {
     S.viewMin = 0; S.viewMax = 1200;
     updateInfo(); render();
