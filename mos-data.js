@@ -175,7 +175,7 @@ const TEMPERAMENTS = [
   { name: 'Bohpier', mos: ['1L_7s', '8L_1s', '8L_9s'], genRange: [144, 146.94],
     commas: ['245/243', '3125/3087'], commaNames: ['sensamagic comma', 'gariboh comma'],
     wikiUrl: 'https://en.xen.wiki/w/Bohpier',
-    description: 'Related to Bohlen-Pierce with octave period. 13 generators = 3rd harmonic, 19 = 5th, 23 = 7th. <br> <br> Basically someone took the bohlen pierce scale, where you divide 3/1 into 13 even steps, and fudged it up so that it fits into 12edo. Fun stuff.' },
+    description: 'Related to Bohlen-Pierce with octave period. 13 generators = 3rd harmonic, 19 = 5th, 23 = 7th. <br> <br> Basically someone took the bohlen pierce scale, where you divide 3/1 into 13 even steps, and fudged it up so that it fits into an octave. Fun stuff.' },
 
 
   { name: 'Neptune', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [582.86, 587.76],
