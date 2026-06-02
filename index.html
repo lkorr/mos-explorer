@@ -683,7 +683,8 @@ canvas { display: block; width: 100%; height: 100%; }
   <div class="ctrl-group">
     <label style="color:#e94560;cursor:pointer;" id="reset-zoom">[ Reset Zoom ]</label>
   </div>
-  <div class="ctrl-group" style="margin-left:auto;">
+  <div class="ctrl-group" style="margin-left:auto;gap:8px;display:flex;align-items:center;">
+    <label id="share-btn" style="color:#f5a623;cursor:pointer;font-size:11px;font-weight:600;border:1px solid #f5a623;border-radius:4px;padding:2px 8px;display:none;white-space:nowrap;">Share Scale</label>
     <label id="help-btn" style="color:#6eb5ff;cursor:pointer;font-size:15px;font-weight:700;border:1px solid #6eb5ff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;">?</label>
   </div>
 </div>
@@ -3616,6 +3617,7 @@ function positionPanel() {
 }
 
 function updatePanel() {
+  updateShareButton();
   updateHeldNotes();
   const panel = document.getElementById('selected-panel');
   const infoEl = document.getElementById('sp-info');
@@ -4806,6 +4808,86 @@ function setup() {
 }
 
 // ================================================================
+//  SHARE / URL STATE
+// ================================================================
+
+function buildShareURL() {
+  const params = new URLSearchParams();
+  if (S.period !== 1200) params.set('period', S.period);
+  if (S.selected) params.set('mos', S.selected.key);
+  if (S.generatorCents !== null) params.set('gen', S.generatorCents.toFixed(4).replace(/\.?0+$/, ''));
+  if (S.modeRotation) params.set('mode', S.modeRotation);
+  const qs = params.toString();
+  return window.location.origin + window.location.pathname + (qs ? '?' + qs : '');
+}
+
+function restoreFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('mos') && !params.has('gen') && !params.has('period')) return;
+
+  const period = params.has('period') ? parseFloat(params.get('period')) : 1200;
+  const mosKey = params.get('mos');
+  const gen = params.has('gen') ? parseFloat(params.get('gen')) : null;
+  const mode = params.has('mode') ? parseInt(params.get('mode'), 10) : 0;
+
+  if (isNaN(period) || period <= 0) return;
+
+  const periodSelect = document.getElementById('period-select');
+  const opt = Array.from(periodSelect.options).find(o => parseFloat(o.value) === period);
+  if (!opt) return;
+  periodSelect.value = opt.value;
+  S.period = period;
+  S.viewLimit = parseFloat(opt.dataset.limit);
+  S.viewMin = 0;
+  S.viewMax = S.viewLimit;
+
+  const reps = getPeriodRepetitions();
+  const isSub = S.period < 1200;
+  if (isSub && reps > 1) {
+    S.minSize = 2;
+    S.maxSize = 8;
+    S.edoMultiplesOnly = true;
+    document.getElementById('edo-multiples').checked = true;
+    document.getElementById('edo-multiples-text').textContent = `${reps}n EDOs only`;
+    document.getElementById('edo-multiples-label').style.display = '';
+  }
+
+  syncSizeDisplay();
+  recalc();
+
+  if (mosKey) {
+    const m = mosKey.match(/(\d+)L_(\d+)s/);
+    if (m) {
+      const perPeriodSize = Math.round((+m[1] + +m[2]) / reps);
+      ensureSizeVisible(perPeriodSize);
+    }
+    const region = S.regions.find(r =>
+      r.key === mosKey &&
+      r.perPeriodSize >= S.minSize && r.perPeriodSize <= S.maxSize &&
+      (gen === null || (gen >= r.lowCents && gen <= r.highCents))
+    );
+    if (region) {
+      S.selected = region;
+      if (gen !== null && !isNaN(gen)) {
+        S.generatorCents = Math.max(region.lowCents, Math.min(region.highCents, gen));
+      }
+      if (mode && !isNaN(mode)) S.modeRotation = mode;
+    }
+  }
+
+  updatePanel();
+  render();
+  updateInfo();
+
+  history.replaceState(null, '', window.location.pathname);
+}
+
+function updateShareButton() {
+  const btn = document.getElementById('share-btn');
+  btn.style.display = (S.selected && S.generatorCents !== null) ? '' : 'none';
+}
+
+// ================================================================
 //  INIT
 // ================================================================
 
@@ -4828,6 +4910,23 @@ window.addEventListener('DOMContentLoaded', () => {
   syncSizeDisplay();
   recalc();
   setup();
+  restoreFromURL();
+
+  document.getElementById('share-btn').addEventListener('click', () => {
+    const url = buildShareURL();
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('share-btn');
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.style.color = '#4ecdc4';
+      btn.style.borderColor = '#4ecdc4';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.color = '#f5a623';
+        btn.style.borderColor = '#f5a623';
+      }, 1500);
+    });
+  });
 });
 </script>
 </body>
