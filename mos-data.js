@@ -386,7 +386,7 @@ const TEMPERAMENTS = [
    // wikiUrl: 'https://en.xen.wiki/w/Pythagorean_tuning',
    // description: '12-note chromatic from stacked fifths.' },
   // === 2x OCTAVE PERIOD ===
-  { name: 'Unknown Diatonic', mos: ['5L_2s'], genRange: [685.71, 720.0], period: 2400,
+  { name: 'Unknown Diatonic', mos: ['3L_4s', '7L_3s', '10L_7s'], genRange: [685.71, 720.0], period: 2400,
     commas: [], commaNames: [],
     description: 'Diatonic range from 7n to 5n but for 2x octave periods. Good 3.5.7 approximations within the period.' },
 ];
