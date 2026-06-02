@@ -681,6 +681,12 @@ canvas { display: block; width: 100%; height: 100%; }
     </label>
   </div>
   <div class="ctrl-group">
+    <label>Stretch:</label>
+    <input type="range" id="octave-stretch" min="-100" max="100" value="0" step="1" style="width:80px">
+    <span class="value-display" id="octave-stretch-val">+0¢</span>
+    <label id="stretch-reset" style="color:#556;cursor:pointer;font-size:10px;display:none;">reset</label>
+  </div>
+  <div class="ctrl-group">
     <label style="color:#e94560;cursor:pointer;" id="reset-zoom">[ Reset Zoom ]</label>
   </div>
   <div class="ctrl-group" style="margin-left:auto;gap:8px;display:flex;align-items:center;">
@@ -1059,7 +1065,7 @@ function getEqualizedEnd(region) {
 
 const S = {
   viewMin: 0, viewMax: 1200,
-  period: 1200, viewLimit: 1200,
+  period: 1200, viewLimit: 1200, octaveStretch: 0,
   maxSize: 18, maxEDO: 53, minSize: 2,
   regions: [], colorMap: {}, edos: [],
   hovered: null, selected: null,
@@ -1097,6 +1103,14 @@ function recalc() {
 
 function getPeriodRepetitions() {
   return Math.round(S.viewLimit / S.period);
+}
+
+function getStretchedOctave() {
+  return 1200 + S.octaveStretch;
+}
+
+function stretchCents(pureCents) {
+  return pureCents * getStretchedOctave() / 1200;
 }
 
 function syncSizeDisplay() {
@@ -1276,7 +1290,8 @@ function drawAxis(ctx, W, H, vr) {
     ctx.strokeStyle = '#667';
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x, Y - barH/2 - 6); ctx.lineTo(x, Y + barH/2 + 6); ctx.stroke();
-    ctx.fillText(vr > 30 ? Math.round(c) + '¢' : c.toFixed(1) + '¢', x, Y - barH/2 - 10);
+    const sc = stretchCents(c);
+    ctx.fillText(vr > 30 ? Math.round(sc) + '¢' : sc.toFixed(1) + '¢', x, Y - barH/2 - 10);
   }
 
   const sub = tick / 5;
@@ -1304,6 +1319,7 @@ function drawAxis(ctx, W, H, vr) {
     }
     ctx.setLineDash([]);
   }
+
 }
 
 // ================================================================
@@ -1939,11 +1955,14 @@ function drawMOSCircle(ctx, W, H) {
       ctx.setLineDash([]);
     }
   }
-  // Octave boundary markers on the circle (super-octave)
-  if (displayP > 1200) {
-    const octaves = Math.floor(displayP / 1200);
+  // Octave boundary markers on the circle (super-octave or stretched)
+  const stretchedOctForCircle = S.octaveStretch !== 0 ? getStretchedOctave() : 1200;
+  if (displayP > stretchedOctForCircle || S.octaveStretch !== 0) {
+    const octaves = S.octaveStretch !== 0 ? Math.max(1, Math.floor(displayP / stretchedOctForCircle)) : Math.floor(displayP / 1200);
     for (let k = 1; k <= octaves; k++) {
-      const bAngle = c2a(k * 1200);
+      const octCents = k * stretchedOctForCircle;
+      if (octCents >= displayP) break;
+      const bAngle = c2a(octCents);
       const bcos = Math.cos(bAngle);
       const bsin = Math.sin(bAngle);
       ctx.beginPath();
@@ -2052,7 +2071,8 @@ function drawMOSCircle(ctx, W, H) {
       const key = rn + '/' + rd;
       if (jiSeen.has(key)) continue;
       jiSeen.add(key);
-      const cents = 1200 * Math.log2(rn / rd);
+      const pureCents = 1200 * Math.log2(rn / rd);
+      const cents = stretchCents(pureCents);
       if (cents > 0 && cents < displayP && rn * rd <= 125) {
         jiMarkers.push({ ratio: key, cents, complexity: rn * rd });
       }
@@ -2188,7 +2208,7 @@ function playCircleDot(dot) {
   }
   if (SYNTH._oscCount >= MAX_OSCILLATORS) killAllNotes();
   const actx = getAudioCtx();
-  const freq = centsToFreq(dot.cents);
+  const freq = SYNTH.baseFreq * Math.pow(2, stretchCents(dot.cents) / 1200);
   const now = actx.currentTime;
   const total = SYNTH.attack + SYNTH.decay + SYNTH.release;
   const osc = actx.createOscillator();
@@ -2325,7 +2345,7 @@ function startNote(code, degreeInScale, noteOctave, startAt) {
   const full = buildFullScale();
   const cents = full.scale.pitches[degreeInScale % full.size];
   const totalCents = cents + noteOctave * full.octave;
-  const freq = SYNTH.baseFreq * Math.pow(2, totalCents / 1200);
+  const freq = SYNTH.baseFreq * Math.pow(2, stretchCents(totalCents) / 1200);
 
   const actx = getAudioCtx();
   const osc = actx.createOscillator();
@@ -2437,7 +2457,7 @@ function updateHeldNotes() {
     entry.noteOctave = bestOct;
     const newCents = scale.pitches[bestDeg] + bestOct * octave;
     entry.currentCents = newCents;
-    const freq = SYNTH.baseFreq * Math.pow(2, newCents / 1200);
+    const freq = SYNTH.baseFreq * Math.pow(2, stretchCents(newCents) / 1200);
     entry.osc.frequency.setValueAtTime(freq, now);
   }
 }
@@ -2804,7 +2824,7 @@ function clampView() {
 
 function updateInfo() {
   document.getElementById('range-display').textContent =
-    `${S.viewMin.toFixed(2)}¢ — ${S.viewMax.toFixed(2)}¢`;
+    `${stretchCents(S.viewMin).toFixed(2)}¢ — ${stretchCents(S.viewMax).toFixed(2)}¢`;
 }
 
 // ================================================================
@@ -4003,7 +4023,7 @@ function buildScaleWorkshopURL() {
   const scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
   const pitches = scale.pitches.slice(1);
 
-  const edoMatch = findMatchingEDO(gen, n);
+  const edoMatch = S.octaveStretch === 0 ? findMatchingEDO(gen, n) : null;
 
   let lines;
   let scaleName;
@@ -4015,11 +4035,12 @@ function buildScaleWorkshopURL() {
     const mosLabel = mosDisplayLabel(S.selected.key);
     scaleName = `${edo}edo ${mosLabel} (${edoMatch.step}\\${edo} gen)`;
   } else {
-    const centsLines = pitches.map(c => c.toFixed(3));
-    centsLines.push(S.period.toFixed(3));
+    const centsLines = pitches.map(c => stretchCents(c).toFixed(3));
+    centsLines.push(stretchCents(S.period).toFixed(3));
     lines = centsLines;
     const mosLabel = mosDisplayLabel(S.selected.key);
-    scaleName = `${mosLabel} (${gen.toFixed(2)}¢ gen)`;
+    const stretchSuffix = S.octaveStretch !== 0 ? `, stretch ${S.octaveStretch > 0 ? '+' : ''}${S.octaveStretch}¢` : '';
+    scaleName = `${mosLabel} (${gen.toFixed(2)}¢ gen${stretchSuffix})`;
   }
 
   const data = encodeURIComponent(lines.join('\n'));
@@ -4359,7 +4380,7 @@ function setup() {
     }
 
     if (mx >= 0 && mx <= S.W) {
-      document.getElementById('cursor-display').textContent = x2c(mx).toFixed(2) + '¢';
+      document.getElementById('cursor-display').textContent = stretchCents(x2c(mx)).toFixed(2) + '¢';
     }
   });
 
@@ -4755,6 +4776,25 @@ function setup() {
     S.edoMultiplesOnly = e.target.checked;
     render();
   });
+
+  document.getElementById('octave-stretch').addEventListener('input', e => {
+    S.octaveStretch = +e.target.value;
+    const label = document.getElementById('octave-stretch-val');
+    label.textContent = (S.octaveStretch >= 0 ? '+' : '') + S.octaveStretch + '¢';
+    document.getElementById('stretch-reset').style.display = S.octaveStretch !== 0 ? '' : 'none';
+    S._harmonicRatios = null;
+    updatePanel();
+    render();
+  });
+  document.getElementById('stretch-reset').addEventListener('click', () => {
+    S.octaveStretch = 0;
+    document.getElementById('octave-stretch').value = 0;
+    document.getElementById('octave-stretch-val').textContent = '+0¢';
+    document.getElementById('stretch-reset').style.display = 'none';
+    S._harmonicRatios = null;
+    updatePanel();
+    render();
+  });
   const helpModal = document.getElementById('help-modal');
   document.getElementById('help-btn').addEventListener('click', () => {
     helpModal.style.display = 'flex';
@@ -4817,6 +4857,7 @@ function buildShareURL() {
   if (S.selected) params.set('mos', S.selected.key);
   if (S.generatorCents !== null) params.set('gen', S.generatorCents.toFixed(4).replace(/\.?0+$/, ''));
   if (S.modeRotation) params.set('mode', S.modeRotation);
+  if (S.octaveStretch !== 0) params.set('stretch', S.octaveStretch);
   const qs = params.toString();
   return window.location.origin + window.location.pathname + (qs ? '?' + qs : '');
 }
@@ -4829,6 +4870,7 @@ function restoreFromURL() {
   const mosKey = params.get('mos');
   const gen = params.has('gen') ? parseFloat(params.get('gen')) : null;
   const mode = params.has('mode') ? parseInt(params.get('mode'), 10) : 0;
+  const stretch = params.has('stretch') ? parseInt(params.get('stretch'), 10) : 0;
 
   if (isNaN(period) || period <= 0) return;
 
@@ -4840,6 +4882,13 @@ function restoreFromURL() {
   S.viewLimit = parseFloat(opt.dataset.limit);
   S.viewMin = 0;
   S.viewMax = S.viewLimit;
+
+  if (!isNaN(stretch) && stretch >= -100 && stretch <= 100) {
+    S.octaveStretch = stretch;
+    document.getElementById('octave-stretch').value = stretch;
+    document.getElementById('octave-stretch-val').textContent = (stretch >= 0 ? '+' : '') + stretch + '¢';
+    if (stretch !== 0) document.getElementById('stretch-reset').style.display = '';
+  }
 
   const reps = getPeriodRepetitions();
   const isSub = S.period < 1200;
