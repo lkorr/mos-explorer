@@ -122,7 +122,7 @@ const TEMPERAMENTS = [
   // === PENTATONIC (2L 3s) ===
 
   // === ANTI-PENTATONIC (3L 2s) ===
-  { name: 'Aurora', mos: ['3L_2s', '5L_3s'], genRange: [445.7, 461.5],
+  { name: 'Aurora', mos: ['3L_2s', '5L_3s'], genRange: [455.17, 461.5],
     commas: ['1029/1000', '28672/28125'], commaNames: ['', ''],
     wikiUrl: 'https://en.xen.wiki/w/Keegic_temperaments#Aurora',
     description: 'Keegic family. No-threes subgroup. Generator is a near-9/7 or sharp sub-fourth (~450¢). Tempers out the diesis (128/125).' },
@@ -230,14 +230,19 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Meantone_family#Superpine',
     description: 'Like porcupine but favors flat fifths. Generator is 1/3 of a fourth (~35/32). Needs 15-tone MOS (7L 8s) for harmonics beyond 3.' },
 
+  { name: 'Ammonite', mos: ['5L_3s', '5L_8s', '13L_5s'], genRange: [744.83, 750.0],
+    commas: ['250/243', '2048/2025'], commaNames: ['porcupine comma', 'diaschisma'],
+    wikiUrl: 'https://en.xen.wiki/w/Porcupine_family#Ammonite',
+    description: 'Porcupine family. Generator is a sharp fifth (~747¢). Eight generators reach 5/4. 13-note MOS is the sweet spot.' },
+
   { name: 'Sensamagic', mos: ['3L_5s', '8L_3s', '8L_11s'], genRange: [436.36, 442.11],
     commas: ['245/243'], commaNames: ['sensamagic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Sensamagic',
     description: 'Tempers out 245/243. Two generators of ~440¢ approximate 6/5 + 9/7. Divides 3/2 into 7/6 and 10/9.' },
 
-  { name: 'Sensi', mos: ['3L_5s', '8L_3s', '8L_11s'], genRange: [442.11, 445.7],
+  { name: 'Sensi', mos: ['3L_5s', '8L_3s', '8L_11s'], genRange: [442.11, 450],
     commas: ['78732/78125'], commaNames: ['sensipent comma'],
-    wikiUrl: 'https://en.xen.wiki/w/Sensipent_family',
+    wikiUrl: 'https://en.xen.wiki/w/Sensipent_family#Sensi',
     description: 'Half a major sixth generator. Two generators = 5/3, seven = 6/1.' },
 
   { name: 'Würschmidt', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [385.0, 389.61],
@@ -374,12 +379,12 @@ const TEMPERAMENTS = [
 
 const TEMP_COLORS = {
   'Meantone': '#50c878', 'Flattone': '#3da86a', 'Deeptone': '#2d8a55',
-  'Pythagorean': '#ffd700', 'Parapyth': '#ffec40', 'Superpyth': '#ff6347', 'Ultrapyth': '#ff8247',
+  'Pythagorean': '#ffe341de', 'Parapyth': '#ffb340', 'Ultrapyth': '#ff6347', 'Superpyth': '#ff8247',
   'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84', 'Wilsec': '#1aaa96', 'Casablanca': '#15968a',
   'Rarity': '#6a8aaa', 'Sixix': '#b080b0', 'Amity': '#c490c4', 'Mohajira': '#dda0dd', 'Hemififths': '#d4b0d4',
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a', 'Orgone': '#4a9a6a',
-  'Bohpier': '#a0c060', 'Nusecond': '#6abf3a', 'Hemikleismic': '#58cf20', 'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Novisept': '#b8984c', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030', 'Magus': '#c4922a',
+  'Bohpier': '#a0c060', 'Nusecond': '#6abf3a', 'Hemikleismic': '#58cf20', 'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Ammonite': '#ebd470', 'Novisept': '#b8984c', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030', 'Magus': '#c4922a',
   'Neominor': '#7fbfdf', 'Lovecraft': '#6a9fbf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
@@ -388,7 +393,7 @@ const TEMP_COLORS = {
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
   'Blackwood': '#ba55d3', 'Lemba': '#d2691e', 'Hedgehog': '#8fbc8f',
-  'Sephiroth': '#7b68ee',
+  'Sephiroth': '#ec7ce4',
   'Escape': '#a8d8ea', 'Octacot': '#56c9a0', 'Passion': '#d4637a', 'Valentine': '#ff6b81', 'Miracle': '#ff4500', 'Negri': '#9370db',
 };
 
