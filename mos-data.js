@@ -41,15 +41,15 @@ const TEMPERAMENTS = [
  //   description: 'Tempers out the schisma. Nearly pure fifths. Eight fourths = 10/1.' },
 
   // === ANTI-DIATONIC (2L 5s) ===
-  { name: 'Mavila', mos: ['2L_5s', '7L_2s', '7L_9s'], genRange: [670.0, 685.7],
+  { name: 'Mavila', mos: ['2L_5s', '7L_2s', '7L_9s'], genRange: [666.667, 685.7],
     commas: ['135/128'], commaNames: ['major chroma'],
     wikiUrl: 'https://en.xen.wiki/w/Mavila',
     description: 'Anti-diatonic. The bees knees. Very flat fifths, four fifths = 6/5 instead of 5/4. <br> <br> In this range, major chords invert into minor chords and vice versa. Diminished chords become augmented chords. Timbre matters a lot here to compensate and navigate around the fact that your 3/2 is so flat. <br> Approximates some Gamelan tunings as well.' },
 
-  { name: 'Mabila', mos: ['2L_5s', '2L_7s', '9L_7s'], genRange: [666.667, 670.0],
-    commas: ['268435456/263671875'], commaNames: ['mabila comma'],
-    wikiUrl: 'https://en.xen.wiki/w/Mabila_family',
-    description: 'Flat fifths like mavila but three generators = 5/2. Ten bad fifths reach a good one. 9L 7s MOS has good triads. <br> <br> Basically mavila but you can consider it even flatter, I guess?' },
+  //{ name: 'Mabila', mos: ['2L_5s', '2L_7s', '9L_7s'], genRange: [666.667, 670.0],
+  //  commas: ['268435456/263671875'], commaNames: ['mabila comma'],
+  //  wikiUrl: 'https://en.xen.wiki/w/Mabila_family',
+  //  description: 'Flat fifths like mavila but three generators = 5/2. Ten bad fifths reach a good one. 9L 7s MOS has good triads. <br> <br> Basically mavila //but you can consider it even flatter, I guess?' },
 
   { name: 'Wilsec', mos: ['2L_5s', '2L_7s', '2L_9s'], genRange: [533.3330, 540.0],
     commas: ['49/48'], commaNames: ['semaphoresma'],
@@ -90,7 +90,7 @@ const TEMPERAMENTS = [
   { name: 'Sephiroth', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [360.0, 377.14],
     commas: ['65/64', '170/169', '221/220'], commaNames: ['wilsorma', '', ''],
     wikiUrl: 'https://en.xen.wiki/w/Chromatic_pairs#Sephiroth',
-    description: 'A no-3s and no-7s restriction of magic. Generator is a sharp neutral third between 360¢ and 377¢ - so sharp that your fifth extends past 5edo into oneirotonic territory. <br> Think of it as simultaneously extremely sharp version of dicot, as well as the antidiatonic equivalent of magic. 2 generators gives you an ultra sharp "oneirotonic 3/2", and 5 generators will stack up to a super flat "antidiatonic 3/2". The 10-note MOS is the sweet spot. <br> <br>  Named after the final fantasy character. I know. ' },
+    description: 'A no-3s and no-7s restriction of magic. Generator is a sharp neutral third between 360¢ and 377¢ - so sharp that your fifth extends past 5edo into oneirotonic territory. <br> Think of it as simultaneously an extremely sharp version of dicot, as well as the antidiatonic equivalent of magic. That is to say; <br> 2 generators gives you an ultra sharp "oneirotonic 3/2", and 5 generators will stack up to a super flat "antidiatonic 3/2". The 10-note MOS is the sweet spot. <br> <br>  Named after the final fantasy character. I know. ' },
 
   { name: 'Magic', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [377.14, 385.0],
     commas: ['3125/3072'], commaNames: ['magic comma'],
@@ -282,12 +282,12 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Didacus',
     description: 'Tempers out 3136/3125. Generator is half a major third (half of 5/4).' },
 
-  { name: 'Emka', mos: ['2L_9s', '2L_11s', '13L_2s'], genRange: [550.0, 553.8],
+  { name: 'Emka', mos: ['2L_9s', '2L_11s', '13L_2s'], genRange: [550.0, 553.846],
     commas: ['3136/3125', '5120/5103'], commaNames: ['hemimean comma', 'hemimean'],
     wikiUrl: 'https://en.xen.wiki/w/Hemimean_clan#Emka',
     description: 'Hemimean clan. Generator is near 11/8. 11 and 13 note MOS scales. <br> <br> Can make some pretty gnarly 11 and 13 limit sounds. Check out the 2L 7s scale if you want to scrunch some faces..' },
 
-  { name: 'Thuja', mos: ['2L_11s', '2L_13s', '15L_2s'], genRange: [553.85, 560.0],
+  { name: 'Thuja', mos: ['2L_11s', '2L_13s', '15L_2s'], genRange: [553.846, 560.0],
     commas: ['126/125', '65536/64827'], commaNames: ['starling comma', 'buzzardsmic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Buzzardsmic_clan#Thuja',
     description: 'Buzzardsmic clan. Generator is ~11/8 (~558.6¢). Twelve generators reach 3/1. Starling tempered. 15 and 43edo are canonical tunings.' },
@@ -406,7 +406,7 @@ const MOS_NAMES = {
   '4L_5s': 'Gramitonic', '5L_4s': 'Semiquartal',
   '7L_1s': 'Pine', '1L_7s': 'Antipine',
   '8L_1s': 'Subneutralic', '1L_8s': 'Antisubneutralic',
-  '7L_2s': 'Superdiatonic', '2L_7s': 'Balzano',
+  '7L_2s': 'Armotonic', '2L_7s': 'Balzano',
   '6L_3s': 'Hyrulic', '3L_6s': 'Tcherepninoid',
   '7L_3s': 'Dicoid', '3L_7s': 'Sephiroid',
   '5L_5s': 'Decanoid',
