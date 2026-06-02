@@ -75,6 +75,9 @@ canvas { display: block; width: 100%; height: 100%; }
 #tooltip .tt-edo { color: #6eb5ff; margin-top: 2px; }
 #tooltip .tt-hard { color: #f5a623; }
 
+#ctx-menu input[type=number]::-webkit-inner-spin-button,
+#ctx-menu input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+#ctx-menu input[type=number] { -moz-appearance: textfield; }
 #ctx-menu {
   position: fixed;
   background: #16213ef0;
@@ -2500,7 +2503,11 @@ function hitTest(mx, my, e) {
       }
     }
     if (nearest && nd < (S.viewMax - S.viewMin) * 0.02) {
-      html += `<div class="tt-edo">Nearest: ${nearest.step}\\${nearest.edo} = ${nearest.cents.toFixed(2)}¢</div>`;
+      const nearDispEdo = nearest.edo * reps;
+      const nearK = Math.round((ccRaw - nearest.cents) / S.period);
+      const nearDispStep = nearest.step + Math.max(0, nearK) * nearest.edo;
+      const nearDispCents = nearest.cents + Math.max(0, nearK) * S.period;
+      html += `<div class="tt-edo">Nearest: ${nearDispStep}\\${nearDispEdo} = ${nearDispCents.toFixed(2)}¢</div>`;
     }
 
     const isSelRegion = S.selected &&
@@ -3703,7 +3710,7 @@ function buildHarmonicRatios() {
     for (let n = d + 1; n <= 31; n++) {
       if (gcd(n, d) !== 1) continue;
       const cents = 1200 * Math.log2(n / d);
-      if (cents > 0 && cents <= S.period) {
+      if (cents > 0 && cents <= S.viewLimit) {
         ratios.push({ n, d, cents, label: `${n}/${d}` });
       }
     }
@@ -3800,53 +3807,63 @@ function renderEDOGrid() {
   const hr = computeHardness(genCents, sel.perPeriodSize);
   const hardnessStr = hr.ratio === Infinity ? '∞' : hr.ratio.toFixed(2);
   const harmonics = buildHarmonicRatios();
+  const reps = getPeriodRepetitions();
 
   const baseScale = buildMOSScale(genCents, sel.perPeriodSize, S.period);
   const scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
-  const intervals = scale.pitches.slice(1);
 
-  const rulerKey = sel.key + '|' + intervals.length + '|' + S.rulerSort + (S.rulerSort === 'generator' ? '|' + (S.modeRotation || 0) : '');
+  let intervals;
+  if (reps > 1) {
+    const allPitches = [];
+    for (let k = 0; k < reps; k++)
+      for (const p of scale.pitches) allPitches.push(p + k * S.period);
+    intervals = allPitches.slice(1);
+  } else {
+    intervals = scale.pitches.slice(1);
+  }
+
+  const rulerKey = sel.key + '|' + intervals.length + '|' + S.rulerSort + '|' + reps + (S.rulerSort === 'generator' ? '|' + (S.modeRotation || 0) : '');
   if (S._rulerBuiltKey !== rulerKey) {
-    const n = intervals.length + 1;
-    const chain = getGeneratorChain(genCents, n, S.period);
-    const rot = S.modeRotation || 0;
-    const rootGenIdx = chain[rot];
-    const byGen = S.rulerSort === 'generator';
+    const ppN = sel.perPeriodSize;
+    const n = reps > 1 ? ppN * reps : intervals.length + 1;
+    const byGen = S.rulerSort === 'generator' && reps <= 1;
 
-    const rotatedPitches = scale.pitches;
-    const origPitches = baseScale.pitches;
-
-    const genDistances = [];
-    for (let i = 1; i < n; i++) {
-      const rotCents = rotatedPitches[i];
-      let origPos = -1;
-      for (let j = 0; j < n; j++) {
-        const shifted = ((origPitches[j] - origPitches[rot]) % S.period + S.period) % S.period;
-        if (Math.abs(shifted - rotCents) < 0.01) { origPos = j; break; }
-      }
-      const genIdx = origPos >= 0 ? chain[origPos] : 0;
-      const dist = ((genIdx - rootGenIdx) % n + n) % n;
-      genDistances.push({ intervalIdx: i - 1, genDist: dist });
-    }
-
+    const genDistMap = {};
     let sortOrder;
     if (byGen) {
+      const chain = getGeneratorChain(genCents, n, S.period);
+      const rot = S.modeRotation || 0;
+      const rootGenIdx = chain[rot];
+      const rotatedPitches = scale.pitches;
+      const origPitches = baseScale.pitches;
+      const genDistances = [];
+      for (let i = 1; i < n; i++) {
+        const rotCents = rotatedPitches[i];
+        let origPos = -1;
+        for (let j = 0; j < n; j++) {
+          const shifted = ((origPitches[j] - origPitches[rot]) % S.period + S.period) % S.period;
+          if (Math.abs(shifted - rotCents) < 0.01) { origPos = j; break; }
+        }
+        const genIdx = origPos >= 0 ? chain[origPos] : 0;
+        const dist = ((genIdx - rootGenIdx) % n + n) % n;
+        genDistances.push({ intervalIdx: i - 1, genDist: dist });
+      }
       sortOrder = genDistances.slice().sort((a, b) => a.genDist - b.genDist).map(d => d.intervalIdx);
+      for (const d of genDistances) genDistMap[d.intervalIdx] = d.genDist;
     } else {
       sortOrder = Array.from({length: intervals.length}, (_, i) => i);
     }
 
-    const genDistMap = {};
-    for (const d of genDistances) genDistMap[d.intervalIdx] = d.genDist;
-
     let h = '<div class="edo-ruler-header">';
     h += '<span class="edo-ruler-cents"></span>';
     h += '<span class="edo-ruler-hardness"></span>';
-    h += `<button class="ruler-sort-btn" onclick="toggleRulerSort()" title="Toggle ruler ordering">`;
-    h += byGen
-      ? `<span class="sort-active">gen stack</span> / degree`
-      : `gen stack / <span class="sort-active">degree</span>`;
-    h += `</button>`;
+    if (reps <= 1) {
+      h += `<button class="ruler-sort-btn" onclick="toggleRulerSort()" title="Toggle ruler ordering">`;
+      h += byGen
+        ? `<span class="sort-active">gen stack</span> / degree`
+        : `gen stack / <span class="sort-active">degree</span>`;
+      h += `</button>`;
+    }
     h += '<span class="edo-ruler-temps"></span>';
     h += '</div>';
 
@@ -4028,6 +4045,7 @@ function setupRulerGlobalHandlers() {
 //  INTERACTION — Context menu helpers
 // ================================================================
 
+let _ctxLastDiv = 2, _ctxLastMul = 2, _ctxLastAdd = 600;
 let _ctxOpenTime = 0;
 function hideCtxMenu() { document.getElementById('ctx-menu').style.display = 'none'; }
 function showCtxMenu() {
@@ -4401,40 +4419,30 @@ function setup() {
 
     const reps = getPeriodRepetitions();
     const baseCC = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
-    const ops = [2, 3, 5];
-    let divCol = '<div class="ctx-col"><div class="ctx-col-header">÷</div>';
-    for (const d of ops) {
-      const result = baseCC / d;
-      if (result > 0 && result < S.period) {
-        divCol += `<div class="ctx-item" data-target="${result}">÷${d}<span class="ctx-result">${result.toFixed(2)}¢</span></div>`;
-      }
-    }
-    divCol += '</div>';
 
-    let mulCol = '<div class="ctx-col"><div class="ctx-col-header">×</div>';
-    for (const m of ops) {
-      const result = ((baseCC * m) % S.period + S.period) % S.period;
-      if (result > 0 && result < S.period) {
-        mulCol += `<div class="ctx-item" data-target="${result}">×${m}<span class="ctx-result">${result.toFixed(2)}¢</span></div>`;
-      }
-    }
-    mulCol += '</div>';
+    const inputStyle = 'background:#1a1a2e;color:#e0e0ff;border:1px solid #2a3a5a;border-radius:3px;padding:3px 6px;width:60px;font-size:12px;font-family:monospace;text-align:right;';
+    const rowStyle = 'display:flex;align-items:center;gap:6px;padding:4px 10px;';
+    const labelStyle = 'color:#a0a0c0;font-size:13px;width:16px;text-align:center;';
+    const btnStyle = 'background:#2a3a5a;border:1px solid #6eb5ff;border-radius:3px;padding:2px 6px;cursor:pointer;line-height:1;font-size:11px;color:#6eb5ff;';
+    const previewStyle = 'color:#6eb5ff;font-size:11px;font-family:monospace;min-width:55px;';
 
-    let addCol = '';
-    if (S.generatorCents !== null) {
-      const gen = S.generatorCents;
-      addCol = '<div class="ctx-col"><div class="ctx-col-header">+</div>';
-      for (const d of ops) {
-        const result = ((baseCC + gen / d) % S.period + S.period) % S.period;
-        if (result > 0 && result < S.period) {
-          addCol += `<div class="ctx-item" data-target="${result}">+/${d}<span class="ctx-result">${result.toFixed(2)}¢</span></div>`;
-        }
-      }
-      addCol += '</div>';
+    function computeResult(op, val) {
+      if (isNaN(val) || val === 0) return null;
+      if (op === 'div') return baseCC / val;
+      if (op === 'mul') return ((baseCC * val) % S.period + S.period) % S.period;
+      return ((baseCC + val) % S.period + S.period) % S.period;
+    }
+
+    function ctxRow(label, op, val) {
+      const res = computeResult(op, val);
+      const preview = res !== null ? res.toFixed(1) + '¢' : '';
+      return `<div style="${rowStyle}"><span style="${labelStyle}">${label}</span><input data-op="${op}" type="number" step="any" value="${val}" style="${inputStyle}"><button data-op="${op}" style="${btnStyle}">→</button><span class="ctx-preview" data-op="${op}" style="${previewStyle}">${preview}</span></div>`;
     }
 
     ctxMenu.innerHTML = `<div class="ctx-header">${baseCC.toFixed(2)}¢</div>`
-      + `<div class="ctx-columns">${divCol}${mulCol}${addCol}</div>`;
+      + ctxRow('÷', 'div', _ctxLastDiv)
+      + ctxRow('×', 'mul', _ctxLastMul)
+      + ctxRow('+', 'add', _ctxLastAdd);
     showCtxMenu();
 
     const menuW = ctxMenu.offsetWidth;
@@ -4446,10 +4454,40 @@ function setup() {
     ctxMenu.style.left = left + 'px';
     ctxMenu.style.top = top + 'px';
 
-    ctxMenu.onclick = ev => {
-      const item = ev.target.closest('.ctx-item');
-      if (item) teleportTo(+item.dataset.target);
-    };
+    const firstInput = ctxMenu.querySelector('input');
+    setTimeout(() => { firstInput.focus(); firstInput.select(); }, 0);
+
+    ctxMenu.addEventListener('input', ev => {
+      const input = ev.target.closest('input[data-op]');
+      if (!input) return;
+      const op = input.dataset.op;
+      const val = parseFloat(input.value);
+      const preview = ctxMenu.querySelector(`.ctx-preview[data-op="${op}"]`);
+      const res = computeResult(op, val);
+      preview.textContent = res !== null ? res.toFixed(1) + '¢' : '';
+    });
+
+    function applyOp(op, val) {
+      if (isNaN(val) || val === 0) return;
+      if (op === 'div') _ctxLastDiv = val;
+      else if (op === 'mul') _ctxLastMul = val;
+      else _ctxLastAdd = val;
+      teleportTo(computeResult(op, val));
+    }
+
+    ctxMenu.addEventListener('keydown', ev => {
+      if (ev.key !== 'Enter') return;
+      const input = ev.target.closest('input');
+      if (!input) return;
+      applyOp(input.dataset.op, parseFloat(input.value));
+    });
+
+    ctxMenu.addEventListener('click', ev => {
+      const btn = ev.target.closest('button[data-op]');
+      if (!btn) return;
+      const input = btn.parentElement.querySelector('input');
+      applyOp(btn.dataset.op, parseFloat(input.value));
+    });
   });
 
   // Touch
@@ -4619,10 +4657,16 @@ function setup() {
     const oldPeriod = S.period;
     const oldGen = S.generatorCents;
     const oldSize = S.selected ? S.selected.perPeriodSize : null;
+    const oldLimit = S.viewLimit;
+    const oldRange = S.viewMax - S.viewMin;
+    const oldCenter = (S.viewMin + S.viewMax) / 2;
     S.period = parseFloat(opt.value);
     S.viewLimit = parseFloat(opt.dataset.limit);
-    S.viewMin = 0;
-    S.viewMax = S.viewLimit;
+    const scale = S.viewLimit / oldLimit;
+    const newRange = Math.min(S.viewLimit, oldRange * scale);
+    const newCenter = Math.min(S.viewLimit - newRange / 2, Math.max(newRange / 2, oldCenter * scale));
+    S.viewMin = newCenter - newRange / 2;
+    S.viewMax = newCenter + newRange / 2;
     S._harmonicRatios = null;
     S._rulerBuiltKey = null;
     S._panelHeight = null;
@@ -4651,21 +4695,32 @@ function setup() {
     syncSizeDisplay();
     recalc();
     if (oldGen !== null) {
-      const newGen = (oldGen / oldPeriod) * S.period;
-      const candidates = S.regions.filter(r =>
-        newGen >= r.lowCents && newGen <= r.highCents
+      const reduced = ((oldGen % S.period) + S.period) % S.period;
+      const mirror = S.period - reduced;
+      const viewCenter = (S.viewMin + S.viewMax) / 2;
+      const reducedCenter = ((viewCenter % S.period) + S.period) % S.period;
+      const genOptions = [reduced, mirror].filter(g => g > 0 && g < S.period);
+      genOptions.sort((a, b) =>
+        Math.abs(a - reducedCenter) - Math.abs(b - reducedCenter)
       );
-      if (candidates.length) {
-        if (oldSize !== null) {
-          candidates.sort((a, b) =>
-            Math.abs(a.perPeriodSize - oldSize) - Math.abs(b.perPeriodSize - oldSize)
-          );
+      for (const newGen of genOptions) {
+        const candidates = S.regions.filter(r =>
+          newGen >= r.lowCents && newGen <= r.highCents
+        );
+        if (candidates.length) {
+          if (oldSize !== null) {
+            candidates.sort((a, b) =>
+              Math.abs(a.perPeriodSize - oldSize) - Math.abs(b.perPeriodSize - oldSize)
+            );
+          }
+          S.selected = candidates[0];
+          S.generatorCents = newGen;
+          break;
         }
-        S.selected = candidates[0];
-        S.generatorCents = newGen;
       }
     }
     updatePanel();
+    render();
     updateInfo();
   });
   document.getElementById('edo-multiples').addEventListener('change', e => {
