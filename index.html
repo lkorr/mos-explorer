@@ -842,7 +842,8 @@ function mosDisplayLabel(key) {
 function mosDisplayName(key) {
   const reps = getPeriodRepetitions();
   if (reps <= 1) return MOS_NAMES[key];
-  return MULTI_PERIOD_MOS_NAMES[key] || null;
+  if (S.period < 1200) return MULTI_PERIOD_MOS_NAMES[key] || null;
+  return null;
 }
 
 function getChildMOSes(key) {
