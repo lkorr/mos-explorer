@@ -385,6 +385,10 @@ const TEMPERAMENTS = [
   //  commas: [], commaNames: [],
    // wikiUrl: 'https://en.xen.wiki/w/Pythagorean_tuning',
    // description: '12-note chromatic from stacked fifths.' },
+  // === 2x OCTAVE PERIOD ===
+  { name: 'Unknown Diatonic', mos: ['5L_2s'], genRange: [685.71, 720.0], period: 2400,
+    commas: [], commaNames: [],
+    description: 'Diatonic range from 7n to 5n but for 2x octave periods. Good 3.5.7 approximations within the period.' },
 ];
 
 const TEMP_COLORS = {
@@ -405,6 +409,7 @@ const TEMP_COLORS = {
   'Blackwood': '#ba55d3', 'Whitewood': '#e0c0ff', 'Injera': '#e8a060', 'Lemba': '#d2691e', 'Hedgehog': '#8fbc8f',
   'Sephiroth': '#ec7ce4',
   'Escape': '#a8d8ea', 'Octacot': '#56c9a0', 'Passion': '#d4637a', 'Valentine': '#ff6b81', 'Miracle': '#ff4500', 'Negri': '#9370db',
+  'Unknown Diatonic': '#c0a0e0',
 };
 
 const MOS_NAMES = {
