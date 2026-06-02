@@ -1435,6 +1435,8 @@ function drawEDOs(ctx, W, H, vr) {
   const selSize = sel.perPeriodSize;
   S._edoMarkers = [];
 
+  const octaveRatio = 1200 / S.period;
+
   for (const g of vis) {
     for (let k = 0; k < reps; k++) {
       const oc = g.cents + k * S.period;
@@ -1444,8 +1446,10 @@ function drawEDOs(ctx, W, H, vr) {
       slots.push(x);
       S._edoMarkers.push({ x, cents: g.cents, y: baseY + 22, h: 40 });
 
-      const dispEdo = g.edo * reps;
-      const dispStep = g.step + k * g.edo;
+      const octEdo = g.edo * octaveRatio;
+      const isCleanOctEdo = Math.abs(octEdo - Math.round(octEdo)) < 0.001;
+      const dispEdo = isCleanOctEdo ? Math.round(octEdo) : g.edo;
+      const dispStep = isCleanOctEdo ? Math.round(oc * dispEdo / 1200) : g.step + k * g.edo;
 
       ctx.strokeStyle = '#6eb5ff44';
       ctx.lineWidth = 1;
@@ -1864,7 +1868,7 @@ function drawMOSCircle(ctx, W, H) {
     displayS = scale.s;
   }
   const displayN = displayPitches.length;
-  const displayP = reps > 1 ? 1200 : P;
+  const displayP = reps > 1 ? P * reps : P;
   const { pitches, steps, L, s } = { pitches: displayPitches, steps: displaySteps, L: displayL, s: displayS };
 
   function c2a(cents) {
@@ -1928,6 +1932,23 @@ function drawMOSCircle(ctx, W, H) {
       ctx.moveTo(cx + bcos * (radius - 8), cy + bsin * (radius - 8));
       ctx.lineTo(cx + bcos * (radius + 8), cy + bsin * (radius + 8));
       ctx.strokeStyle = '#f5a62388';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  // Octave boundary markers on the circle (super-octave)
+  if (displayP > 1200) {
+    const octaves = Math.floor(displayP / 1200);
+    for (let k = 1; k <= octaves; k++) {
+      const bAngle = c2a(k * 1200);
+      const bcos = Math.cos(bAngle);
+      const bsin = Math.sin(bAngle);
+      ctx.beginPath();
+      ctx.moveTo(cx + bcos * (radius - 8), cy + bsin * (radius - 8));
+      ctx.lineTo(cx + bcos * (radius + 8), cy + bsin * (radius + 8));
+      ctx.strokeStyle = '#6eb5ff88';
       ctx.lineWidth = 2;
       ctx.setLineDash([3, 3]);
       ctx.stroke();
@@ -2290,7 +2311,7 @@ function buildFullScale() {
   for (let k = 0; k < reps; k++)
     for (let i = 0; i < base.pitches.length; i++)
       pitches.push(base.pitches[i] + k * S.period);
-  return { scale: { pitches }, size: n * reps, octave: 1200 };
+  return { scale: { pitches }, size: n * reps, octave: S.period * reps };
 }
 
 function startNote(code, degreeInScale, noteOctave, startAt) {
@@ -2503,10 +2524,15 @@ function hitTest(mx, my, e) {
       }
     }
     if (nearest && nd < (S.viewMax - S.viewMin) * 0.02) {
-      const nearDispEdo = nearest.edo * reps;
+      const octaveRatio = 1200 / S.period;
+      const octEdo = nearest.edo * octaveRatio;
+      const isCleanOctEdo = Math.abs(octEdo - Math.round(octEdo)) < 0.001;
       const nearK = Math.round((ccRaw - nearest.cents) / S.period);
-      const nearDispStep = nearest.step + Math.max(0, nearK) * nearest.edo;
       const nearDispCents = nearest.cents + Math.max(0, nearK) * S.period;
+      const nearDispEdo = isCleanOctEdo ? Math.round(octEdo) : nearest.edo * reps;
+      const nearDispStep = isCleanOctEdo
+        ? Math.round(nearDispCents * nearDispEdo / 1200)
+        : nearest.step + Math.max(0, nearK) * nearest.edo;
       html += `<div class="tt-edo">Nearest: ${nearDispStep}\\${nearDispEdo} = ${nearDispCents.toFixed(2)}¢</div>`;
     }
 
@@ -4673,7 +4699,7 @@ function setup() {
     S._circleRadius = null;
     const reps = getPeriodRepetitions();
     const isSub = S.period < 1200;
-    if (reps > 1) {
+    if (isSub && reps > 1) {
       S.minSize = 2;
       S.maxSize = 8;
     } else {
