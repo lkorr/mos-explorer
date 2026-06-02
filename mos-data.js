@@ -256,10 +256,15 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Breedsmic_temperaments#Neominor',
     description: 'Breedsmic temperament. Generator is a subminor third. 4L 5s, 4L 9s, 4L 13s MOS family. <br> <br> <i> Breedsmic </i> Seriously who comes up with these names?  ' },
 
-  { name: 'Orwell', mos: ['4L_5s', '4L_9s', '13L_9s'], genRange: [269.0, 275.0],
+  { name: 'Orwell', mos: ['4L_5s', '4L_9s', '13L_9s'], genRange: [266.67, 275.0],
     commas: ['225/224', '1728/1715'], commaNames: ['marvel comma', 'orwellisma'],
     wikiUrl: 'https://en.xen.wiki/w/Orwell',
     description: 'Subminor third (7/6) generator. Seven generators = twelfth. Excellent 11-limit.' },
+
+  { name: 'Lovecraft', mos: ['4L_5s', '4L_9s', '4L_13s'], genRange: [275.0, 280.0],
+    commas: ['65/64', '91/90'], commaNames: ['wilsorma', 'superkilisma'],
+    wikiUrl: 'https://en.xen.wiki/w/No-threes_subgroup_temperaments#Lovecraft',
+    description: 'No-threes subgroup (2.5.7.13). Generator is a subminor third between Orwell and Neominor territory (~277¢).' },
 
   { name: 'Semaphore', mos: ['5L_4s', '5L_9s'], genRange: [933.33, 960.0],
     commas: ['49/48'], commaNames: ['slendro diesis'],
@@ -375,7 +380,7 @@ const TEMP_COLORS = {
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a', 'Orgone': '#4a9a6a',
   'Bohpier': '#a0c060', 'Nusecond': '#6abf3a', 'Hemikleismic': '#58cf20', 'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Novisept': '#b8984c', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030', 'Magus': '#c4922a',
-  'Neominor': '#7fbfdf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
+  'Neominor': '#7fbfdf', 'Lovecraft': '#6a9fbf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
   'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Neptune': '#4169e1', 'Tritonic': '#c4b896', 'Alphatricot': '#d4aa70', 'Buzzard': '#c89e64', 'Thuja': '#b8944e', 'Kleismic': '#b0864c',
