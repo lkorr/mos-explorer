@@ -122,10 +122,10 @@ const TEMPERAMENTS = [
   // === PENTATONIC (2L 3s) ===
 
   // === ANTI-PENTATONIC (3L 2s) ===
-  { name: 'Father', mos: ['3L_2s', '5L_3s'], genRange: [445.7, 461.5],
-    commas: ['16/15'], commaNames: ['diatonic semitone'],
-    wikiUrl: 'https://en.xen.wiki/w/Father_family',
-    description: 'Tempers out 16/15, equating 5/4 with 4/3. Exotemperament.' },
+  { name: 'Aurora', mos: ['3L_2s', '5L_3s'], genRange: [445.7, 461.5],
+    commas: ['1029/1000', '28672/28125'], commaNames: ['', ''],
+    wikiUrl: 'https://en.xen.wiki/w/Keegic_temperaments#Aurora',
+    description: 'Keegic family. No-threes subgroup. Generator is a near-9/7 or sharp sub-fourth (~450¢). Tempers out the diesis (128/125).' },
 
   { name: 'Squares', mos: ['3L_2s', '3L_5s', '3L_8s'], genRange: [420.0, 428.57],
     commas: ['256/245'], commaNames: ['squares comma'],
@@ -300,7 +300,7 @@ const TEMPERAMENTS = [
   { name: 'Passion', mos: ['1L_11s', '12L_1s', '12L_13s'], genRange: [96.0, 100.0],
     commas: ['262144/253125'], commaNames: ['passion comma'],
     wikiUrl: 'https://en.xen.wiki/w/Passion_family#Passion',
-    description: 'Near-12edo generator (~98¢). Twelve generators = octave minus a comma.... This would probably suck as a scale or temperament. Just use 12edo???.' },
+    description: 'Near-12edo generator (~98¢). Twelve generators = octave minus a comma.... This would probably suck as a scale or temperament. Just use 12edo???' },
 
   { name: 'Escape', mos: ['1L_20s', '21L_1s', '21L_22s'], genRange: [55.33, 57.2],
     commas: ['4294967296/4271484375'], commaNames: ['escapade comma'],
@@ -384,7 +384,7 @@ const TEMP_COLORS = {
   'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
   'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Neptune': '#4169e1', 'Tritonic': '#c4b896', 'Alphatricot': '#d4aa70', 'Buzzard': '#c89e64', 'Thuja': '#b8944e', 'Kleismic': '#b0864c',
-  'Father': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Hamity': '#d4724a', 'Bug': '#cd853f',
+  'Aurora': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Hamity': '#d4724a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800',
   'Blackwood': '#ba55d3', 'Lemba': '#d2691e', 'Hedgehog': '#8fbc8f',
