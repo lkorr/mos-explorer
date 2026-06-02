@@ -672,6 +672,10 @@ canvas { display: block; width: 100%; height: 100%; }
       <option value="2400" data-limit="2400">2x octave</option>
       <option value="4800" data-limit="4800">4x octave</option>
     </select>
+    <label id="edo-multiples-label" style="display:none;margin-left:8px;color:#aaa;font-size:11px;cursor:pointer;">
+      <input type="checkbox" id="edo-multiples" checked style="vertical-align:middle;margin-right:3px;">
+      <span id="edo-multiples-text">2n EDOs only</span>
+    </label>
   </div>
   <div class="ctrl-group">
     <label style="color:#e94560;cursor:pointer;" id="reset-zoom">[ Reset Zoom ]</label>
@@ -1065,6 +1069,7 @@ const S = {
   _parentArrow: null, _childArrow: null, _modeButtons: [], _lastClickX: undefined, _lastClickY: undefined,
   _tempBars: [],
   rulerSort: 'degree',
+  edoMultiplesOnly: false,
   _circleRadius: null,
   circleResizing: false, circleResizeStartX: 0, circleResizeStartY: 0, circleResizeStartR: 0,
 };
@@ -1415,7 +1420,8 @@ function drawEDOs(ctx, W, H, vr) {
   const reps = getPeriodRepetitions();
 
   const vis = S.edos.filter(g =>
-    g.cents >= sel.lowCents && g.cents <= sel.highCents
+    g.cents >= sel.lowCents && g.cents <= sel.highCents &&
+    (!S.edoMultiplesOnly || g.edo * reps <= S.maxEDO)
   );
   if (!vis.length) return;
 
@@ -1435,6 +1441,9 @@ function drawEDOs(ctx, W, H, vr) {
       slots.push(x);
       S._edoMarkers.push({ x, cents: g.cents, y: baseY + 22, h: 40 });
 
+      const dispEdo = g.edo * reps;
+      const dispStep = g.step + k * g.edo;
+
       ctx.strokeStyle = '#6eb5ff44';
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x, baseY); ctx.lineTo(x, baseY + 22); ctx.stroke();
@@ -1442,11 +1451,11 @@ function drawEDOs(ctx, W, H, vr) {
       ctx.fillStyle = '#6eb5ff';
       ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(`${g.step}\\${g.edo}`, x, baseY + 34);
+      ctx.fillText(`${dispStep}\\${dispEdo}`, x, baseY + 34);
 
       ctx.fillStyle = '#556';
       ctx.font = '9px monospace';
-      ctx.fillText(g.cents.toFixed(1) + '¢', x, baseY + 45);
+      ctx.fillText(oc.toFixed(1) + '¢', x, baseY + 45);
 
       const hr = computeHardness(g.cents, selSize);
       if (hr.ratio !== Infinity && hr.ratio > 0.5) {
@@ -1932,11 +1941,9 @@ function drawMOSCircle(ctx, W, H) {
     const sin = Math.sin(angle);
     const px = cx + cos * radius;
     const py = cy + sin * radius;
-    const dotDegree = reps > 1 ? i % n : i;
-    const dotOctave = reps > 1 ? Math.floor(i / n) : 0;
-    S._circleDots.push({ x: px, y: py, degree: dotDegree, noteOctave: dotOctave, cents: pitches[i] });
+    S._circleDots.push({ x: px, y: py, degree: i, noteOctave: 0, cents: pitches[i] });
 
-    const gs = getGlowState(dotDegree, glowNow);
+    const gs = getGlowState(i, glowNow);
     const glow = gs.intensity;
     const glowColor = gs.color;
     const isPeriodBoundary = reps > 1 && (i % n === 0);
@@ -2227,9 +2234,10 @@ function getKeyMapping(key) {
       // / = 1 below, . = 2 below, etc. → offset = -(belowIdx+1)
       const offset = -(belowIdx + 1);
       if (!S.selected) return { degree: 0, octave: -1 };
-      const n = S.selected.perPeriodSize;
-      const octave = Math.floor(offset / n);
-      const degreeInOctave = ((offset % n) + n) % n;
+      const reps = getPeriodRepetitions();
+      const fullSize = S.selected.perPeriodSize * (reps > 1 ? reps : 1);
+      const octave = Math.floor(offset / fullSize);
+      const degreeInOctave = ((offset % fullSize) + fullSize) % fullSize;
       return { degree: degreeInOctave, octave: octave };
     }
     return null;
@@ -2270,6 +2278,18 @@ function killAllNotes() {
   _chordActiveCodes = [];
 }
 
+function buildFullScale() {
+  const n = S.selected.perPeriodSize;
+  const reps = getPeriodRepetitions();
+  const base = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
+  if (reps <= 1) return { scale: base, size: n, octave: S.period };
+  const pitches = [];
+  for (let k = 0; k < reps; k++)
+    for (let i = 0; i < base.pitches.length; i++)
+      pitches.push(base.pitches[i] + k * S.period);
+  return { scale: { pitches }, size: n * reps, octave: 1200 };
+}
+
 function startNote(code, degreeInScale, noteOctave, startAt) {
   if (!S.selected || S.generatorCents === null) return;
 
@@ -2277,10 +2297,9 @@ function startNote(code, degreeInScale, noteOctave, startAt) {
     killAllNotes();
   }
 
-  const n = S.selected.perPeriodSize;
-  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
-  const cents = scale.pitches[degreeInScale];
-  const totalCents = cents + noteOctave * S.period;
+  const full = buildFullScale();
+  const cents = full.scale.pitches[degreeInScale % full.size];
+  const totalCents = cents + noteOctave * full.octave;
   const freq = SYNTH.baseFreq * Math.pow(2, totalCents / 1200);
 
   const actx = getAudioCtx();
@@ -2303,7 +2322,7 @@ function startNote(code, degreeInScale, noteOctave, startAt) {
     try { osc.disconnect(); } catch {}
   };
   let glowId = null;
-  if (degreeInScale < n) {
+  if (degreeInScale < full.size) {
     glowId = noteGlowOn(degreeInScale, noteOctave);
   }
   SYNTH._activeKeys[code] = { osc, gain, degreeInScale, glowId, noteOctave, currentCents: totalCents };
@@ -2313,21 +2332,23 @@ function playKeyNote(key, code) {
   if (!S.selected || S.generatorCents === null) return;
   const mapping = getKeyMapping(key);
   if (!mapping) return;
-  const n = S.selected.perPeriodSize;
-  const octaveWrap = Math.floor(mapping.degree / n);
-  const degreeInScale = ((mapping.degree % n) + n) % n;
+  const reps = getPeriodRepetitions();
+  const fullSize = S.selected.perPeriodSize * (reps > 1 ? reps : 1);
+  const octaveWrap = Math.floor(mapping.degree / fullSize);
+  const degreeInScale = ((mapping.degree % fullSize) + fullSize) % fullSize;
   const noteOctave = mapping.octave + octaveWrap + SYNTH.octaveShift;
   startNote(code, degreeInScale, noteOctave);
   renderChordHighlights();
 }
 
-function findNearestDegrees(targetCents, scale, n) {
+function findNearestDegrees(targetCents, scale, n, octave) {
+  octave = octave || S.period;
   const candidates = [];
   for (let d = 0; d < n; d++) {
     const baseCents = scale.pitches[d];
-    const octEst = Math.round((targetCents - baseCents) / S.period);
+    const octEst = Math.round((targetCents - baseCents) / octave);
     for (let o = octEst - 1; o <= octEst + 1; o++) {
-      const c = baseCents + o * S.period;
+      const c = baseCents + o * octave;
       candidates.push({ deg: d, oct: o, cents: c, dist: Math.abs(c - targetCents) });
     }
   }
@@ -2337,8 +2358,10 @@ function findNearestDegrees(targetCents, scale, n) {
 
 function updateHeldNotes() {
   if (!S.selected || S.generatorCents === null) return;
-  const n = S.selected.perPeriodSize;
-  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
+  const full = buildFullScale();
+  const scale = full.scale;
+  const n = full.size;
+  const octave = full.octave;
   const actx = SYNTH.ctx;
   if (!actx) return;
   const now = actx.currentTime;
@@ -2348,9 +2371,9 @@ function updateHeldNotes() {
   const entries = keys.map(k => {
     const entry = SYNTH._activeKeys[k];
     if (entry.currentCents === undefined) {
-      entry.currentCents = scale.pitches[entry.degreeInScale % n] + entry.noteOctave * S.period;
+      entry.currentCents = scale.pitches[entry.degreeInScale % n] + entry.noteOctave * octave;
     }
-    return { key: k, entry, candidates: findNearestDegrees(entry.currentCents, scale, n) };
+    return { key: k, entry, candidates: findNearestDegrees(entry.currentCents, scale, n, octave) };
   });
   entries.sort((a, b) => a.candidates[0].dist - b.candidates[0].dist);
 
@@ -2387,7 +2410,7 @@ function updateHeldNotes() {
     }
     entry.degreeInScale = bestDeg;
     entry.noteOctave = bestOct;
-    const newCents = scale.pitches[bestDeg] + bestOct * S.period;
+    const newCents = scale.pitches[bestDeg] + bestOct * octave;
     entry.currentCents = newCents;
     const freq = SYNTH.baseFreq * Math.pow(2, newCents / 1200);
     entry.osc.frequency.setValueAtTime(freq, now);
@@ -3194,12 +3217,11 @@ const _chordThrottleMs = 30;
 
 function getChords() {
   if (!S.selected || S.generatorCents === null) return [];
-  const n = S.selected.perPeriodSize;
-  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
-  const scaleKey = scale.pitches.map(p => p.toFixed(1)).join(',');
+  const full = buildFullScale();
+  const scaleKey = full.scale.pitches.map(p => p.toFixed(1)).join(',');
   if (scaleKey !== _cachedTriadScale) {
     _cachedTriadScale = scaleKey;
-    _cachedTriads = findScaleChords(scale.pitches, 35, 200);
+    _cachedTriads = findScaleChords(full.scale.pitches, 35, 200);
   }
   return _cachedTriads;
 }
@@ -3399,8 +3421,9 @@ function killChordNotes() {
 function playChordDegrees(degrees) {
   if (!S.selected || S.generatorCents === null) return;
   killChordNotes();
-  const n = S.selected.perPeriodSize;
-  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
+  const full = buildFullScale();
+  const n = full.size;
+  const scale = full.scale;
   const rootDeg = ((degrees[0] % n) + n) % n;
   const rootCents = scale.pitches[rootDeg];
   const actx = getAudioCtx();
@@ -3481,13 +3504,14 @@ function renderChordHighlights() {
   }
 
   if (!activeTriads.length && activeDegrees.length >= 2 && S.selected && S.generatorCents !== null) {
-    const n = S.selected.perPeriodSize;
-    const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
-    const bassCents = scale.pitches[lowestEntry.degreeInScale] + lowestEntry.noteOctave * S.period;
+    const full = buildFullScale();
+    const scale = full.scale;
+    const octave = full.octave;
+    const bassCents = scale.pitches[lowestEntry.degreeInScale] + lowestEntry.noteOctave * octave;
     for (const e of activeEntries) {
       if (e === lowestEntry) continue;
-      let intervalCents = (scale.pitches[e.degreeInScale] + e.noteOctave * S.period) - bassCents;
-      if (intervalCents <= 0) intervalCents += S.period;
+      let intervalCents = (scale.pitches[e.degreeInScale] + e.noteOctave * octave) - bassCents;
+      if (intervalCents <= 0) intervalCents += octave;
       const maxErr = _chordMaxRMS;
       const lo = jiPoolLowerBound(intervalCents - maxErr);
       let best = null;
@@ -4176,7 +4200,7 @@ function setup() {
 
     if (hitMOSCirclePanel(mx, my)) return;
 
-    if (S.selected && isOnAxisBar(my)) {
+    if (e.button === 0 && S.selected && isOnAxisBar(my)) {
       const cc = x2c(mx);
       const reps = getPeriodRepetitions();
       const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
@@ -4189,13 +4213,15 @@ function setup() {
       }
     }
 
-    S.dragging = true;
-    S.dragX0 = e.clientX;
-    S.dragY0 = e.clientY;
-    S.dragMin0 = S.viewMin;
-    S.dragMax0 = S.viewMax;
-    S.dragMinSize0 = S.minSize;
-    cvs.style.cursor = 'grabbing';
+    if (e.button === 0) {
+      S.dragging = true;
+      S.dragX0 = e.clientX;
+      S.dragY0 = e.clientY;
+      S.dragMin0 = S.viewMin;
+      S.dragMax0 = S.viewMax;
+      S.dragMinSize0 = S.minSize;
+      cvs.style.cursor = 'grabbing';
+    }
   });
 
   window.addEventListener('mousemove', e => {
@@ -4394,8 +4420,21 @@ function setup() {
     }
     mulCol += '</div>';
 
+    let addCol = '';
+    if (S.generatorCents !== null) {
+      const gen = S.generatorCents;
+      addCol = '<div class="ctx-col"><div class="ctx-col-header">+</div>';
+      for (const d of ops) {
+        const result = ((baseCC + gen / d) % S.period + S.period) % S.period;
+        if (result > 0 && result < S.period) {
+          addCol += `<div class="ctx-item" data-target="${result}">+/${d}<span class="ctx-result">${result.toFixed(2)}¢</span></div>`;
+        }
+      }
+      addCol += '</div>';
+    }
+
     ctxMenu.innerHTML = `<div class="ctx-header">${baseCC.toFixed(2)}¢</div>`
-      + `<div class="ctx-columns">${divCol}${mulCol}</div>`;
+      + `<div class="ctx-columns">${divCol}${mulCol}${addCol}</div>`;
     showCtxMenu();
 
     const menuW = ctxMenu.offsetWidth;
@@ -4577,17 +4616,19 @@ function setup() {
   });
   document.getElementById('period-select').addEventListener('change', e => {
     const opt = e.target.selectedOptions[0];
+    const oldPeriod = S.period;
+    const oldGen = S.generatorCents;
+    const oldSize = S.selected ? S.selected.perPeriodSize : null;
     S.period = parseFloat(opt.value);
     S.viewLimit = parseFloat(opt.dataset.limit);
     S.viewMin = 0;
     S.viewMax = S.viewLimit;
-    S.selected = null;
-    S.generatorCents = null;
     S._harmonicRatios = null;
     S._rulerBuiltKey = null;
     S._panelHeight = null;
     S._circleRadius = null;
     const reps = getPeriodRepetitions();
+    const isSub = S.period < 1200;
     if (reps > 1) {
       S.minSize = 2;
       S.maxSize = 8;
@@ -4595,10 +4636,41 @@ function setup() {
       S.minSize = 2;
       S.maxSize = 18;
     }
+    const mLabel = document.getElementById('edo-multiples-label');
+    if (isSub && reps > 1) {
+      S.edoMultiplesOnly = true;
+      document.getElementById('edo-multiples').checked = true;
+      document.getElementById('edo-multiples-text').textContent = `${reps}n EDOs only`;
+      mLabel.style.display = '';
+    } else {
+      S.edoMultiplesOnly = false;
+      mLabel.style.display = 'none';
+    }
+    S.selected = null;
+    S.generatorCents = null;
     syncSizeDisplay();
-    updatePanel();
     recalc();
+    if (oldGen !== null) {
+      const newGen = (oldGen / oldPeriod) * S.period;
+      const candidates = S.regions.filter(r =>
+        newGen >= r.lowCents && newGen <= r.highCents
+      );
+      if (candidates.length) {
+        if (oldSize !== null) {
+          candidates.sort((a, b) =>
+            Math.abs(a.perPeriodSize - oldSize) - Math.abs(b.perPeriodSize - oldSize)
+          );
+        }
+        S.selected = candidates[0];
+        S.generatorCents = newGen;
+      }
+    }
+    updatePanel();
     updateInfo();
+  });
+  document.getElementById('edo-multiples').addEventListener('change', e => {
+    S.edoMultiplesOnly = e.target.checked;
+    render();
   });
   const helpModal = document.getElementById('help-modal');
   document.getElementById('help-btn').addEventListener('click', () => {
