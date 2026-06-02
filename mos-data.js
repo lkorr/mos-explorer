@@ -54,7 +54,7 @@ const TEMPERAMENTS = [
   { name: 'Wilsec', mos: ['2L_5s', '2L_7s', '2L_9s'], genRange: [533.3330, 540.0],
     commas: ['49/48'], commaNames: ['semaphoresma'],
     wikiUrl: 'https://en.xen.wiki/w/Semaphoresmic_clan#Wilsec',
-    description: '2.3.7 subgroup. Divides the 12th harmonic into 8 equal parts. Tempers out 49/48, equating 7/6 and 8/7.' },
+    description: '2.3.7 subgroup. Divides the 12th harmonic into 8 equal parts. Tempers out 49/48, equating 7/6 and 8/7. <br> <br> As the generator flattens out of mavila range, it stops feeling like a fifth and becomes something else entirely.' },
 
   { name: 'Casablanca', mos: ['2L_5s', '2L_7s', '2L_9s'], genRange: [540.0, 550.0],
     commas: ['126/125'], commaNames: ['starling comma'],
@@ -323,38 +323,48 @@ const TEMPERAMENTS = [
  //   wikiUrl: 'https://en.xen.wiki/w/Bug_family',
  //   description: 'Equates 10/9 and 6/5. Exotemperament.' },
 
-  // === NON-OCTAVE PERIOD (disabled — octave-period mapping not yet reliable) ===
-  { name: 'Pajara', mos: ['1L_9s', '10L_1s'], genRange: [105.0, 115.0], disabled: true,
-    commas: ['50/49', '64/63', '2048/2025'], commaNames: ['jubilisma', 'Archytas comma', 'diaschisma'],
-    wikiUrl: 'https://en.xen.wiki/w/Pajara',
-    description: 'Half-octave period (~600¢). Decatonic scales. 22edo optimal. Gen ~108¢.' },
-
-  { name: 'Srutal', mos: ['1L_9s', '10L_1s'], genRange: [103.0, 106.0], disabled: true,
+  // === NON-OCTAVE PERIOD ===
+  { name: 'Diaschismic', mos: ['1L_9s', '10L_1s'], genRange: [100.0, 105.88], period: 600,
     commas: ['2048/2025', '126/125'], commaNames: ['diaschisma', 'starling comma'],
     wikiUrl: 'https://en.xen.wiki/w/Diaschismic_family',
     description: 'Diaschismic. Half-octave period. More accurate cousin of pajara. Gen ~104¢.' },
 
-  { name: 'Blackwood', mos: ['5L_2s'], genRange: [716.0, 724.0], disabled: true,
+  { name: 'Pajara', mos: ['1L_9s', '10L_1s'], genRange: [105.88, 115.0], period: 600,
+    commas: ['50/49', '64/63', '2048/2025'], commaNames: ['jubilisma', 'Archytas comma', 'diaschisma'],
+    wikiUrl: 'https://en.xen.wiki/w/Pajara',
+    description: 'Half-octave period (~600¢). Decatonic scales. 22edo optimal. Gen ~108¢.' },
+
+  { name: 'Injera', mos: ['1L_5s', '6L_1s'], genRange: [87.6, 100.0], period: 600,
+    commas: ['81/80', '50/49'], commaNames: ['syntonic comma', 'jubilisma'],
+    wikiUrl: 'https://en.xen.wiki/w/Meantone_family#Injera',
+    description: 'Half-octave period. Meantone family — tempers out 81/80 and 50/49. 12edo is the simplest tuning; 26edo is more characteristic. Gen ~94¢.' },
+
+  { name: 'Blackwood', mos: ['1L_1s'], genRange: [0, 120], period: 240,
     commas: ['256/243'], commaNames: ['Pythagorean limma'],
     wikiUrl: 'https://en.xen.wiki/w/Blackwood',
-    description: '1/5-octave period. Very sharp ~720¢ fifth. Every note roots a triad.' },
+    description: '1/5-octave period. Tempers out 256/243. 10edo and 15edo are core tunings. Every note roots a major or minor triad.' },
 
-  { name: 'Augmented', mos: ['1L_2s', '3L_1s'], genRange: [392.0, 400.0], disabled: true,
+  { name: 'Whitewood', mos: ['1L_1s'], genRange: [0, 85.71], period: 171.42857142857142,
+    commas: ['2187/2048'], commaNames: ['apotome'],
+    wikiUrl: 'https://en.xen.wiki/w/Whitewood',
+    description: '1/7-octave period. Tempers out the apotome 2187/2048. 14edo and 21edo are core tunings. Dual of blackwood — divides the octave into 7 equal parts instead of 5.' },
+
+  { name: 'Augmented', mos: ['1L_2s', '3L_1s'], genRange: [392.0, 400.0], period: 400,
     commas: ['128/125'], commaNames: ['diesis'],
     wikiUrl: 'https://en.xen.wiki/w/Augmented_family',
     description: '1/3-octave period. Three 5/4 = octave. Major third generator ~400¢.' },
 
-  { name: 'Diminished', mos: ['1L_3s', '4L_1s'], genRange: [293.0, 300.0], disabled: true,
+  { name: 'Diminished', mos: ['1L_3s', '4L_1s'], genRange: [293.0, 300.0], period: 300,
     commas: ['648/625'], commaNames: ['major diesis'],
     wikiUrl: 'https://en.xen.wiki/w/Diminished_family',
     description: '1/4-octave period. Four 6/5 = octave. Minor third generator ~300¢.' },
 
-  { name: 'Lemba', mos: ['1L_4s', '5L_1s'], genRange: [225.0, 237.0], disabled: true,
+  { name: 'Lemba', mos: ['1L_4s', '5L_1s'], genRange: [225.0, 237.0], period: 600,
     commas: ['50/49', '525/512'], commaNames: ['jubilisma', 'avicennma'],
     wikiUrl: 'https://en.xen.wiki/w/Lemba',
     description: 'Half-octave period. Generator ~230¢ near golden ratio of half-octave.' },
 
-  { name: 'Hedgehog', mos: ['1L_6s', '7L_1s'], genRange: [160.0, 170.0], disabled: true,
+  { name: 'Hedgehog', mos: ['1L_6s', '7L_1s'], genRange: [160.0, 170.0], period: 600,
     commas: ['50/49', '245/243'], commaNames: ['jubilisma', 'sensamagic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Porcupine_family',
     description: 'Half-octave period. Porcupine-family. 22edo is the canonical tuning.' },
@@ -391,8 +401,8 @@ const TEMP_COLORS = {
   'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Neptune': '#4169e1', 'Tritonic': '#c4b896', 'Alphatricot': '#d4aa70', 'Buzzard': '#c89e64', 'Thuja': '#b8944e', 'Kleismic': '#b0864c',
   'Aurora': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Hamity': '#d4724a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
-  'Pajara': '#ff8c00', 'Srutal': '#e07800',
-  'Blackwood': '#ba55d3', 'Lemba': '#d2691e', 'Hedgehog': '#8fbc8f',
+  'Pajara': '#ff8c00', 'Srutal': '#e07800', 'Diaschismic': '#c86800',
+  'Blackwood': '#ba55d3', 'Whitewood': '#e0c0ff', 'Injera': '#e8a060', 'Lemba': '#d2691e', 'Hedgehog': '#8fbc8f',
   'Sephiroth': '#ec7ce4',
   'Escape': '#a8d8ea', 'Octacot': '#56c9a0', 'Passion': '#d4637a', 'Valentine': '#ff6b81', 'Miracle': '#ff4500', 'Negri': '#9370db',
 };
@@ -435,6 +445,15 @@ const MOS_NAMES = {
   '4L_11s': 'Hansonoid', '11L_4s': 'Hansonoid',
   '8L_11s': 'Sensioid', '11L_8s': 'Sensioid',
   '13L_9s': 'Orwelloid', '9L_13s': 'Orwelloid',
+};
+
+const MULTI_PERIOD_MOS_NAMES = {
+  '2L_2s': 'Double Trivial',
+  '3L_3s': 'Triwood',
+  '4L_4s': 'Tetrawood',
+  '5L_5s': 'Pentawood',
+  '6L_6s': 'Hexawood',
+  '7L_7s': 'Heptawood',
 };
 
 // Mode names indexed by UDP order: index 0 = brightest (highest U|0), last = darkest (0|highest D)

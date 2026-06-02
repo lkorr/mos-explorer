@@ -659,6 +659,21 @@ canvas { display: block; width: 100%; height: 100%; }
     <span class="value-display" id="max-edo-val">53</span>
   </div>
   <div class="ctrl-group">
+    <label>Period:</label>
+    <select id="period-select" style="background:#1a1a2e;color:#ccc;border:1px solid #334;border-radius:4px;padding:2px 6px;font-size:12px;font-family:monospace;">
+      <option value="1200" data-limit="1200" selected>1 octave</option>
+      <option value="600" data-limit="1200">1/2 octave</option>
+      <option value="400" data-limit="1200">1/3 octave</option>
+      <option value="300" data-limit="1200">1/4 octave</option>
+      <option value="240" data-limit="1200">1/5 octave</option>
+      <option value="200" data-limit="1200">1/6 octave</option>
+      <option value="171.42857142857142" data-limit="1200">1/7 octave</option>
+      <option value="1800" data-limit="3600">1.5x octave</option>
+      <option value="2400" data-limit="2400">2x octave</option>
+      <option value="4800" data-limit="4800">4x octave</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
     <label style="color:#e94560;cursor:pointer;" id="reset-zoom">[ Reset Zoom ]</label>
   </div>
   <div class="ctrl-group" style="margin-left:auto;">
@@ -672,7 +687,7 @@ canvas { display: block; width: 100%; height: 100%; }
       <span style="font-size:18px;font-weight:700;color:#e94560;">MOS / Temperament Finder</span>
       <span id="help-close" style="cursor:pointer;color:#888;font-size:20px;">&times;</span>
     </div>
-    <p style="margin-bottom:10px;">This app visualizes <b style="color:#6eb5ff">MOS (Moment of Symmetry)</b> scales across the generator spectrum from 0¢ to 1200¢. Each colored band is a MOS pattern.</p>
+    <p style="margin-bottom:10px;">This app visualizes <b style="color:#6eb5ff">MOS (Moment of Symmetry)</b> scales across the generator spectrum. Each colored band is a MOS pattern. Use the <b>Period</b> dropdown to explore sub-octave and multi-octave periods.</p>
     <p style="margin-bottom:10px;"><b style="color:#f5a623;">To get started:</b> click a colored band to select a MOS, then click the <b style="color:#e94560">number line</b> (the cent axis at the top with tick marks) to set your generator size. This opens the full explorer with a circle diagram, synth, temperament info, and interval rulers.</p>
     <p style="margin-bottom:14px;">The <b style="color:#e94560">cent axis</b> is the main horizontal number line running across the top of the screen — it shows generator size in cents.</p>
 
@@ -745,6 +760,8 @@ function getTemperamentsForMOS(key, regionLow, regionHigh) {
   for (let i = 0; i < TEMPERAMENTS.length; i++) {
     const t = TEMPERAMENTS[i];
     if (t.disabled) continue;
+    const tPeriod = t.period || 1200;
+    if (Math.abs(tPeriod - S.period) > 0.01) continue;
     const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
     const directMatch = mosList.includes(key) || mosList.some(m => isDescendantMOS(key, m));
     const ancestorMatch = !directMatch && mosList.some(m => isDescendantMOS(m, key));
@@ -783,7 +800,7 @@ function getModeName(key, genCents, modeRotation) {
   const n = parseInt(key.split('L')[0]) + parseInt(key.split('_')[1]);
   const chain = getGeneratorChain(genCents, n);
   const rootGenIndex = chain[modeRotation];
-  const dark = genCents < 600;
+  const dark = genCents < S.period / 2;
   const modeIdx = dark ? (n - 1 - rootGenIndex) : rootGenIndex;
   if (modeIdx < modes.length) return modes[modeIdx];
   return null;
@@ -818,6 +835,16 @@ function findParentMOS(nL, nS) {
   return `${nL}L_${nS - nL}s`;
 }
 
+function mosDisplayLabel(key) {
+  return key.replace('_', ' ');
+}
+
+function mosDisplayName(key) {
+  const reps = getPeriodRepetitions();
+  if (reps <= 1) return MOS_NAMES[key];
+  return MULTI_PERIOD_MOS_NAMES[key] || null;
+}
+
 function getChildMOSes(key) {
   const m = key.match(/(\d+)L_(\d+)s/);
   if (!m) return [];
@@ -838,7 +865,9 @@ function isDescendantMOS(childKey, ancestorKey) {
   return false;
 }
 
-function buildMOSRegions(maxSize, maxDepth) {
+function buildMOSRegions(maxSize, maxDepth, period) {
+  period = period || S.period;
+  const reps = Math.round(S.viewLimit / period);
   const regions = [];
   const edoColorMap = {};
   let ci = 0;
@@ -847,33 +876,29 @@ function buildMOSRegions(maxSize, maxDepth) {
     return edoColorMap[nL];
   }
 
-  function addRegion(nL, nS, size, fp1, fq1, fp2, fq2, depth) {
-    const lowCents = (fp1 / fq1) * 1200;
-    const highCents = (fp2 / fq2) * 1200;
+  function addRegion(ppNL, ppNS, ppSize, fp1, fq1, fp2, fq2, depth) {
+    const lowCents = (fp1 / fq1) * period;
+    const highCents = (fp2 / fq2) * period;
     if (highCents - lowCents < 0.001) return;
 
+    const nL = ppNL * reps, nS = ppNS * reps, size = ppSize * reps;
     const key = `${nL}L_${nS}s`;
+    const perPeriodKey = reps > 1 ? `${ppNL}L_${ppNS}s` : key;
     const collapsedColor = color(nL);
     const equalizedColor = color(size);
-    regions.push({
-      key, nL, nS, size,
-      lowCents, highCents,
+    const base = {
+      key, nL, nS, size, perPeriodKey, perPeriodSize: ppSize,
       lowFrac: [fp1, fq1], highFrac: [fp2, fq2],
       color: collapsedColor,
       collapsedColor, equalizedColor,
       depth,
       parent: findParentMOS(nL, nS),
-    });
-
-    regions.push({
-      key, nL, nS, size,
-      lowCents: 1200 - highCents,
-      highCents: 1200 - lowCents,
+    };
+    regions.push({ ...base, lowCents, highCents });
+    regions.push({ ...base,
+      lowCents: period - highCents,
+      highCents: period - lowCents,
       lowFrac: [fq2 - fp2, fq2], highFrac: [fq1 - fp1, fq1],
-      color: collapsedColor,
-      collapsedColor, equalizedColor,
-      depth,
-      parent: findParentMOS(nL, nS),
       isMirror: true,
     });
   }
@@ -890,11 +915,11 @@ function buildMOSRegions(maxSize, maxDepth) {
 
   if (maxSize >= 2) addRegion(1, 1, 2, 0, 1, 1, 2, 0);
   traverse(0, 1, 1, 2, maxDepth);
-  return { regions: regions.filter(r => r.size >= 2 && r.size <= maxSize), colorMap: edoColorMap };
+  return { regions: regions.filter(r => r.perPeriodSize >= 2 && r.perPeriodSize <= maxSize), colorMap: edoColorMap };
 }
 
-function computeHardness(genCents, mosSize) {
-  const P = 1200, N = mosSize;
+function computeHardness(genCents, mosSize, period) {
+  const P = period || S.period, N = mosSize;
   const pos = [];
   for (let i = 0; i < N; i++) pos.push(((i * genCents) % P + P) % P);
   pos.sort((a, b) => a - b);
@@ -915,19 +940,20 @@ function computeHardness(genCents, mosSize) {
   return { L, s, ratio, str };
 }
 
-function buildEDOGenerators(maxEDO) {
+function buildEDOGenerators(maxEDO, period) {
+  period = period || S.period;
   const gens = [];
   for (let n = 2; n <= maxEDO; n++) {
     for (let m = 1; m < n; m++) {
       if (gcd(m, n) !== 1) continue;
-      gens.push({ step: m, edo: n, cents: (m / n) * 1200 });
+      gens.push({ step: m, edo: n, cents: (m / n) * period });
     }
   }
   return gens;
 }
 
 function buildMOSScale(genCents, n, period) {
-  period = period || 1200;
+  period = period || S.period;
   const pitches = [0];
   for (let i = 1; i < n; i++) {
     pitches.push(((i * genCents) % period + period) % period);
@@ -949,7 +975,7 @@ function buildMOSScale(genCents, n, period) {
 }
 
 function getGeneratorChain(genCents, n, period) {
-  period = period || 1200;
+  period = period || S.period;
   const raw = [];
   for (let i = 0; i < n; i++) {
     raw.push({ genIndex: i, cents: ((i * genCents) % period + period) % period });
@@ -959,7 +985,7 @@ function getGeneratorChain(genCents, n, period) {
 }
 
 function computeUDP(genCents, n, modeRotation, period) {
-  period = period || 1200;
+  period = period || S.period;
   const chain = getGeneratorChain(genCents, n, period);
   const rootGenIndex = chain[modeRotation];
   const dark = genCents < period / 2;
@@ -969,14 +995,14 @@ function computeUDP(genCents, n, modeRotation, period) {
 }
 
 function computeStepPattern(genCents, n, modeRotation, period) {
-  period = period || 1200;
+  period = period || S.period;
   const baseScale = buildMOSScale(genCents, n, period);
   const scale = rotateMOSScale(baseScale, modeRotation, period);
   return scale.steps.map(st => Math.abs(st - scale.L) < 0.5 ? 'L' : 's').join('');
 }
 
 function rotateByGenerator(genCents, n, currentRotation, direction, period) {
-  period = period || 1200;
+  period = period || S.period;
   const chain = getGeneratorChain(genCents, n, period);
   const currentGenIndex = chain[currentRotation];
   const targetGenIndex = ((currentGenIndex - direction) % n + n) % n;
@@ -984,7 +1010,7 @@ function rotateByGenerator(genCents, n, currentRotation, direction, period) {
 }
 
 function rotateMOSScale(scale, rotation, period) {
-  period = period || 1200;
+  period = period || S.period;
   const n = scale.pitches.length;
   if (rotation === 0) return scale;
   const root = scale.pitches[rotation % n];
@@ -1013,8 +1039,8 @@ function rotateMOSScale(scale, rotation, period) {
 function getEqualizedEnd(region) {
   const lo = region.lowCents + 0.01;
   const hi = region.highCents - 0.01;
-  const hrLo = computeHardness(lo, region.size);
-  const hrHi = computeHardness(hi, region.size);
+  const hrLo = computeHardness(lo, region.perPeriodSize);
+  const hrHi = computeHardness(hi, region.perPeriodSize);
   return hrLo.ratio < hrHi.ratio ? 'low' : 'high';
 }
 
@@ -1024,6 +1050,7 @@ function getEqualizedEnd(region) {
 
 const S = {
   viewMin: 0, viewMax: 1200,
+  period: 1200, viewLimit: 1200,
   maxSize: 18, maxEDO: 53, minSize: 2,
   regions: [], colorMap: {}, edos: [],
   hovered: null, selected: null,
@@ -1043,10 +1070,10 @@ const S = {
 
 function recalc() {
   const oldSel = S.selected;
-  const { regions, colorMap } = buildMOSRegions(S.maxSize, S.maxSize);
+  const { regions, colorMap } = buildMOSRegions(S.maxSize, S.maxSize, S.period);
   S.regions = regions;
   S.colorMap = colorMap;
-  S.edos = buildEDOGenerators(S.maxEDO);
+  S.edos = buildEDOGenerators(S.maxEDO, S.period);
   if (oldSel) {
     S.selected = regions.find(r =>
       r.key === oldSel.key &&
@@ -1056,6 +1083,18 @@ function recalc() {
   }
   updatePanel();
   render();
+}
+
+function getPeriodRepetitions() {
+  return Math.round(S.viewLimit / S.period);
+}
+
+function syncSizeDisplay() {
+  const reps = getPeriodRepetitions();
+  document.getElementById('min-size').value = S.minSize;
+  document.getElementById('min-size-val').textContent = S.minSize * reps;
+  document.getElementById('max-mos-size').value = S.maxSize;
+  document.getElementById('max-mos-val').textContent = S.maxSize * reps;
 }
 
 // ================================================================
@@ -1164,7 +1203,7 @@ function drawSizeScrollbar(ctx, W, H) {
   ctx.fillStyle = '#aab';
   ctx.font = '9px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(S.minSize, x + SIZE_SB_WIDTH / 2, thumbY + thumbH / 2 + 3);
+  ctx.fillText(S.minSize * getPeriodRepetitions(), x + SIZE_SB_WIDTH / 2, thumbY + thumbH / 2 + 3);
 }
 
 function hitSizeScrollbar(mx, my) {
@@ -1177,16 +1216,13 @@ function setSizeFromScrollbarY(my) {
   const newMin = Math.round(2 + t * 28);
   if (newMin !== S.minSize) {
     S.minSize = newMin;
-    document.getElementById('min-size').value = S.minSize;
-    document.getElementById('min-size-val').textContent = S.minSize;
     if (S.minSize > S.maxSize) {
       S.maxSize = S.minSize;
-      document.getElementById('max-mos-size').value = S.maxSize;
-      document.getElementById('max-mos-val').textContent = S.maxSize;
       recalc();
     } else {
       render();
     }
+    syncSizeDisplay();
   }
 }
 
@@ -1244,6 +1280,20 @@ function drawAxis(ctx, W, H, vr) {
       ctx.beginPath(); ctx.moveTo(x, Y - barH/2 - 2); ctx.lineTo(x, Y + barH/2 + 2); ctx.stroke();
     }
   }
+
+  const reps = getPeriodRepetitions();
+  if (reps > 1) {
+    ctx.strokeStyle = '#f5a62366';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 4]);
+    for (let k = 1; k < reps; k++) {
+      const bx = c2x(k * S.period);
+      if (bx >= 0 && bx <= W) {
+        ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx, H); ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]);
+  }
 }
 
 // ================================================================
@@ -1261,69 +1311,78 @@ function drawMOS(ctx, W, H, vr) {
   const sizeToRow = {};
   allSizes.forEach((n, i) => { sizeToRow[n] = i; });
 
-  const visible = S.regions
-    .filter(r => r.highCents > S.viewMin && r.lowCents < S.viewMax && r.size >= S.minSize);
+  const reps = getPeriodRepetitions();
+  const baseVisible = S.regions.filter(r => r.perPeriodSize >= S.minSize);
+  S._drawnRegions = [];
 
-  for (const r of visible) {
-    const ri = sizeToRow[r.size];
+  for (const r of baseVisible) {
+    const ri = sizeToRow[r.perPeriodSize];
     if (ri === undefined) continue;
     const y = startY + ri * (rowH + gap);
     if (y + rowH > H) continue;
 
-    const x1 = Math.max(0, c2x(r.lowCents));
-    const x2 = Math.min(W, c2x(r.highCents));
-    const w = x2 - x1;
-    if (w < 1) continue;
+    for (let k = 0; k < reps; k++) {
+      const oLow = r.lowCents + k * S.period;
+      const oHigh = r.highCents + k * S.period;
+      if (oHigh < S.viewMin || oLow > S.viewMax) continue;
 
-    const isSel = S.selected && S.selected.key === r.key &&
-      Math.abs(S.selected.lowCents - r.lowCents) < 0.01 &&
-      Math.abs(S.selected.highCents - r.highCents) < 0.01;
-    const isHov = !S.selected && S.hovered === r;
-    const grayed = S.selected && !isSel;
+      const x1 = Math.max(0, c2x(oLow));
+      const x2 = Math.min(W, c2x(oHigh));
+      const w = x2 - x1;
+      if (w < 1) continue;
 
-    let alpha = 0.5;
-    if (isSel) alpha = 0.85;
-    else if (grayed) alpha = 0.12;
-    else if (isHov) alpha = 0.7;
+      const isSel = S.selected && S.selected.key === r.key &&
+        Math.abs(S.selected.lowCents - r.lowCents) < 0.01 &&
+        Math.abs(S.selected.highCents - r.highCents) < 0.01;
+      const isHov = !S.selected && S.hovered === r;
+      const grayed = S.selected && !isSel;
 
-    let baseColor = r.color;
-    if (isSel && S.generatorCents !== null && r.collapsedColor && r.equalizedColor) {
-      const eqEnd = getEqualizedEnd(r);
-      const genT = eqEnd === 'low'
-        ? (S.generatorCents - r.lowCents) / (r.highCents - r.lowCents)
-        : (r.highCents - S.generatorCents) / (r.highCents - r.lowCents);
-      const soft = Math.max(0, Math.min(1, 1 - genT));
-      baseColor = lerpColor(r.collapsedColor, r.equalizedColor, soft);
-    }
-    const drawColor = grayed ? '#555555' : baseColor;
-    ctx.fillStyle = hexA(drawColor, alpha);
-    ctx.fillRect(x1, y, w, rowH);
+      let alpha = 0.5;
+      if (isSel) alpha = 0.85;
+      else if (grayed) alpha = 0.12;
+      else if (isHov) alpha = 0.7;
 
-    const active = isSel || (isHov && !grayed);
-    ctx.strokeStyle = active ? '#fff' : hexA(drawColor, grayed ? 0.2 : 0.7);
-    ctx.lineWidth = active ? 2 : 1;
-    ctx.strokeRect(x1 + 0.5, y + 0.5, w - 1, rowH - 1);
-
-    if (w > 24 && (!grayed || w > 50)) {
-      const label = r.key.replace('_', ' ');
-      const fname = MOS_NAMES[r.key];
-      ctx.fillStyle = grayed ? '#444' : '#fff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      if (w > 110 && fname && !grayed) {
-        ctx.font = 'bold 11px monospace';
-        ctx.fillText(`${label} (${fname})`, x1 + w/2, y + rowH/2 - 4);
-        ctx.font = '8px monospace';
-        ctx.fillStyle = '#bbb';
-        ctx.fillText(`${r.lowCents.toFixed(1)}¢–${r.highCents.toFixed(1)}¢`, x1 + w/2, y + rowH/2 + 7);
-      } else if (w > 50) {
-        ctx.font = grayed ? '9px monospace' : 'bold 10px monospace';
-        ctx.fillText(label, x1 + w/2, y + rowH/2);
-      } else {
-        ctx.font = '8px monospace';
-        ctx.fillText(label, x1 + w/2, y + rowH/2);
+      let baseColor = r.color;
+      if (isSel && S.generatorCents !== null && r.collapsedColor && r.equalizedColor) {
+        const eqEnd = getEqualizedEnd(r);
+        const genT = eqEnd === 'low'
+          ? (S.generatorCents - r.lowCents) / (r.highCents - r.lowCents)
+          : (r.highCents - S.generatorCents) / (r.highCents - r.lowCents);
+        const soft = Math.max(0, Math.min(1, 1 - genT));
+        baseColor = lerpColor(r.collapsedColor, r.equalizedColor, soft);
       }
+      const drawColor = grayed ? '#555555' : baseColor;
+      ctx.fillStyle = hexA(drawColor, alpha);
+      ctx.fillRect(x1, y, w, rowH);
+
+      const active = isSel || (isHov && !grayed);
+      ctx.strokeStyle = active ? '#fff' : hexA(drawColor, grayed ? 0.2 : 0.7);
+      ctx.lineWidth = active ? 2 : 1;
+      ctx.strokeRect(x1 + 0.5, y + 0.5, w - 1, rowH - 1);
+
+      if (w > 24 && (!grayed || w > 50)) {
+        const label = mosDisplayLabel(r.key);
+        const fname = mosDisplayName(r.key);
+        ctx.fillStyle = grayed ? '#444' : '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (w > 110 && fname && !grayed) {
+          ctx.font = 'bold 11px monospace';
+          ctx.fillText(`${label} (${fname})`, x1 + w/2, y + rowH/2 - 4);
+          ctx.font = '8px monospace';
+          ctx.fillStyle = '#bbb';
+          ctx.fillText(`${r.lowCents.toFixed(1)}¢–${r.highCents.toFixed(1)}¢`, x1 + w/2, y + rowH/2 + 7);
+        } else if (w > 50) {
+          ctx.font = grayed ? '9px monospace' : 'bold 10px monospace';
+          ctx.fillText(label, x1 + w/2, y + rowH/2);
+        } else {
+          ctx.font = '8px monospace';
+          ctx.fillText(label, x1 + w/2, y + rowH/2);
+        }
+      }
+
+      S._drawnRegions.push({ region: r, oLow, oHigh, y, h: rowH });
     }
 
     r._y = y;
@@ -1337,7 +1396,7 @@ function drawMOS(ctx, W, H, vr) {
   for (const n of allSizes) {
     const y = startY + sizeToRow[n] * (rowH + gap);
     if (y > H - 80) break;
-    ctx.fillText(n + '', 16, y + rowH / 2);
+    ctx.fillText(n * reps + '', 16, y + rowH / 2);
   }
 
   return startY + allSizes.length * (rowH + gap) + 8;
@@ -1352,9 +1411,9 @@ function drawEDOs(ctx, W, H, vr) {
 
   const baseY = 56;
   const sel = S.selected;
+  const reps = getPeriodRepetitions();
 
   const vis = S.edos.filter(g =>
-    g.cents >= S.viewMin && g.cents <= S.viewMax &&
     g.cents >= sel.lowCents && g.cents <= sel.highCents
   );
   if (!vis.length) return;
@@ -1363,33 +1422,37 @@ function drawEDOs(ctx, W, H, vr) {
 
   const minPx = 48;
   const slots = [];
-  const selSize = sel.size;
+  const selSize = sel.perPeriodSize;
   S._edoMarkers = [];
 
   for (const g of vis) {
-    const x = c2x(g.cents);
-    if (slots.some(s => Math.abs(x - s) < minPx * 0.65)) continue;
-    slots.push(x);
-    S._edoMarkers.push({ x, cents: g.cents, y: baseY + 22, h: 40 });
+    for (let k = 0; k < reps; k++) {
+      const oc = g.cents + k * S.period;
+      if (oc < S.viewMin || oc > S.viewMax) continue;
+      const x = c2x(oc);
+      if (slots.some(s => Math.abs(x - s) < minPx * 0.65)) continue;
+      slots.push(x);
+      S._edoMarkers.push({ x, cents: g.cents, y: baseY + 22, h: 40 });
 
-    ctx.strokeStyle = '#6eb5ff44';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, baseY); ctx.lineTo(x, baseY + 22); ctx.stroke();
+      ctx.strokeStyle = '#6eb5ff44';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, baseY); ctx.lineTo(x, baseY + 22); ctx.stroke();
 
-    ctx.fillStyle = '#6eb5ff';
-    ctx.font = 'bold 11px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${g.step}\\${g.edo}`, x, baseY + 34);
+      ctx.fillStyle = '#6eb5ff';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${g.step}\\${g.edo}`, x, baseY + 34);
 
-    ctx.fillStyle = '#556';
-    ctx.font = '9px monospace';
-    ctx.fillText(g.cents.toFixed(1) + '¢', x, baseY + 45);
-
-    const hr = computeHardness(g.cents, selSize);
-    if (hr.ratio !== Infinity && hr.ratio > 0.5) {
-      ctx.fillStyle = '#f5a623';
+      ctx.fillStyle = '#556';
       ctx.font = '9px monospace';
-      ctx.fillText(hr.str, x, baseY + 56);
+      ctx.fillText(g.cents.toFixed(1) + '¢', x, baseY + 45);
+
+      const hr = computeHardness(g.cents, selSize);
+      if (hr.ratio !== Infinity && hr.ratio > 0.5) {
+        ctx.fillStyle = '#f5a623';
+        ctx.font = '9px monospace';
+        ctx.fillText(hr.str, x, baseY + 56);
+      }
     }
   }
 }
@@ -1401,7 +1464,7 @@ function drawEDOs(ctx, W, H, vr) {
 function drawTemperaments(ctx, W, H) {
   const sel = S.selected;
   const selLo = sel.lowCents, selHi = sel.highCents;
-  const temps = getTemperamentsForMOS(sel.key, selLo, selHi);
+  const temps = getTemperamentsForMOS(sel.perPeriodKey, selLo, selHi);
   S._tempRows = 0;
   S._tempBars = [];
   if (!temps.length) return;
@@ -1409,17 +1472,24 @@ function drawTemperaments(ctx, W, H) {
   const barH = 14;
   const barGap = 2;
   const baseY = 120;
+  const reps = getPeriodRepetitions();
 
   const bars = [];
   for (const t of temps) {
     const lo = Math.max(t.effectiveRange[0], selLo);
     const hi = Math.min(t.effectiveRange[1], selHi);
     if (hi <= lo) continue;
-    const x1 = Math.max(0, c2x(lo));
-    const x2 = Math.min(W, c2x(hi));
-    const w = x2 - x1;
-    if (w < 1) continue;
-    bars.push({ t, x1, x2, w, centsW: t.effectiveRange[1] - t.effectiveRange[0] });
+    const centsW = t.effectiveRange[1] - t.effectiveRange[0];
+    for (let k = 0; k < reps; k++) {
+      const oLo = lo + k * S.period;
+      const oHi = hi + k * S.period;
+      if (oHi < S.viewMin || oLo > S.viewMax) continue;
+      const x1 = Math.max(0, c2x(oLo));
+      const x2 = Math.min(W, c2x(oHi));
+      const w = x2 - x1;
+      if (w < 1) continue;
+      bars.push({ t, x1, x2, w, centsW });
+    }
   }
   if (!bars.length) return;
 
@@ -1478,30 +1548,38 @@ function drawTemperaments(ctx, W, H) {
 // ================================================================
 
 function drawGeneratorMarker(ctx, W, H) {
-  const x = c2x(S.generatorCents);
-  if (x < 0 || x > W) return;
+  const reps = getPeriodRepetitions();
+  let labelDrawn = false;
+  for (let k = 0; k < reps; k++) {
+    const genAtCopy = S.generatorCents + k * S.period;
+    const x = c2x(genAtCopy);
+    if (x < -10 || x > W + 10) continue;
 
-  ctx.strokeStyle = '#e94560';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([4, 3]);
-  ctx.beginPath();
-  ctx.moveTo(x, 40);
-  ctx.lineTo(x, H - 10);
-  ctx.stroke();
-  ctx.setLineDash([]);
+    ctx.strokeStyle = '#e94560';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(x, 40);
+    ctx.lineTo(x, H - 10);
+    ctx.stroke();
+    ctx.setLineDash([]);
 
-  ctx.fillStyle = '#e94560';
-  ctx.beginPath();
-  ctx.moveTo(x - 5, 40);
-  ctx.lineTo(x + 5, 40);
-  ctx.lineTo(x, 48);
-  ctx.closePath();
-  ctx.fill();
+    ctx.fillStyle = '#e94560';
+    ctx.beginPath();
+    ctx.moveTo(x - 5, 40);
+    ctx.lineTo(x + 5, 40);
+    ctx.lineTo(x, 48);
+    ctx.closePath();
+    ctx.fill();
 
-  ctx.fillStyle = '#e94560';
-  ctx.font = 'bold 10px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(S.generatorCents.toFixed(1) + '¢', x, 36);
+    if (!labelDrawn) {
+      ctx.fillStyle = '#e94560';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(S.generatorCents.toFixed(1) + '¢', x, 36);
+      labelDrawn = true;
+    }
+  }
 }
 
 // ================================================================
@@ -1522,9 +1600,9 @@ function getMOSCircleLayout(W, H) {
 
 function drawMOSCircle(ctx, W, H) {
   const sel = S.selected;
-  const n = sel.size;
+  const n = sel.perPeriodSize;
   const gen = S.generatorCents;
-  const P = 1200;
+  const P = S.period;
 
   const { radius, cx, cy, sliderW, sliderH, sliderX, sliderY } = getMOSCircleLayout(W, H);
 
@@ -1544,13 +1622,13 @@ function drawMOSCircle(ctx, W, H) {
 
   // Title line 1: 5L 2s  ratio  UDP  ModeName
   const titleY1 = sliderY - 22;
-  const titleText = sel.key.replace('_', ' ');
+  const titleText = mosDisplayLabel(sel.key);
   ctx.textBaseline = 'middle';
   if (gen !== null) {
     const hr = computeHardness(gen, n);
     const hardStr = hr.ratio === Infinity ? '∞' : hr.ratio.toFixed(2);
     const udp = computeUDP(gen, n, S.modeRotation);
-    const modeName = getModeName(sel.key, gen, S.modeRotation);
+    const modeName = getModeName(sel.perPeriodKey, gen, S.modeRotation);
 
     ctx.font = 'bold 13px monospace';
     const parts = [
@@ -1593,7 +1671,7 @@ function drawMOSCircle(ctx, W, H) {
       { text: (computeHardness(gen, n).ratio === Infinity ? '∞' : computeHardness(gen, n).ratio.toFixed(2)) + '  ' },
       { text: computeUDP(gen, n, S.modeRotation) },
     ];
-    const modeName = getModeName(sel.key, gen, S.modeRotation);
+    const modeName = getModeName(sel.perPeriodKey, gen, S.modeRotation);
     if (modeName) titleParts.push({ text: '  ' + modeName });
     for (const p of titleParts) totalW += ctx.measureText(p.text).width;
 
@@ -1648,7 +1726,7 @@ function drawMOSCircle(ctx, W, H) {
     ctx.font = '12px monospace';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f5a623';
-    ctx.fillText(parentKey.replace('_', ' '), ax + arrowR + 5, arrowY + 5);
+    ctx.fillText(mosDisplayLabel(parentKey), ax + arrowR + 5, arrowY + 5);
     S._parentArrow = { x: ax, y: arrowY, r: arrowR };
   }
 
@@ -1670,7 +1748,7 @@ function drawMOSCircle(ctx, W, H) {
       ctx.font = '12px monospace';
       ctx.textAlign = 'right';
       ctx.fillStyle = '#6eb5ff';
-      ctx.fillText(childKey.replace('_', ' '), ax - arrowR - 5, arrowY + 5);
+      ctx.fillText(mosDisplayLabel(childKey), ax - arrowR - 5, arrowY + 5);
     }
     S._childArrow = { x: ax, y: arrowY, r: arrowR };
   }
@@ -1692,7 +1770,7 @@ function drawMOSCircle(ctx, W, H) {
 
   if (gen !== null) {
     const stepPat = computeStepPattern(gen, n, S.modeRotation);
-    const mosLabel = sel.key.replace('_', ' ');
+    const mosLabel = mosDisplayLabel(sel.key);
     ctx.font = '11px monospace';
     ctx.textBaseline = 'middle';
     const labelY = sliderY + sliderH + 24;
@@ -1750,10 +1828,34 @@ function drawMOSCircle(ctx, W, H) {
 
   const baseScale = buildMOSScale(gen, n, P);
   const scale = rotateMOSScale(baseScale, S.modeRotation, P);
-  const { pitches, steps, L, s } = scale;
+
+  const reps = getPeriodRepetitions();
+  let displayPitches, displaySteps, displayL, displayS;
+  if (reps > 1) {
+    displayPitches = [];
+    displaySteps = [];
+    for (let k = 0; k < reps; k++) {
+      for (let i = 0; i < scale.pitches.length; i++) {
+        displayPitches.push(scale.pitches[i] + k * P);
+      }
+      for (let i = 0; i < scale.steps.length; i++) {
+        displaySteps.push(scale.steps[i]);
+      }
+    }
+    displayL = scale.L;
+    displayS = scale.s;
+  } else {
+    displayPitches = scale.pitches;
+    displaySteps = scale.steps;
+    displayL = scale.L;
+    displayS = scale.s;
+  }
+  const displayN = displayPitches.length;
+  const displayP = reps > 1 ? 1200 : P;
+  const { pitches, steps, L, s } = { pitches: displayPitches, steps: displaySteps, L: displayL, s: displayS };
 
   function c2a(cents) {
-    return (cents / P) * Math.PI * 2 - Math.PI / 2;
+    return (cents / displayP) * Math.PI * 2 - Math.PI / 2;
   }
 
   const ratio = s > 0.01 ? L / s : 20;
@@ -1765,7 +1867,7 @@ function drawMOSCircle(ctx, W, H) {
   const sColor = lerpColor(Lcolor, compColor, 1 - softness);
 
   // Pie slices
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < displayN; i++) {
     const startC = pitches[i];
     const step = steps[i];
     const a1 = c2a(startC);
@@ -1803,23 +1905,43 @@ function drawMOSCircle(ctx, W, H) {
     ctx.fillText(step.toFixed(0) + '¢', lx, ly);
   }
 
+  // Period boundary markers on the circle
+  if (reps > 1) {
+    for (let k = 1; k < reps; k++) {
+      const bAngle = c2a(k * P);
+      const bcos = Math.cos(bAngle);
+      const bsin = Math.sin(bAngle);
+      ctx.beginPath();
+      ctx.moveTo(cx + bcos * (radius - 8), cy + bsin * (radius - 8));
+      ctx.lineTo(cx + bcos * (radius + 8), cy + bsin * (radius + 8));
+      ctx.strokeStyle = '#f5a62388';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
   // Divider lines + pitch dots + labels
   S._circleDots = [];
   const glowNow = performance.now();
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < displayN; i++) {
     const angle = c2a(pitches[i]);
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     const px = cx + cos * radius;
     const py = cy + sin * radius;
-    S._circleDots.push({ x: px, y: py, degree: i, cents: pitches[i] });
+    const dotDegree = reps > 1 ? i % n : i;
+    const dotOctave = reps > 1 ? Math.floor(i / n) : 0;
+    S._circleDots.push({ x: px, y: py, degree: dotDegree, noteOctave: dotOctave, cents: pitches[i] });
 
-    const gs = getGlowState(i, glowNow);
+    const gs = getGlowState(dotDegree, glowNow);
     const glow = gs.intensity;
     const glowColor = gs.color;
-    const baseLineColor = i === 0 ? '#e94560' : '#8888aa';
-    const baseDotColor = i === 0 ? '#e94560' : '#ffffff';
-    const baseLabelColor = i === 0 ? '#e94560' : '#aaaaaa';
+    const isPeriodBoundary = reps > 1 && (i % n === 0);
+    const baseLineColor = (i === 0 || isPeriodBoundary) ? '#e94560' : '#8888aa';
+    const baseDotColor = (i === 0 || isPeriodBoundary) ? '#e94560' : '#ffffff';
+    const baseLabelColor = (i === 0 || isPeriodBoundary) ? '#e94560' : '#aaaaaa';
 
     if (glow > 0.003) {
       ctx.save();
@@ -1877,7 +1999,7 @@ function drawMOSCircle(ctx, W, H) {
   // Center info — temperament name only
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const activeTemps = getTemperamentsAtCursor(sel.key, gen, sel.lowCents, sel.highCents);
+  const activeTemps = getTemperamentsAtCursor(sel.perPeriodKey, gen, sel.lowCents, sel.highCents);
   if (activeTemps.length) {
     const t = activeTemps[0];
     const col = TEMP_COLORS[t.name] || '#50c878';
@@ -1898,7 +2020,7 @@ function drawMOSCircle(ctx, W, H) {
       if (jiSeen.has(key)) continue;
       jiSeen.add(key);
       const cents = 1200 * Math.log2(rn / rd);
-      if (cents > 0 && cents < 1200 && rn * rd <= 125) {
+      if (cents > 0 && cents < displayP && rn * rd <= 125) {
         jiMarkers.push({ ratio: key, cents, complexity: rn * rd });
       }
     }
@@ -1978,7 +2100,7 @@ function hitModeButton(mx, my) {
 
 function handleModeButton(action) {
   if (!S.selected || S.generatorCents === null) return;
-  const n = S.selected.size;
+  const n = S.selected.perPeriodSize;
   if (action === 'step-up') S.modeRotation = (S.modeRotation + 1) % n;
   else if (action === 'step-down') S.modeRotation = (S.modeRotation - 1 + n) % n;
   else if (action === 'gen-up') S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, 1);
@@ -2020,12 +2142,13 @@ function hitCircleDot(mx, my) {
 }
 
 function playCircleDot(dot) {
-  const latchCode = '_dot_' + dot.degree;
+  const dotOct = dot.noteOctave || 0;
+  const latchCode = '_dot_' + dot.degree + '_' + dotOct;
   if (SYNTH.kbdLatch) {
     if (SYNTH._activeKeys[latchCode]) {
       stopKeyNote(latchCode);
     } else {
-      startNote(latchCode, dot.degree, SYNTH.octaveShift);
+      startNote(latchCode, dot.degree, SYNTH.octaveShift + dotOct);
       renderChordHighlights();
     }
     return;
@@ -2103,7 +2226,7 @@ function getKeyMapping(key) {
       // / = 1 below, . = 2 below, etc. → offset = -(belowIdx+1)
       const offset = -(belowIdx + 1);
       if (!S.selected) return { degree: 0, octave: -1 };
-      const n = S.selected.size;
+      const n = S.selected.perPeriodSize;
       const octave = Math.floor(offset / n);
       const degreeInOctave = ((offset % n) + n) % n;
       return { degree: degreeInOctave, octave: octave };
@@ -2153,10 +2276,10 @@ function startNote(code, degreeInScale, noteOctave, startAt) {
     killAllNotes();
   }
 
-  const n = S.selected.size;
-  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
+  const n = S.selected.perPeriodSize;
+  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
   const cents = scale.pitches[degreeInScale];
-  const totalCents = cents + noteOctave * 1200;
+  const totalCents = cents + noteOctave * S.period;
   const freq = SYNTH.baseFreq * Math.pow(2, totalCents / 1200);
 
   const actx = getAudioCtx();
@@ -2189,7 +2312,7 @@ function playKeyNote(key, code) {
   if (!S.selected || S.generatorCents === null) return;
   const mapping = getKeyMapping(key);
   if (!mapping) return;
-  const n = S.selected.size;
+  const n = S.selected.perPeriodSize;
   const octaveWrap = Math.floor(mapping.degree / n);
   const degreeInScale = ((mapping.degree % n) + n) % n;
   const noteOctave = mapping.octave + octaveWrap + SYNTH.octaveShift;
@@ -2201,9 +2324,9 @@ function findNearestDegrees(targetCents, scale, n) {
   const candidates = [];
   for (let d = 0; d < n; d++) {
     const baseCents = scale.pitches[d];
-    const octEst = Math.round((targetCents - baseCents) / 1200);
+    const octEst = Math.round((targetCents - baseCents) / S.period);
     for (let o = octEst - 1; o <= octEst + 1; o++) {
-      const c = baseCents + o * 1200;
+      const c = baseCents + o * S.period;
       candidates.push({ deg: d, oct: o, cents: c, dist: Math.abs(c - targetCents) });
     }
   }
@@ -2213,8 +2336,8 @@ function findNearestDegrees(targetCents, scale, n) {
 
 function updateHeldNotes() {
   if (!S.selected || S.generatorCents === null) return;
-  const n = S.selected.size;
-  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
+  const n = S.selected.perPeriodSize;
+  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
   const actx = SYNTH.ctx;
   if (!actx) return;
   const now = actx.currentTime;
@@ -2224,7 +2347,7 @@ function updateHeldNotes() {
   const entries = keys.map(k => {
     const entry = SYNTH._activeKeys[k];
     if (entry.currentCents === undefined) {
-      entry.currentCents = scale.pitches[entry.degreeInScale % n] + entry.noteOctave * 1200;
+      entry.currentCents = scale.pitches[entry.degreeInScale % n] + entry.noteOctave * S.period;
     }
     return { key: k, entry, candidates: findNearestDegrees(entry.currentCents, scale, n) };
   });
@@ -2263,7 +2386,7 @@ function updateHeldNotes() {
     }
     entry.degreeInScale = bestDeg;
     entry.noteOctave = bestOct;
-    const newCents = scale.pitches[bestDeg] + bestOct * 1200;
+    const newCents = scale.pitches[bestDeg] + bestOct * S.period;
     entry.currentCents = newCents;
     const freq = SYNTH.baseFreq * Math.pow(2, newCents / 1200);
     entry.osc.frequency.setValueAtTime(freq, now);
@@ -2303,11 +2426,11 @@ function hitTest(mx, my, e) {
     return;
   }
 
-  for (const r of S.regions) {
-    if (r._y === undefined) continue;
-    const x1 = c2x(r.lowCents), x2 = c2x(r.highCents);
-    if (mx >= x1 && mx <= x2 && my >= r._y && my <= r._y + r._h) {
-      if (!found || r.size > found.size) found = r;
+  const drawnRegions = S._drawnRegions || [];
+  for (const dr of drawnRegions) {
+    const x1 = c2x(dr.oLow), x2 = c2x(dr.oHigh);
+    if (mx >= x1 && mx <= x2 && my >= dr.y && my <= dr.y + dr.h) {
+      if (!found || dr.region.perPeriodSize > found.perPeriodSize) found = dr.region;
     }
   }
 
@@ -2317,24 +2440,26 @@ function hitTest(mx, my, e) {
   }
 
   if (found) {
-    const cc = x2c(mx);
-    const hr = computeHardness(cc, found.size);
-    const label = found.key.replace('_', ' ');
-    const fname = MOS_NAMES[found.key];
+    const ccRaw = x2c(mx);
+    const reps = getPeriodRepetitions();
+    const cc = reps > 1 ? ((ccRaw % S.period) + S.period) % S.period : ccRaw;
+    const hr = computeHardness(cc, found.perPeriodSize);
+    const label = mosDisplayLabel(found.key);
+    const fname = mosDisplayName(found.key);
 
     let html = `<div class="tt-title">${label}${fname ? ' — ' + fname : ''}</div>`;
     html += `<div class="tt-sub">${found.lowCents.toFixed(2)}¢ — ${found.highCents.toFixed(2)}¢ &middot; ${found.size} notes</div>`;
 
     if (found.parent) {
-      const pn = MOS_NAMES[found.parent];
-      html += `<div class="tt-sub">Parent: ${found.parent.replace('_',' ')}${pn ? ' ('+pn+')' : ''}</div>`;
+      const pn = mosDisplayName(found.parent);
+      html += `<div class="tt-sub">Parent: ${mosDisplayLabel(found.parent)}${pn ? ' ('+pn+')' : ''}</div>`;
     }
 
     if (hr.ratio !== Infinity) {
       html += `<div class="tt-hard">L:s = ${hr.str} &nbsp; (L=${hr.L.toFixed(1)}¢, s=${hr.s.toFixed(1)}¢)</div>`;
     }
 
-    const temps = getTemperamentsAtCursor(found.key, cc, found.lowCents, found.highCents);
+    const temps = getTemperamentsAtCursor(found.perPeriodKey, cc, found.lowCents, found.highCents);
     for (const t of temps) {
       const col = TEMP_COLORS[t.name] || '#50c878';
       html += `<div class="tt-temp"><span style="color:${col};font-weight:700">${t.name}</span> — ${t.description}</div>`;
@@ -2410,21 +2535,27 @@ function handleClick() {
 
     if (clickedSameRegion) {
       const cc = x2c(mx);
-      S.generatorCents = Math.max(S.selected.lowCents, Math.min(S.selected.highCents, cc));
+      const reps = getPeriodRepetitions();
+      const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
+      S.generatorCents = Math.max(S.selected.lowCents, Math.min(S.selected.highCents, reduced));
       updatePanel();
       render();
     } else {
       S.selected = S.hovered;
       const cc = x2c(mx);
-      S.generatorCents = Math.max(S.hovered.lowCents, Math.min(S.hovered.highCents, cc));
+      const reps = getPeriodRepetitions();
+      const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
+      S.generatorCents = Math.max(S.hovered.lowCents, Math.min(S.hovered.highCents, reduced));
       updatePanel();
       render();
     }
   } else if (S.selected) {
     if (hitMOSCirclePanel(mx, my)) return;
     const cc = x2c(mx);
-    if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
-      S.generatorCents = cc;
+    const reps = getPeriodRepetitions();
+    const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
+    if (reduced >= S.selected.lowCents && reduced <= S.selected.highCents) {
+      S.generatorCents = reduced;
       updatePanel();
       render();
     } else {
@@ -2444,17 +2575,13 @@ function ensureSizeVisible(size) {
   let changed = false;
   if (size < S.minSize) {
     S.minSize = size;
-    document.getElementById('min-size').value = S.minSize;
-    document.getElementById('min-size-val').textContent = S.minSize;
     changed = true;
   }
   if (size > S.maxSize) {
     S.maxSize = size;
-    document.getElementById('max-mos-size').value = S.maxSize;
-    document.getElementById('max-mos-val').textContent = S.maxSize;
     changed = true;
   }
-  if (changed) recalc();
+  if (changed) { syncSizeDisplay(); recalc(); }
 }
 
 function navigateToParent() {
@@ -2464,11 +2591,11 @@ function navigateToParent() {
 
   const gen = S.generatorCents;
   const m = parentKey.match(/(\d+)L_(\d+)s/);
-  if (m) ensureSizeVisible(+m[1] + +m[2]);
+  if (m) ensureSizeVisible(Math.round((+m[1] + +m[2]) / getPeriodRepetitions()));
 
   const candidate = S.regions.find(r =>
     r.key === parentKey &&
-    r.size >= S.minSize && r.size <= S.maxSize &&
+    r.perPeriodSize >= S.minSize && r.perPeriodSize <= S.maxSize &&
     (gen === null || (gen >= r.lowCents && gen <= r.highCents)) &&
     r.lowCents < sel.highCents && r.highCents > sel.lowCents
   );
@@ -2487,16 +2614,17 @@ function navigateToChild() {
   const childKeys = getChildMOSes(sel.key);
   const gen = S.generatorCents;
 
+  const reps = getPeriodRepetitions();
   for (const ck of childKeys) {
     const m = ck.match(/(\d+)L_(\d+)s/);
-    if (m) ensureSizeVisible(+m[1] + +m[2]);
+    if (m) ensureSizeVisible(Math.round((+m[1] + +m[2]) / reps));
   }
 
   let candidate = null;
   for (const ck of childKeys) {
     const match = S.regions.find(r =>
       r.key === ck &&
-      r.size >= S.minSize && r.size <= S.maxSize &&
+      r.perPeriodSize >= S.minSize && r.perPeriodSize <= S.maxSize &&
       (gen !== null
         ? (gen >= r.lowCents && gen <= r.highCents)
         : (r.lowCents < sel.highCents && r.highCents > sel.lowCents))
@@ -2518,11 +2646,11 @@ function navigateToChildByKey(childKey) {
   const gen = S.generatorCents;
 
   const m = childKey.match(/(\d+)L_(\d+)s/);
-  if (m) ensureSizeVisible(+m[1] + +m[2]);
+  if (m) ensureSizeVisible(Math.round((+m[1] + +m[2]) / getPeriodRepetitions()));
 
   const candidate = S.regions.find(r =>
     r.key === childKey &&
-    r.size >= S.minSize && r.size <= S.maxSize &&
+    r.perPeriodSize >= S.minSize && r.perPeriodSize <= S.maxSize &&
     (gen !== null
       ? (gen >= r.lowCents && gen <= r.highCents)
       : (r.lowCents < sel.highCents && r.highCents > sel.lowCents))
@@ -2539,7 +2667,7 @@ function navigateToChildByKey(childKey) {
 
 function findAdjacentRegion(sel, cents) {
   const candidates = S.regions.filter(r =>
-    r.size >= S.minSize && r.size <= S.maxSize &&
+    r.perPeriodSize >= S.minSize && r.perPeriodSize <= S.maxSize &&
     cents >= r.lowCents - 0.5 && cents <= r.highCents + 0.5 &&
     !(r.key === sel.key &&
       Math.abs(r.lowCents - sel.lowCents) < 0.01 &&
@@ -2548,8 +2676,8 @@ function findAdjacentRegion(sel, cents) {
   if (!candidates.length) return null;
 
   candidates.sort((a, b) => {
-    const da = Math.abs(a.size - sel.size);
-    const db = Math.abs(b.size - sel.size);
+    const da = Math.abs(a.perPeriodSize - sel.perPeriodSize);
+    const db = Math.abs(b.perPeriodSize - sel.perPeriodSize);
     if (da !== db) return da - db;
     const ma = (a.lowCents + a.highCents) / 2;
     const mb = (b.lowCents + b.highCents) / 2;
@@ -2582,11 +2710,13 @@ function sliderXToGen(mx) {
 }
 
 function setGenFromScreenX(mx) {
-  const cc = x2c(mx);
+  const ccRaw = x2c(mx);
+  const reps = getPeriodRepetitions();
+  const cc = reps > 1 ? ((ccRaw % S.period) + S.period) % S.period : ccRaw;
   const sel = S.selected;
 
   if (cc < sel.lowCents || cc > sel.highCents) {
-    const clamped = Math.max(0, Math.min(1200, cc));
+    const clamped = Math.max(0, Math.min(S.period, cc));
     const adj = findAdjacentRegion(sel, clamped);
     if (adj) {
       S.selected = adj;
@@ -2609,9 +2739,9 @@ function setGenFromScreenX(mx) {
 function clampView() {
   const range = S.viewMax - S.viewMin;
   if (S.viewMin < 0) { S.viewMin = 0; S.viewMax = range; }
-  if (S.viewMax > 1200) { S.viewMax = 1200; S.viewMin = 1200 - range; }
+  if (S.viewMax > S.viewLimit) { S.viewMax = S.viewLimit; S.viewMin = S.viewLimit - range; }
   S.viewMin = Math.max(0, S.viewMin);
-  S.viewMax = Math.min(1200, S.viewMax);
+  S.viewMax = Math.min(S.viewLimit, S.viewMax);
 }
 
 function updateInfo() {
@@ -2806,7 +2936,7 @@ function renderPlaybackControls() {
   if (!el) return;
   if (!S.selected) { el.innerHTML = ''; return; }
 
-  const n = S.selected.size;
+  const n = S.selected.perPeriodSize;
 
   let h = '<div class="sp-playback">';
   h += '<div style="font-size:11px;font-weight:700;color:#e94560;margin-bottom:2px">Synth</div>';
@@ -2906,7 +3036,7 @@ const JI_POOL = [];
       if (seen.has(key)) continue;
       seen.add(key);
       const cents = 1200 * Math.log2(rn / rd);
-      if (cents > 0 && cents < 1200) {
+      if (cents > 0 && cents < 4800) {
         JI_POOL.push({ n: rn, d: rd, cents, complexity: rn * rd });
       }
     }
@@ -2967,7 +3097,7 @@ function findScaleChords(scalePitches, maxErr, maxCx) {
     for (let deg = 1; deg < n; deg++) {
       const targetDeg = (root + deg) % n;
       let cents = scalePitches[targetDeg] - scalePitches[root];
-      if (cents <= 0) cents += 1200;
+      if (cents <= 0) cents += S.period;
       const lo = jiPoolLowerBound(cents - maxErr);
       let list = null;
       for (let ji_i = lo; ji_i < poolLen; ji_i++) {
@@ -3063,8 +3193,8 @@ const _chordThrottleMs = 30;
 
 function getChords() {
   if (!S.selected || S.generatorCents === null) return [];
-  const n = S.selected.size;
-  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
+  const n = S.selected.perPeriodSize;
+  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
   const scaleKey = scale.pitches.map(p => p.toFixed(1)).join(',');
   if (scaleKey !== _cachedTriadScale) {
     _cachedTriadScale = scaleKey;
@@ -3123,7 +3253,7 @@ function renderChordsPanel() {
   const typeLabel = document.getElementById('chord-type-label');
 
   const groups = getChords();
-  const n = S.selected.size;
+  const n = S.selected.perPeriodSize;
   const chordGroupsOut = [];
   for (const g of groups) {
     const matching = g.invList.filter(inv => inv.type === 3 && inv.maxNum <= _chordMaxRoot && inv.rmsError <= _chordMaxRMS);
@@ -3268,8 +3398,8 @@ function killChordNotes() {
 function playChordDegrees(degrees) {
   if (!S.selected || S.generatorCents === null) return;
   killChordNotes();
-  const n = S.selected.size;
-  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
+  const n = S.selected.perPeriodSize;
+  const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
   const rootDeg = ((degrees[0] % n) + n) % n;
   const rootCents = scale.pitches[rootDeg];
   const actx = getAudioCtx();
@@ -3350,13 +3480,13 @@ function renderChordHighlights() {
   }
 
   if (!activeTriads.length && activeDegrees.length >= 2 && S.selected && S.generatorCents !== null) {
-    const n = S.selected.size;
-    const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, 1200), S.modeRotation, 1200);
-    const bassCents = scale.pitches[lowestEntry.degreeInScale] + lowestEntry.noteOctave * 1200;
+    const n = S.selected.perPeriodSize;
+    const scale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
+    const bassCents = scale.pitches[lowestEntry.degreeInScale] + lowestEntry.noteOctave * S.period;
     for (const e of activeEntries) {
       if (e === lowestEntry) continue;
-      let intervalCents = (scale.pitches[e.degreeInScale] + e.noteOctave * 1200) - bassCents;
-      if (intervalCents <= 0) intervalCents += 1200;
+      let intervalCents = (scale.pitches[e.degreeInScale] + e.noteOctave * S.period) - bassCents;
+      if (intervalCents <= 0) intervalCents += S.period;
       const maxErr = _chordMaxRMS;
       const lo = jiPoolLowerBound(intervalCents - maxErr);
       let best = null;
@@ -3440,8 +3570,8 @@ function updatePanel() {
 
   const sel = S.selected;
   const key = sel.key;
-  const label = key.replace('_', ' ');
-  const fname = MOS_NAMES[key];
+  const label = mosDisplayLabel(key);
+  const fname = mosDisplayName(key);
   const nL = sel.nL, nS = sel.nS;
   const parent = findParentMOS(nL, nS);
   const children = getChildMOSes(key);
@@ -3450,30 +3580,36 @@ function updatePanel() {
   // Left info section
   const wikiUrl = `https://en.xen.wiki/w/${key}`;
   let h = `<div class="sp-title"><a href="${wikiUrl}" target="_blank" style="color:#e94560;text-decoration:none">${label}${fname ? ' — '+fname : ''}</a></div>`;
-  h += `<div style="color:#aaa;margin-bottom:3px;font-size:13px">${nL+nS} notes (${nL}L + ${nS}s)</div>`;
+  const pReps = getPeriodRepetitions();
+  if (pReps > 1) {
+    const ppNL = nL / pReps, ppNS = nS / pReps;
+    h += `<div style="color:#aaa;margin-bottom:3px;font-size:13px">${nL+nS} notes/octave (${ppNL+ppNS} × ${pReps} periods: ${ppNL}L + ${ppNS}s each)</div>`;
+  } else {
+    h += `<div style="color:#aaa;margin-bottom:3px;font-size:13px">${nL+nS} notes (${nL}L + ${nS}s)</div>`;
+  }
   h += `<div style="color:#ccc;font-size:12px;margin-bottom:3px">${sel.lowCents.toFixed(1)}¢ — ${sel.highCents.toFixed(1)}¢</div>`;
 
   if (parent) {
-    const pn = MOS_NAMES[parent];
+    const pn = mosDisplayName(parent);
     const parentNavigable = S.regions.some(r =>
-      r.key === parent && r.size >= S.minSize && r.size <= S.maxSize);
+      r.key === parent && r.perPeriodSize >= S.minSize && r.perPeriodSize <= S.maxSize);
     h += `<div style="font-size:12px;margin-bottom:2px">`;
     if (parentNavigable) {
       h += `<a href="#" onclick="navigateToParent();return false" style="color:#f5a623;text-decoration:none;cursor:pointer" title="Navigate to parent">&#x25B2;</a> `;
     }
-    h += `Parent: <a href="#" onclick="navigateToParent();return false" style="color:#f5a623;text-decoration:none;cursor:pointer">${parent.replace('_',' ')}${pn ? ' ('+pn+')' : ''}</a></div>`;
+    h += `Parent: <a href="#" onclick="navigateToParent();return false" style="color:#f5a623;text-decoration:none;cursor:pointer">${mosDisplayLabel(parent)}${pn ? ' ('+pn+')' : ''}</a></div>`;
   }
 
   const childNavigable = children.some(ck => S.regions.some(r =>
-    r.key === ck && r.size >= S.minSize && r.size <= S.maxSize));
+    r.key === ck && r.perPeriodSize >= S.minSize && r.perPeriodSize <= S.maxSize));
   h += `<div style="font-size:12px;margin-bottom:2px">`;
   if (childNavigable) {
     h += `<a href="#" onclick="navigateToChild();return false" style="color:#6eb5ff;text-decoration:none;cursor:pointer" title="Navigate to child">&#x25BC;</a> `;
   }
   h += `Children: `;
   h += children.map(c => {
-    const cn = MOS_NAMES[c];
-    return `<a href="#" onclick="navigateToChildByKey('${c}');return false" style="color:#6eb5ff;text-decoration:none;cursor:pointer">${c.replace('_',' ')}${cn ? ' ('+cn+')' : ''}</a>`;
+    const cn = mosDisplayName(c);
+    return `<a href="#" onclick="navigateToChildByKey('${c}');return false" style="color:#6eb5ff;text-decoration:none;cursor:pointer">${mosDisplayLabel(c)}${cn ? ' ('+cn+')' : ''}</a>`;
   }).join(', ');
   h += '</div>';
 
@@ -3482,7 +3618,7 @@ function updatePanel() {
     if (swUrl) {
       h += `<div style="margin-top:4px;margin-bottom:4px"><a href="${swUrl}" target="_blank" style="color:#4cc9f0;text-decoration:none;font-size:11px">&#x266B; Open in Scale Workshop</a></div>`;
     }
-    const activeTemps = getTemperamentsAtCursor(key, gen, sel.lowCents, sel.highCents);
+    const activeTemps = getTemperamentsAtCursor(sel.perPeriodKey, gen, sel.lowCents, sel.highCents);
     if (activeTemps.length) {
       h += '<div class="temp-info">';
       for (const t of activeTemps) {
@@ -3499,7 +3635,7 @@ function updatePanel() {
         }
         const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
         if (mosList.length > 1) {
-          h += '<div class="temp-info-mos">MOS: ' + mosList.map(m => `<span class="temp-mos${m === sel.key ? ' temp-mos-active' : ''}">${m.replace('_', ' ')}</span>`).join(' → ') + '</div>';
+          h += '<div class="temp-info-mos">MOS: ' + mosList.map(m => `<span class="temp-mos${m === sel.perPeriodKey ? ' temp-mos-active' : ''}">${mosDisplayLabel(m)}</span>`).join(' → ') + '</div>';
         }
       }
       h += '</div>';
@@ -3542,7 +3678,7 @@ function buildHarmonicRatios() {
     for (let n = d + 1; n <= 31; n++) {
       if (gcd(n, d) !== 1) continue;
       const cents = 1200 * Math.log2(n / d);
-      if (cents > 0 && cents <= 1200) {
+      if (cents > 0 && cents <= S.period) {
         ratios.push({ n, d, cents, label: `${n}/${d}` });
       }
     }
@@ -3636,18 +3772,18 @@ function renderEDOGrid() {
   if (!sel) return;
 
   const genCents = S.generatorCents !== null ? S.generatorCents : (sel.lowCents + sel.highCents) / 2;
-  const hr = computeHardness(genCents, sel.size);
+  const hr = computeHardness(genCents, sel.perPeriodSize);
   const hardnessStr = hr.ratio === Infinity ? '∞' : hr.ratio.toFixed(2);
   const harmonics = buildHarmonicRatios();
 
-  const baseScale = buildMOSScale(genCents, sel.size, 1200);
-  const scale = rotateMOSScale(baseScale, S.modeRotation || 0, 1200);
+  const baseScale = buildMOSScale(genCents, sel.perPeriodSize, S.period);
+  const scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
   const intervals = scale.pitches.slice(1);
 
   const rulerKey = sel.key + '|' + intervals.length + '|' + S.rulerSort + (S.rulerSort === 'generator' ? '|' + (S.modeRotation || 0) : '');
   if (S._rulerBuiltKey !== rulerKey) {
     const n = intervals.length + 1;
-    const chain = getGeneratorChain(genCents, n, 1200);
+    const chain = getGeneratorChain(genCents, n, S.period);
     const rot = S.modeRotation || 0;
     const rootGenIdx = chain[rot];
     const byGen = S.rulerSort === 'generator';
@@ -3660,7 +3796,7 @@ function renderEDOGrid() {
       const rotCents = rotatedPitches[i];
       let origPos = -1;
       for (let j = 0; j < n; j++) {
-        const shifted = ((origPitches[j] - origPitches[rot]) % 1200 + 1200) % 1200;
+        const shifted = ((origPitches[j] - origPitches[rot]) % S.period + S.period) % S.period;
         if (Math.abs(shifted - rotCents) < 0.01) { origPos = j; break; }
       }
       const genIdx = origPos >= 0 ? chain[origPos] : 0;
@@ -3720,7 +3856,7 @@ function renderEDOGrid() {
 
   const tempsSpan = edoEl.querySelector('.edo-ruler-temps');
   if (tempsSpan) {
-    const matchedTemps = getTemperamentsAtCursor(sel.key, genCents, sel.lowCents, sel.highCents);
+    const matchedTemps = getTemperamentsAtCursor(sel.perPeriodKey, genCents, sel.lowCents, sel.highCents);
     if (matchedTemps.length > 0) {
       tempsSpan.innerHTML = matchedTemps.map(t => {
         const color = TEMP_COLORS[t.name] || '#dda0dd';
@@ -3792,9 +3928,9 @@ function findMatchingEDO(genCents, mosSize) {
 function buildScaleWorkshopURL() {
   if (!S.selected || S.generatorCents === null) return null;
   const gen = S.generatorCents;
-  const n = S.selected.size;
-  const baseScale = buildMOSScale(gen, n, 1200);
-  const scale = rotateMOSScale(baseScale, S.modeRotation || 0, 1200);
+  const n = S.selected.perPeriodSize;
+  const baseScale = buildMOSScale(gen, n, S.period);
+  const scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
   const pitches = scale.pitches.slice(1);
 
   const edoMatch = findMatchingEDO(gen, n);
@@ -3803,16 +3939,16 @@ function buildScaleWorkshopURL() {
   let scaleName;
   if (edoMatch) {
     const edo = edoMatch.edo;
-    const edoPitches = pitches.map(c => Math.round(c / (1200 / edo)));
+    const edoPitches = pitches.map(c => Math.round(c / (S.period / edo)));
     edoPitches.push(edo);
     lines = edoPitches.map(s => s + '\\' + edo);
-    const mosLabel = S.selected.key.replace('_', ' ');
+    const mosLabel = mosDisplayLabel(S.selected.key);
     scaleName = `${edo}edo ${mosLabel} (${edoMatch.step}\\${edo} gen)`;
   } else {
     const centsLines = pitches.map(c => c.toFixed(3));
-    centsLines.push('1200.000');
+    centsLines.push(S.period.toFixed(3));
     lines = centsLines;
-    const mosLabel = S.selected.key.replace('_', ' ');
+    const mosLabel = mosDisplayLabel(S.selected.key);
     scaleName = `${mosLabel} (${gen.toFixed(2)}¢ gen)`;
   }
 
@@ -3830,7 +3966,7 @@ function rulerSetGenFromCents(cents) {
   const sel = S.selected;
   if (!sel) return;
   if (cents < sel.lowCents || cents > sel.highCents) {
-    const clamped = Math.max(0, Math.min(1200, cents));
+    const clamped = Math.max(0, Math.min(S.period, cents));
     const adj = findAdjacentRegion(sel, clamped);
     if (adj) {
       S.selected = adj;
@@ -3916,15 +4052,15 @@ function setupRulerInteraction(edoEl) {
         const item = ev.target.closest('.ctx-item');
         if (item && item.dataset.action === 'move-gen') {
           const target = cents;
-          const currentSize = S.selected ? S.selected.size : 7;
+          const currentSize = S.selected ? S.selected.perPeriodSize : 7;
           const candidates = S.regions.filter(r =>
             target >= r.lowCents && target <= r.highCents &&
-            r.size >= S.minSize && r.size <= S.maxSize
+            r.perPeriodSize >= S.minSize && r.perPeriodSize <= S.maxSize
           );
           if (candidates.length) {
-            candidates.sort((a, b) => Math.abs(a.size - currentSize) - Math.abs(b.size - currentSize));
+            candidates.sort((a, b) => Math.abs(a.perPeriodSize - currentSize) - Math.abs(b.perPeriodSize - currentSize));
             const region = candidates[0];
-            ensureSizeVisible(region.size);
+            ensureSizeVisible(region.perPeriodSize);
             S.selected = S.regions.find(r =>
               r.key === region.key &&
               Math.abs(r.lowCents - region.lowCents) < 0.01 &&
@@ -3977,7 +4113,7 @@ function setup() {
     const mc = x2c(mx);
     const zf = e.deltaY > 0 ? 1.15 : 1/1.15;
     const range = S.viewMax - S.viewMin;
-    const nr = Math.min(1200, Math.max(0.3, range * zf));
+    const nr = Math.min(S.viewLimit, Math.max(0.3, range * zf));
     const ratio = mx / S.W;
     S.viewMin = mc - ratio * nr;
     S.viewMax = mc + (1 - ratio) * nr;
@@ -4041,9 +4177,11 @@ function setup() {
 
     if (S.selected && isOnAxisBar(my)) {
       const cc = x2c(mx);
-      if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
+      const reps = getPeriodRepetitions();
+      const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
+      if (reduced >= S.selected.lowCents && reduced <= S.selected.highCents) {
         S.genDragging = true;
-        S.generatorCents = cc;
+        S.generatorCents = reduced;
         cvs.style.cursor = 'ew-resize';
         render();
         return;
@@ -4101,13 +4239,8 @@ function setup() {
       const newMin = Math.round(Math.max(2, Math.min(100, S.dragMinSize0 - dy * sizeSensitivity)));
       if (newMin !== S.minSize) {
         S.minSize = newMin;
-        document.getElementById('min-size').value = S.minSize;
-        document.getElementById('min-size-val').textContent = S.minSize;
-        if (S.minSize > S.maxSize) {
-          S.maxSize = S.minSize;
-          document.getElementById('max-mos-size').value = S.maxSize;
-          document.getElementById('max-mos-val').textContent = S.maxSize;
-        }
+        if (S.minSize > S.maxSize) S.maxSize = S.minSize;
+        syncSizeDisplay();
         recalc();
       } else {
         updateInfo();
@@ -4139,8 +4272,10 @@ function setup() {
       } else if (S.selected && hitSlider(mx, my)) {
         cvs.style.cursor = 'ew-resize';
       } else if (S.selected && isOnAxisBar(my)) {
-        const cc = x2c(mx);
-        if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
+        const ccRaw = x2c(mx);
+        const cReps = getPeriodRepetitions();
+        const ccAxis = cReps > 1 ? ((ccRaw % S.period) + S.period) % S.period : ccRaw;
+        if (ccAxis >= S.selected.lowCents && ccAxis <= S.selected.highCents) {
           cvs.style.cursor = 'crosshair';
         } else if (!S.hovered) {
           cvs.style.cursor = '';
@@ -4202,20 +4337,20 @@ function setup() {
   function findNearestMOSAtCents(cents, targetSize) {
     const candidates = S.regions.filter(r =>
       cents >= r.lowCents && cents <= r.highCents &&
-      r.size >= S.minSize && r.size <= S.maxSize
+      r.perPeriodSize >= S.minSize && r.perPeriodSize <= S.maxSize
     );
     if (!candidates.length) return null;
-    candidates.sort((a, b) => Math.abs(a.size - targetSize) - Math.abs(b.size - targetSize));
+    candidates.sort((a, b) => Math.abs(a.perPeriodSize - targetSize) - Math.abs(b.perPeriodSize - targetSize));
     return candidates[0];
   }
 
   function teleportTo(target) {
-    target = ((target % 1200) + 1200) % 1200;
-    if (target <= 0 || target >= 1200) return;
-    const currentSize = S.selected ? S.selected.size : 7;
+    target = ((target % S.period) + S.period) % S.period;
+    if (target <= 0 || target >= S.period) return;
+    const currentSize = S.selected ? S.selected.perPeriodSize : 7;
     const region = findNearestMOSAtCents(target, currentSize);
     if (region) {
-      ensureSizeVisible(region.size);
+      ensureSizeVisible(region.perPeriodSize);
       S.selected = S.regions.find(r =>
         r.key === region.key &&
         Math.abs(r.lowCents - region.lowCents) < 0.01 &&
@@ -4234,14 +4369,16 @@ function setup() {
     const my = e.clientY - rect.top;
     const cc = x2c(mx);
 
-    if (!isOnAxisBar(my) || cc < 0 || cc > 1200) return;
+    if (!isOnAxisBar(my) || cc < 0 || cc > S.viewLimit) return;
     e.preventDefault();
 
+    const reps = getPeriodRepetitions();
+    const baseCC = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
     const ops = [2, 3, 5];
     let divCol = '<div class="ctx-col"><div class="ctx-col-header">÷</div>';
     for (const d of ops) {
-      const result = cc / d;
-      if (result > 0 && result < 1200) {
+      const result = baseCC / d;
+      if (result > 0 && result < S.period) {
         divCol += `<div class="ctx-item" data-target="${result}">÷${d}<span class="ctx-result">${result.toFixed(2)}¢</span></div>`;
       }
     }
@@ -4249,14 +4386,14 @@ function setup() {
 
     let mulCol = '<div class="ctx-col"><div class="ctx-col-header">×</div>';
     for (const m of ops) {
-      const result = ((cc * m) % 1200 + 1200) % 1200;
-      if (result > 0 && result < 1200) {
+      const result = ((baseCC * m) % S.period + S.period) % S.period;
+      if (result > 0 && result < S.period) {
         mulCol += `<div class="ctx-item" data-target="${result}">×${m}<span class="ctx-result">${result.toFixed(2)}¢</span></div>`;
       }
     }
     mulCol += '</div>';
 
-    ctxMenu.innerHTML = `<div class="ctx-header">${cc.toFixed(2)}¢</div>`
+    ctxMenu.innerHTML = `<div class="ctx-header">${baseCC.toFixed(2)}¢</div>`
       + `<div class="ctx-columns">${divCol}${mulCol}</div>`;
     showCtxMenu();
 
@@ -4302,7 +4439,9 @@ function setup() {
       } else if (hitMOSCirclePanel(mx, my)) {
         // absorb touch on circle panel — don't start drag
       } else if (S.selected && isOnAxisBar(my)) {
-        const cc = x2c(mx);
+        const ccRaw = x2c(mx);
+        const treps = getPeriodRepetitions();
+        const cc = treps > 1 ? ((ccRaw % S.period) + S.period) % S.period : ccRaw;
         if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
           S.genDragging = true;
           S.generatorCents = cc;
@@ -4344,13 +4483,8 @@ function setup() {
         const newMin = Math.round(Math.max(2, Math.min(30, S.dragMinSize0 - dy * 0.05)));
         if (newMin !== S.minSize) {
           S.minSize = newMin;
-          document.getElementById('min-size').value = S.minSize;
-          document.getElementById('min-size-val').textContent = S.minSize;
-          if (S.minSize > S.maxSize) {
-            S.maxSize = S.minSize;
-            document.getElementById('max-mos-size').value = S.maxSize;
-            document.getElementById('max-mos-val').textContent = S.maxSize;
-          }
+          if (S.minSize > S.maxSize) S.maxSize = S.minSize;
+          syncSizeDisplay();
           recalc();
         } else {
           updateInfo(); render();
@@ -4362,7 +4496,7 @@ function setup() {
       const mid = (pinchMin0 + pinchMax0) / 2;
       const half = ((pinchMax0 - pinchMin0) / 2) * sc;
       S.viewMin = Math.max(0, mid - half);
-      S.viewMax = Math.min(1200, mid + half);
+      S.viewMax = Math.min(S.viewLimit, mid + half);
       updateInfo(); render();
     }
     e.preventDefault();
@@ -4420,24 +4554,15 @@ function setup() {
   // Controls
   document.getElementById('min-size').addEventListener('input', e => {
     S.minSize = +e.target.value;
-    document.getElementById('min-size-val').textContent = S.minSize;
-    if (S.minSize > S.maxSize) {
-      S.maxSize = S.minSize;
-      document.getElementById('max-mos-size').value = S.maxSize;
-      document.getElementById('max-mos-val').textContent = S.maxSize;
-      recalc();
-    } else {
-      render();
-    }
+    const needRecalc = S.minSize > S.maxSize;
+    if (needRecalc) S.maxSize = S.minSize;
+    syncSizeDisplay();
+    if (needRecalc) recalc(); else render();
   });
   document.getElementById('max-mos-size').addEventListener('input', e => {
     S.maxSize = +e.target.value;
-    document.getElementById('max-mos-val').textContent = S.maxSize;
-    if (S.maxSize < S.minSize) {
-      S.minSize = S.maxSize;
-      document.getElementById('min-size').value = S.minSize;
-      document.getElementById('min-size-val').textContent = S.minSize;
-    }
+    if (S.maxSize < S.minSize) S.minSize = S.maxSize;
+    syncSizeDisplay();
     recalc();
   });
   document.getElementById('max-edo').addEventListener('input', e => {
@@ -4446,8 +4571,33 @@ function setup() {
       ? 5 * Math.pow(53 / 5, t / 0.5)
       : 53 * Math.pow(350 / 53, (t - 0.5) / 0.5));
     document.getElementById('max-edo-val').textContent = S.maxEDO;
-    S.edos = buildEDOGenerators(S.maxEDO);
+    S.edos = buildEDOGenerators(S.maxEDO, S.period);
     render();
+  });
+  document.getElementById('period-select').addEventListener('change', e => {
+    const opt = e.target.selectedOptions[0];
+    S.period = parseFloat(opt.value);
+    S.viewLimit = parseFloat(opt.dataset.limit);
+    S.viewMin = 0;
+    S.viewMax = S.viewLimit;
+    S.selected = null;
+    S.generatorCents = null;
+    S._harmonicRatios = null;
+    S._rulerBuiltKey = null;
+    S._panelHeight = null;
+    S._circleRadius = null;
+    const reps = getPeriodRepetitions();
+    if (reps > 1) {
+      S.minSize = 2;
+      S.maxSize = 8;
+    } else {
+      S.minSize = 2;
+      S.maxSize = 18;
+    }
+    syncSizeDisplay();
+    updatePanel();
+    recalc();
+    updateInfo();
   });
   const helpModal = document.getElementById('help-modal');
   document.getElementById('help-btn').addEventListener('click', () => {
@@ -4461,7 +4611,7 @@ function setup() {
   });
 
   document.getElementById('reset-zoom').addEventListener('click', () => {
-    S.viewMin = 0; S.viewMax = 1200;
+    S.viewMin = 0; S.viewMax = S.viewLimit;
     updateInfo(); render();
   });
   document.getElementById('selected-panel').addEventListener('mousedown', e => {
@@ -4521,6 +4671,7 @@ window.addEventListener('DOMContentLoaded', () => {
   S.canvas = document.getElementById('main-canvas');
   S.ctx = S.canvas.getContext('2d');
   resizeCanvas();
+  syncSizeDisplay();
   recalc();
   setup();
 });
