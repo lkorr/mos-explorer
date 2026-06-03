@@ -167,6 +167,16 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Slendric',
     description: 'Three 8/7 generators = 3/2. 2.3.7 subgroup. Very accurate. <br> <br> Historically this temperament has been called slendric, because in the Indonesian Gamelan scale Slendro, some might say their fifth is ~roughly~ divided into 3 steps - even though the step sizes aren&#39t evenly spaced at all. <br> <br> It&#39s a bit chauvinistic if you ask me. Imagine if you will, an alien species coming to earth and they analyze all of western classical music theory. They then fly away and tell the rest of the universe that the earthlings play music in 7edo, and name 7edo "Diatonic". <br> <br> So just call it tricot, will you?' },
 
+  { name: 'Hemipyth', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [240.0, 257.14], period: 600,
+    commas: [], commaNames: [],
+    wikiUrl: 'https://en.xen.wiki/w/Hemipyth',
+    description: 'Half-octave period. Irrational subgroup based on square roots of Pythagorean intervals. Generator is √(3/2) ≈ 351¢ mapped as ~248¢ within the 600¢ period. Two generators = 3/2.' },
+
+  { name: 'Doublewide', mos: ['2L_1s', '2L_3s'], genRange: [270.0, 280.0], period: 600,
+    commas: ['50/49', '875/864'], commaNames: ['jubilisma', 'keema'],
+    wikiUrl: 'https://en.xen.wiki/w/Jubilismic_clan#Doublewide',
+    description: 'Half-octave period. 2.3.5.7 subgroup. Generator is a sharp ~6/5, four of which plus a 600¢ period give the 3rd harmonic. Equates 25/24, 49/48, and 36/35. Also tempers out the orwellisma (1728/1715). 48edo is an excellent tuning.' },
+
   { name: 'Glacier / Pentacot', mos: ['1L_7s', '8L_1s'], genRange: [137.0, 144.0],
     commas: [], commaNames: [],
     wikiUrl: 'https://en.xen.wiki/w/Glacier',
@@ -364,15 +374,25 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Diminished_family',
     description: '1/4-octave period. Four 6/5 = octave. Minor third generator ~300¢.' },
 
-  { name: 'Lemba', mos: ['1L_4s', '5L_1s'], genRange: [225.0, 237.0], period: 600,
+  { name: 'Lemba', mos: ['1L_4s', '5L_1s'], genRange: [225.0, 240.0], period: 600,
     commas: ['50/49', '525/512'], commaNames: ['jubilisma', 'avicennma'],
     wikiUrl: 'https://en.xen.wiki/w/Lemba',
     description: 'Half-octave period. Generator ~230¢ near golden ratio of half-octave.' },
+
+//  { name: 'Baladic', mos: ['1L_4s', '5L_1s'], genRange: [225.0, 240.0], period: 600,
+//    commas: ['1029/1024'], commaNames: ['gamelisma'],
+//    wikiUrl: 'https://en.xen.wiki/w/Gamelismic_clan#Baladic',
+//    description: 'Half-octave period. Gamelismic clan — tempers out 1029/1024. Generator is a supermajor second near 8/7.' },
 
   { name: 'Hedgehog', mos: ['1L_6s', '7L_1s'], genRange: [160.0, 170.0], period: 600,
     commas: ['50/49', '245/243'], commaNames: ['jubilisma', 'sensamagic comma'],
     wikiUrl: 'https://en.xen.wiki/w/Porcupine_family',
     description: 'Half-octave period. Porcupine-family. 22edo is the canonical tuning.' },
+
+  { name: 'Astrology', mos: ['1L_6s', '7L_1s'], genRange: [216.0, 225.0], period: 600,
+    commas: ['50/49', '3125/3072'], commaNames: ['jubilisma', 'magic comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Jubilismic_clan#Astrology',
+    description: 'Half-octave period. Diploid pentacot — five ~5/4 generators give the 3rd harmonic. Equates 50/49. Related to magic family. 22edo and 16edo are core tunings; 48edo is excellent.' },
 
   // === LARGER SCALES ===
   { name: 'Miracle', mos: ['1L_9s', '10L_1s', '10L_11s'], genRange: [114.29, 120.0],
@@ -411,7 +431,7 @@ const TEMP_COLORS = {
   'Aurora': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Hamity': '#d4724a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800', 'Diaschismic': '#c86800',
-  'Blackwood': '#ba55d3', 'Whitewood': '#e0c0ff', 'Injera': '#e8a060', 'Lemba': '#d2691e', 'Hedgehog': '#8fbc8f',
+  'Blackwood': '#ba55d3', 'Whitewood': '#e0c0ff', 'Injera': '#e8a060', 'Lemba': '#d2691e', 'Baladic': '#c45e1a', 'Hemipyth': '#b85818', 'Doublewide': '#a04e14', 'Hedgehog': '#8fbc8f', 'Astrology': '#7aac7a',
   'Sephiroth': '#ec7ce4',
   'Escape': '#a8d8ea', 'Octacot': '#56c9a0', 'Passion': '#d4637a', 'Valentine': '#ff6b81', 'Miracle': '#ff4500', 'Negri': '#9370db',
   'Unknown Diatonic': '#c0a0e0',
