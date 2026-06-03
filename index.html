@@ -2072,7 +2072,7 @@ function drawMOSCircle(ctx, W, H) {
       if (jiSeen.has(key)) continue;
       jiSeen.add(key);
       const pureCents = 1200 * Math.log2(rn / rd);
-      const cents = stretchCents(pureCents);
+      const cents = pureCents * 1200 / getStretchedOctave();
       if (cents > 0 && cents < displayP && rn * rd <= 125) {
         jiMarkers.push({ ratio: key, cents, complexity: rn * rd });
       }
