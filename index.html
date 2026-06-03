@@ -1942,8 +1942,9 @@ function drawMOSCircle(ctx, W, H) {
     const lx = cx + Math.cos(midAngle) * labelR;
     const ly = cy + Math.sin(midAngle) * labelR;
 
+    const pieFontSize = Math.round(12 * radius / 170);
     ctx.fillStyle = col;
-    ctx.font = 'bold 12px monospace';
+    ctx.font = 'bold ' + Math.max(6, pieFontSize) + 'px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(stretchCents(step).toFixed(0) + '¢', lx, ly);
@@ -2045,13 +2046,14 @@ function drawMOSCircle(ctx, W, H) {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    const outR = radius + 18;
+    const outFontSize = Math.max(6, Math.round(11 * radius / 170));
+    const outR = radius + Math.round(18 * radius / 170);
     const ox = cx + cos * outR;
     const oy = cy + sin * outR;
 
     if (i > 0) {
       ctx.fillStyle = lerpColor(baseLabelColor, glowColor, glow);
-      ctx.font = '11px monospace';
+      ctx.font = outFontSize + 'px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(stretchCents(pitches[i]).toFixed(0), ox, oy);
@@ -2067,7 +2069,7 @@ function drawMOSCircle(ctx, W, H) {
       const t = activeTemps[0];
       const col = TEMP_COLORS[t.name] || '#50c878';
       ctx.fillStyle = col;
-      ctx.font = 'bold 13px monospace';
+      ctx.font = 'bold ' + Math.max(7, Math.round(13 * radius / 170)) + 'px monospace';
       ctx.fillText(t.name, cx, cy - radius * 0.15);
     }
   }
@@ -2085,32 +2087,33 @@ function drawMOSCircle(ctx, W, H) {
       jiSeen.add(key);
       const pureCents = 1200 * Math.log2(rn / rd);
       const cents = pureCents * 1200 / getStretchedOctave();
-      if (cents > 0 && cents < displayP && rn * rd <= 125) {
+      if (cents > 0 && cents < displayP && rn * rd <= 162) {
         jiMarkers.push({ ratio: key, cents, complexity: rn * rd });
       }
     }
   }
   jiMarkers.sort((a, b) => a.complexity - b.complexity);
+  const rScale = radius / 170;
   for (const ji of jiMarkers) {
-    const maxFont = 14, minFont = 6;
+    const maxFont = Math.round(14 * rScale), minFont = Math.max(4, Math.round(6 * rScale));
     const fontSize = Math.round(maxFont - (maxFont - minFont) * Math.min(1, (ji.complexity - 6) / 119));
-    const tickLen = fontSize > 8 ? 13 : 8;
+    const tickLen = Math.round((fontSize > 8 * rScale ? 13 : 8) * rScale);
     const angle = c2a(ji.cents);
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     ctx.beginPath();
     ctx.moveTo(cx + cos * (radius - tickLen), cy + sin * (radius - tickLen));
-    ctx.lineTo(cx + cos * (radius + 3), cy + sin * (radius + 3));
-    const alpha = fontSize > 8 ? '99' : '55';
+    ctx.lineTo(cx + cos * (radius + 3 * rScale), cy + sin * (radius + 3 * rScale));
+    const alpha = fontSize > 8 * rScale ? '99' : '55';
     ctx.strokeStyle = '#f5a623' + alpha;
-    ctx.lineWidth = fontSize > 9 ? 1.5 : 1;
+    ctx.lineWidth = fontSize > 9 * rScale ? 1.5 : 1;
     ctx.stroke();
     ctx.fillStyle = '#f5a623';
-    ctx.globalAlpha = 0.4 + 0.6 * (fontSize - minFont) / (maxFont - minFont);
-    ctx.font = (fontSize > 9 ? 'bold ' : '') + fontSize + 'px monospace';
+    ctx.globalAlpha = 0.4 + 0.6 * (fontSize - minFont) / (maxFont - minFont || 1);
+    ctx.font = (fontSize > 9 * rScale ? 'bold ' : '') + Math.max(4, fontSize) + 'px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const lr = radius - tickLen - 8;
+    const lr = radius - tickLen - Math.round(8 * rScale);
     ctx.fillText(ji.ratio, cx + cos * lr, cy + sin * lr);
     ctx.globalAlpha = 1;
   }
@@ -4036,8 +4039,10 @@ function buildScaleWorkshopURL() {
   const baseScale = buildMOSScale(gen, n, S.period);
   const scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
   const pitches = scale.pitches.slice(1);
+  const effectivePeriod = stretchCents(S.period);
+  const isStandardOctave = Math.abs(effectivePeriod - 1200) < 1;
 
-  const edoMatch = Math.abs(S.octaveStretch) <= 5 ? findMatchingEDO(gen, n) : null;
+  const edoMatch = isStandardOctave ? findMatchingEDO(gen, n) : null;
 
   let lines;
   let scaleName;
@@ -4050,11 +4055,12 @@ function buildScaleWorkshopURL() {
     scaleName = `${edo}edo ${mosLabel} (${edoMatch.step}\\${edo} gen)`;
   } else {
     const centsLines = pitches.map(c => stretchCents(c).toFixed(3));
-    centsLines.push(stretchCents(S.period).toFixed(3));
+    centsLines.push(effectivePeriod.toFixed(3));
     lines = centsLines;
     const mosLabel = mosDisplayLabel(S.selected.key);
+    const periodSuffix = !isStandardOctave ? `, ${effectivePeriod.toFixed(1)}¢ equave` : '';
     const stretchSuffix = S.octaveStretch !== 0 ? `, stretch ${S.octaveStretch > 0 ? '+' : ''}${S.octaveStretch}¢` : '';
-    scaleName = `${mosLabel} (${gen.toFixed(2)}¢ gen${stretchSuffix})`;
+    scaleName = `${mosLabel} (${stretchCents(gen).toFixed(2)}¢ gen${periodSuffix}${stretchSuffix})`;
   }
 
   const data = encodeURIComponent(lines.join('\n'));
