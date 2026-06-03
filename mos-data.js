@@ -90,7 +90,7 @@ const TEMPERAMENTS = [
   { name: 'Sephiroth', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [360.0, 377.14],
     commas: ['65/64', '170/169', '221/220'], commaNames: ['wilsorma', '', ''],
     wikiUrl: 'https://en.xen.wiki/w/Chromatic_pairs#Sephiroth',
-    description: 'A no-3s and no-7s restriction of magic. Generator is a sharp neutral third between 360¢ and 377¢ - so sharp that your fifth extends past 5edo into oneirotonic territory. <br> Think of it as simultaneously an extremely sharp version of dicot, as well as the antidiatonic equivalent of magic. That is to say; <br> 2 generators gives you an ultra sharp "oneirotonic 3/2", and 5 generators will stack up to a super flat "antidiatonic 3/2". The 10-note MOS is the sweet spot. <br> <br>  Named after the final fantasy character. I know. ' },
+    description: 'A no-3s and no-7s restriction of magic. Generator is a sharp neutral third between 360¢ and 377¢ - so sharp that your fifth extends past 5edo into oneirotonic territory. <br> Think of it as simultaneously an extremely sharp version of dicot, as well as the antidiatonic equivalent of magic. That is to say; <br> 2 generators gives you an ultra sharp "oneirotonic 3/2", and 5 generators will stack up to a super flat "antidiatonic 3/2". The 10-note MOS is the sweet spot. <br> <br> ' },
 
   { name: 'Magic', mos: ['3L_4s', '3L_7s', '3L_10s'], genRange: [377.14, 385.0],
     commas: ['3125/3072'], commaNames: ['magic comma'],

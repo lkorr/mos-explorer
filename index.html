@@ -689,17 +689,19 @@ canvas { display: block; width: 100%; height: 100%; }
   </div>
   <div class="ctrl-group">
     <label>Octave Stretch:</label>
-    <input type="number" id="octave-stretch" value="1200" step="1" style="width:60px;background:#1a1a2e;color:#eee;border:1px solid #334;border-radius:3px;padding:2px 4px;font:11px monospace;text-align:center;-moz-appearance:textfield;">
+    <input type="number" id="octave-stretch" value="1200" step="any" style="width:60px;background:#1a1a2e;color:#eee;border:1px solid #334;border-radius:3px;padding:2px 4px;font:11px monospace;text-align:center;-moz-appearance:textfield;">
     <span class="value-display">¢</span>
-    <input type="number" id="stretch-range-min" value="1150" step="1" style="width:44px;background:#1a1a2e;color:#889;border:1px solid #334;border-radius:3px;padding:2px 3px;font:10px monospace;text-align:center;-moz-appearance:textfield;">
-    <input type="range" id="octave-stretch-slider" min="1150" max="1250" value="1200" step="1" style="width:140px;">
-    <input type="number" id="stretch-range-max" value="1250" step="1" style="width:44px;background:#1a1a2e;color:#889;border:1px solid #334;border-radius:3px;padding:2px 3px;font:10px monospace;text-align:center;-moz-appearance:textfield;">
+    <input type="number" id="stretch-range-min" value="1150" step="any" style="width:44px;background:#1a1a2e;color:#889;border:1px solid #334;border-radius:3px;padding:2px 3px;font:10px monospace;text-align:center;-moz-appearance:textfield;">
+    <input type="range" id="octave-stretch-slider" min="1150" max="1250" value="1200" step="0.01" style="width:140px;">
+    <input type="number" id="stretch-range-max" value="1250" step="any" style="width:44px;background:#1a1a2e;color:#889;border:1px solid #334;border-radius:3px;padding:2px 3px;font:10px monospace;text-align:center;-moz-appearance:textfield;">
     <label id="stretch-reset" style="color:#556;cursor:pointer;font-size:10px;display:none;">reset</label>
   </div>
   <div class="ctrl-group">
     <label style="color:#e94560;cursor:pointer;" id="reset-zoom">[ Reset Zoom ]</label>
   </div>
   <div class="ctrl-group" style="margin-left:auto;gap:8px;display:flex;align-items:center;">
+    <label id="undo-btn" title="Undo (Ctrl+Z)" style="color:#556;cursor:default;font-size:16px;font-weight:700;user-select:none;pointer-events:none;">&#x21A9;</label>
+    <label id="redo-btn" title="Redo (Ctrl+Y)" style="color:#556;cursor:default;font-size:16px;font-weight:700;user-select:none;pointer-events:none;">&#x21AA;</label>
     <label id="share-btn" style="color:#f5a623;cursor:pointer;font-size:11px;font-weight:600;border:1px solid #f5a623;border-radius:4px;padding:2px 8px;display:none;white-space:nowrap;">Share Scale</label>
     <label id="help-btn" style="color:#6eb5ff;cursor:pointer;font-size:15px;font-weight:700;border:1px solid #6eb5ff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;">?</label>
   </div>
@@ -1093,6 +1095,116 @@ const S = {
   _circleRadius: null,
   circleResizing: false, circleResizeStartX: 0, circleResizeStartY: 0, circleResizeStartR: 0,
 };
+
+const _undoStack = [];
+const _redoStack = [];
+const _UNDO_MAX = 50;
+let _undoRestoring = false;
+
+function _snapState() {
+  return {
+    selectedKey: S.selected ? S.selected.key : null,
+    selectedLow: S.selected ? S.selected.lowCents : null,
+    selectedHigh: S.selected ? S.selected.highCents : null,
+    generatorCents: S.generatorCents,
+    modeRotation: S.modeRotation,
+    octaveStretch: S.octaveStretch,
+    period: S.period,
+  };
+}
+
+function _snapsEqual(a, b) {
+  return a.selectedKey === b.selectedKey &&
+    a.selectedLow === b.selectedLow &&
+    a.selectedHigh === b.selectedHigh &&
+    a.generatorCents === b.generatorCents &&
+    a.modeRotation === b.modeRotation &&
+    a.octaveStretch === b.octaveStretch &&
+    a.period === b.period;
+}
+
+function _isDragging() {
+  return S.dragging || S.genDragging || S.sliderDragging || S.sizeSbDragging || S._rulerDragging || S.circleResizing || S._stretchDragging;
+}
+
+function pushUndo() {
+  if (_undoRestoring || _isDragging()) return;
+  const snap = _snapState();
+  if (_undoStack.length && _snapsEqual(_undoStack[_undoStack.length - 1], snap)) return;
+  _undoStack.push(snap);
+  if (_undoStack.length > _UNDO_MAX) _undoStack.shift();
+  _redoStack.length = 0;
+  _updateUndoButtons();
+}
+
+function _restoreSnap(snap) {
+  _undoRestoring = true;
+  if (snap.period !== S.period) {
+    const periodSelect = document.getElementById('period-select');
+    const opt = Array.from(periodSelect.options).find(o => parseFloat(o.value) === snap.period);
+    if (opt) {
+      periodSelect.value = opt.value;
+      S.period = snap.period;
+      S.viewLimit = parseFloat(opt.dataset.limit);
+      S.viewMin = 0;
+      S.viewMax = S.viewLimit;
+      recalc();
+    }
+  }
+  if (snap.selectedKey) {
+    S.selected = S.regions.find(r =>
+      r.key === snap.selectedKey &&
+      Math.abs(r.lowCents - snap.selectedLow) < 0.01 &&
+      Math.abs(r.highCents - snap.selectedHigh) < 0.01
+    ) || null;
+  } else {
+    S.selected = null;
+  }
+  S.generatorCents = snap.generatorCents;
+  S.modeRotation = snap.modeRotation;
+  S.octaveStretch = snap.octaveStretch;
+  const absVal = 1200 + S.octaveStretch;
+  document.getElementById('octave-stretch').value = absVal;
+  const slider = document.getElementById('octave-stretch-slider');
+  slider.value = Math.max(+slider.min, Math.min(+slider.max, absVal));
+  document.getElementById('stretch-reset').style.display = S.octaveStretch !== 0 ? '' : 'none';
+  S._harmonicRatios = null;
+  S._edoTableKey = null;
+  S._rulerBuiltKey = null;
+  updatePanel();
+  render();
+  _undoRestoring = false;
+}
+
+function performUndo() {
+  if (_undoStack.length < 2) return;
+  const current = _undoStack.pop();
+  _redoStack.push(current);
+  _restoreSnap(_undoStack[_undoStack.length - 1]);
+  _updateUndoButtons();
+}
+
+function performRedo() {
+  if (!_redoStack.length) return;
+  const snap = _redoStack.pop();
+  _undoStack.push(snap);
+  _restoreSnap(snap);
+  _updateUndoButtons();
+}
+
+function _updateUndoButtons() {
+  const undoBtn = document.getElementById('undo-btn');
+  const redoBtn = document.getElementById('redo-btn');
+  if (!undoBtn) return;
+  const canUndo = _undoStack.length >= 2;
+  const canRedo = _redoStack.length > 0;
+  undoBtn.style.color = canUndo ? '#6eb5ff' : '#556';
+  undoBtn.style.cursor = canUndo ? 'pointer' : 'default';
+  undoBtn.style.pointerEvents = canUndo ? 'auto' : 'none';
+  redoBtn.style.color = canRedo ? '#6eb5ff' : '#556';
+  redoBtn.style.cursor = canRedo ? 'pointer' : 'default';
+  redoBtn.style.pointerEvents = canRedo ? 'auto' : 'none';
+}
 
 function recalc() {
   const oldSel = S.selected;
@@ -3024,6 +3136,21 @@ function centsToFreq(cents) {
 }
 
 
+const ADSR_RANGES = { attack: [0.005, 2], decay: [0.01, 2], release: [0.05, 8] };
+function adsrToSlider(param, val) {
+  const [lo, hi] = ADSR_RANGES[param];
+  return Math.log(val / lo) / Math.log(hi / lo);
+}
+function adsrFromSlider(param, t) {
+  const [lo, hi] = ADSR_RANGES[param];
+  return lo * Math.pow(hi / lo, t);
+}
+function adsrLabel(param, val) {
+  if (param === 'sustain') return (val * 100).toFixed(0) + '%';
+  if (param === 'release') return val.toFixed(2) + 's';
+  return val >= 1 ? val.toFixed(2) + 's' : (val * 1000).toFixed(0) + 'ms';
+}
+
 function renderPlaybackControls() {
   const el = document.getElementById('synth-body');
   if (!el) return;
@@ -3045,10 +3172,10 @@ function renderPlaybackControls() {
   h += '<div class="synth-sliders-left">';
   h += `<div class="octave-row"><label>Oct</label><input type="range" class="octave-slider" min="-2" max="2" step="1" value="${SYNTH.octaveShift || 0}"><span class="octave-val">${SYNTH.octaveShift > 0 ? '+' : ''}${SYNTH.octaveShift || 0}</span></div>`;
   h += '<div class="adsr-group">';
-  h += `<div class="adsr-row"><label>A</label><input type="range" class="adsr-slider" data-param="attack" min="0.005" max="2" step="0.005" value="${SYNTH.attack}"><span class="adsr-val">${SYNTH.attack >= 1 ? SYNTH.attack.toFixed(1) : (SYNTH.attack * 1000).toFixed(0) + 'ms'}</span></div>`;
-  h += `<div class="adsr-row"><label>D</label><input type="range" class="adsr-slider" data-param="decay" min="0.01" max="2" step="0.01" value="${SYNTH.decay}"><span class="adsr-val">${SYNTH.decay >= 1 ? SYNTH.decay.toFixed(1) : (SYNTH.decay * 1000).toFixed(0) + 'ms'}</span></div>`;
-  h += `<div class="adsr-row"><label>S</label><input type="range" class="adsr-slider" data-param="sustain" min="0" max="1" step="0.01" value="${SYNTH.sustain}"><span class="adsr-val">${(SYNTH.sustain * 100).toFixed(0)}%</span></div>`;
-  h += `<div class="adsr-row"><label>R</label><input type="range" class="adsr-slider" data-param="release" min="0.05" max="8" step="0.05" value="${SYNTH.release}"><span class="adsr-val">${SYNTH.release.toFixed(1)}s</span></div>`;
+  h += `<div class="adsr-row"><label>A</label><input type="range" class="adsr-slider" data-param="attack" min="0" max="1" step="0.002" value="${adsrToSlider('attack', SYNTH.attack)}"><span class="adsr-val">${adsrLabel('attack', SYNTH.attack)}</span></div>`;
+  h += `<div class="adsr-row"><label>D</label><input type="range" class="adsr-slider" data-param="decay" min="0" max="1" step="0.002" value="${adsrToSlider('decay', SYNTH.decay)}"><span class="adsr-val">${adsrLabel('decay', SYNTH.decay)}</span></div>`;
+  h += `<div class="adsr-row"><label>S</label><input type="range" class="adsr-slider" data-param="sustain" min="0" max="1" step="0.01" value="${SYNTH.sustain}"><span class="adsr-val">${adsrLabel('sustain', SYNTH.sustain)}</span></div>`;
+  h += `<div class="adsr-row"><label>R</label><input type="range" class="adsr-slider" data-param="release" min="0" max="1" step="0.002" value="${adsrToSlider('release', SYNTH.release)}"><span class="adsr-val">${adsrLabel('release', SYNTH.release)}</span></div>`;
   h += '</div>';
   h += '</div>';
   h += '<div class="synth-kbd-btns">';
@@ -3103,12 +3230,10 @@ function renderPlaybackControls() {
   el.querySelectorAll('.adsr-slider').forEach(slider => {
     slider.addEventListener('input', e => {
       const param = e.target.dataset.param;
-      SYNTH[param] = +e.target.value;
-      const val = SYNTH[param];
+      const raw = +e.target.value;
+      SYNTH[param] = param === 'sustain' ? raw : adsrFromSlider(param, raw);
       const display = e.target.closest('.adsr-row').querySelector('.adsr-val');
-      if (param === 'sustain') display.textContent = (val * 100).toFixed(0) + '%';
-      else if (param === 'release') display.textContent = val.toFixed(1) + 's';
-      else display.textContent = val >= 1 ? val.toFixed(1) + 's' : (val * 1000).toFixed(0) + 'ms';
+      display.textContent = adsrLabel(param, SYNTH[param]);
       saveSynthSettings();
     });
   });
@@ -3652,6 +3777,7 @@ function positionPanel() {
 }
 
 function updatePanel() {
+  pushUndo();
   updateShareButton();
   updateHeldNotes();
   const panel = document.getElementById('selected-panel');
@@ -3979,9 +4105,8 @@ function renderEDOGrid() {
   const genRatioSpan = genRuler && genRuler.querySelector('.degree-ratio');
   if (genRatioSpan) {
     let closest = null, closestDist = Infinity;
-    const stretchedGen = stretchCents(genCents);
     for (const r of harmonics) {
-      const d = Math.abs(r.cents - stretchedGen);
+      const d = Math.abs(r.cents - genCents);
       if (d < closestDist) { closestDist = d; closest = r; }
     }
     if (closest && closestDist < 15) {
@@ -3992,7 +4117,7 @@ function renderEDOGrid() {
     }
   }
   const genCanvas = genRuler && genRuler.querySelector('.ruler-canvas');
-  if (genCanvas) drawRulerCanvas(genCanvas, stretchCents(genCents), harmonics, 30, true);
+  if (genCanvas) drawRulerCanvas(genCanvas, genCents, harmonics, 30, true);
 
   // Draw interval rulers
   const scrollContainer = edoEl.querySelector('.edo-rulers-scroll');
@@ -4006,9 +4131,8 @@ function renderEDOGrid() {
       const ratioSpan = rulerEl.querySelector('.degree-ratio');
       if (ratioSpan) {
         let closest = null, closestDist = Infinity;
-        const stretchedInterval = stretchCents(intervals[i]);
         for (const r of harmonics) {
-          const d = Math.abs(r.cents - stretchedInterval);
+          const d = Math.abs(r.cents - intervals[i]);
           if (d < closestDist) { closestDist = d; closest = r; }
         }
         if (closest && closestDist < 15) {
@@ -4020,7 +4144,7 @@ function renderEDOGrid() {
       }
 
       const canvas = rulerEl.querySelector('.ruler-canvas');
-      if (canvas) drawRulerCanvas(canvas, stretchCents(intervals[i]), harmonics, 30, false);
+      if (canvas) drawRulerCanvas(canvas, intervals[i], harmonics, 30, false);
     }
   }
 }
@@ -4107,6 +4231,7 @@ function setupRulerGlobalHandlers() {
     S._rulerDragging = false;
     const track = document.querySelector('.gen-track');
     if (track) track.style.cursor = 'grab';
+    pushUndo();
   });
 }
 
@@ -4409,12 +4534,14 @@ function setup() {
       S.circleResizing = false;
       cvs.style.cursor = '';
       render();
+      pushUndo();
       return;
     }
     if (S.sizeSbDragging) {
       S.sizeSbDragging = false;
       cvs.style.cursor = '';
       render();
+      pushUndo();
       return;
     }
     if (S.sliderDragging) {
@@ -4423,6 +4550,7 @@ function setup() {
       clearTimeout(_chordTrailingTimer);
       _chordLastRenderTime = 0;
       renderChordsPanel();
+      pushUndo();
       return;
     }
     if (S.genDragging) {
@@ -4431,6 +4559,7 @@ function setup() {
       clearTimeout(_chordTrailingTimer);
       _chordLastRenderTime = 0;
       renderChordsPanel();
+      pushUndo();
       return;
     }
     if (S.dragging) {
@@ -4820,6 +4949,11 @@ function setup() {
   document.getElementById('octave-stretch').addEventListener('input', e => {
     applyStretch(+e.target.value);
   });
+  stretchSlider.addEventListener('mousedown', () => { S._stretchDragging = true; });
+  stretchSlider.addEventListener('touchstart', () => { S._stretchDragging = true; });
+  function endStretchDrag() { if (S._stretchDragging) { S._stretchDragging = false; pushUndo(); } }
+  window.addEventListener('mouseup', endStretchDrag);
+  window.addEventListener('touchend', endStretchDrag);
   stretchSlider.addEventListener('input', e => {
     applyStretch(+e.target.value);
   });
@@ -4839,6 +4973,19 @@ function setup() {
   });
   document.getElementById('stretch-reset').addEventListener('click', () => {
     applyStretch(1200);
+  });
+  document.getElementById('undo-btn').addEventListener('click', performUndo);
+  document.getElementById('redo-btn').addEventListener('click', performRedo);
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    const k = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      performUndo();
+    } else if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) {
+      e.preventDefault();
+      performRedo();
+    }
   });
   const helpModal = document.getElementById('help-modal');
   document.getElementById('help-btn').addEventListener('click', () => {
@@ -4915,7 +5062,7 @@ function restoreFromURL() {
   const mosKey = params.get('mos');
   const gen = params.has('gen') ? parseFloat(params.get('gen')) : null;
   const mode = params.has('mode') ? parseInt(params.get('mode'), 10) : 0;
-  const stretch = params.has('stretch') ? parseInt(params.get('stretch'), 10) : 0;
+  const stretch = params.has('stretch') ? parseFloat(params.get('stretch')) : 0;
 
   if (isNaN(period) || period <= 0) return;
 
