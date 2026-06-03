@@ -1610,7 +1610,7 @@ function drawGeneratorMarker(ctx, W, H) {
       ctx.fillStyle = '#e94560';
       ctx.font = 'bold 10px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(S.generatorCents.toFixed(1) + '¢', x, 36);
+      ctx.fillText(stretchCents(S.generatorCents).toFixed(1) + '¢', x, 36);
       labelDrawn = true;
     }
   }
@@ -1936,7 +1936,7 @@ function drawMOSCircle(ctx, W, H) {
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(step.toFixed(0) + '¢', lx, ly);
+    ctx.fillText(stretchCents(step).toFixed(0) + '¢', lx, ly);
   }
 
   // Period boundary markers on the circle
@@ -2044,7 +2044,7 @@ function drawMOSCircle(ctx, W, H) {
       ctx.font = '11px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(pitches[i].toFixed(0), ox, oy);
+      ctx.fillText(stretchCents(pitches[i]).toFixed(0), ox, oy);
     }
   }
 
@@ -3941,7 +3941,7 @@ function renderEDOGrid() {
     setupRulerInteraction(edoEl);
   }
 
-  edoEl.querySelector('.edo-ruler-cents').textContent = genCents.toFixed(2) + '¢';
+  edoEl.querySelector('.edo-ruler-cents').textContent = stretchCents(genCents).toFixed(2) + '¢';
   edoEl.querySelector('.edo-ruler-hardness').textContent = hardnessStr;
 
   const tempsSpan = edoEl.querySelector('.edo-ruler-temps');
@@ -3964,8 +3964,9 @@ function renderEDOGrid() {
   const genRatioSpan = genRuler && genRuler.querySelector('.degree-ratio');
   if (genRatioSpan) {
     let closest = null, closestDist = Infinity;
+    const stretchedGen = stretchCents(genCents);
     for (const r of harmonics) {
-      const d = Math.abs(r.cents - genCents);
+      const d = Math.abs(r.cents - stretchedGen);
       if (d < closestDist) { closestDist = d; closest = r; }
     }
     if (closest && closestDist < 15) {
@@ -3976,7 +3977,7 @@ function renderEDOGrid() {
     }
   }
   const genCanvas = genRuler && genRuler.querySelector('.ruler-canvas');
-  if (genCanvas) drawRulerCanvas(genCanvas, genCents, harmonics, 30, true);
+  if (genCanvas) drawRulerCanvas(genCanvas, stretchCents(genCents), harmonics, 30, true);
 
   // Draw interval rulers
   const scrollContainer = edoEl.querySelector('.edo-rulers-scroll');
@@ -3985,13 +3986,14 @@ function renderEDOGrid() {
       const rulerEl = scrollContainer.querySelector(`[data-ruler="${i}"]`);
       if (!rulerEl) continue;
       const centsLabel = rulerEl.querySelector('.degree-cents');
-      if (centsLabel) centsLabel.textContent = intervals[i].toFixed(1) + '¢';
+      if (centsLabel) centsLabel.textContent = stretchCents(intervals[i]).toFixed(1) + '¢';
 
       const ratioSpan = rulerEl.querySelector('.degree-ratio');
       if (ratioSpan) {
         let closest = null, closestDist = Infinity;
+        const stretchedInterval = stretchCents(intervals[i]);
         for (const r of harmonics) {
-          const d = Math.abs(r.cents - intervals[i]);
+          const d = Math.abs(r.cents - stretchedInterval);
           if (d < closestDist) { closestDist = d; closest = r; }
         }
         if (closest && closestDist < 15) {
@@ -4003,7 +4005,7 @@ function renderEDOGrid() {
       }
 
       const canvas = rulerEl.querySelector('.ruler-canvas');
-      if (canvas) drawRulerCanvas(canvas, intervals[i], harmonics, 30, false);
+      if (canvas) drawRulerCanvas(canvas, stretchCents(intervals[i]), harmonics, 30, false);
     }
   }
 }
