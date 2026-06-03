@@ -4692,6 +4692,13 @@ function setup() {
     }
   });
 
+  document.addEventListener('mouseup', e => {
+    if (e.target.type === 'range') e.target.blur();
+  });
+  document.addEventListener('change', e => {
+    if (e.target.type === 'number') e.target.blur();
+  });
+
   // Controls
   document.getElementById('min-size').addEventListener('input', e => {
     S.minSize = +e.target.value;
