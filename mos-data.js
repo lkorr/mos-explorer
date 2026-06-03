@@ -44,7 +44,7 @@ const TEMPERAMENTS = [
   { name: 'Mavila', mos: ['2L_5s', '7L_2s', '7L_9s'], genRange: [666.667, 685.7],
     commas: ['135/128'], commaNames: ['major chroma'],
     wikiUrl: 'https://en.xen.wiki/w/Mavila',
-    description: 'Anti-diatonic. The bees knees. Very flat fifths, four fifths = 6/5 instead of 5/4. <br> <br> In this range, major chords invert into minor chords and vice versa. Diminished chords become augmented chords. Timbre matters a lot here to compensate and navigate around the fact that your 3/2 is so flat. <br> Approximates some Gamelan tunings as well.' },
+    description: 'Anti-diatonic. The bees knees. Very flat fifths, four fifths = 6/5 instead of 5/4. <br> <br> In this range, major chords invert into minor chords and vice versa. Diminished chords become augmented chords. Timbre matters a lot here to compensate and navigate around the fact that your 3/2 is so flat. <br> Approximates some Gamelan tunings as well. <br> <br> Note: sharp of 680¢, six flat fifths produce a more in-tune 4/3 than a single fourth.' },
 
   //{ name: 'Mabila', mos: ['2L_5s', '2L_7s', '9L_7s'], genRange: [666.667, 670.0],
   //  commas: ['268435456/263671875'], commaNames: ['mabila comma'],
@@ -349,12 +349,17 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Whitewood',
     description: '1/7-octave period. Tempers out the apotome 2187/2048. 14edo and 21edo are core tunings. Dual of blackwood — divides the octave into 7 equal parts instead of 5.' },
 
-  { name: 'Augmented', mos: ['1L_2s', '3L_1s'], genRange: [392.0, 400.0], period: 400,
+  { name: 'Augmented', mos: ['1L_2s', '3L_1s'], genRange: [100, 116], period: 400,
     commas: ['128/125'], commaNames: ['diesis'],
     wikiUrl: 'https://en.xen.wiki/w/Augmented_family',
     description: '1/3-octave period. Three 5/4 = octave. Major third generator ~400¢.' },
 
-  { name: 'Diminished', mos: ['1L_3s', '4L_1s'], genRange: [293.0, 300.0], period: 300,
+  { name: 'August', mos: ['1L_3s', '4L_1s'], genRange: [80, 100], period: 400,
+    commas: ['128/125', '225/224'], commaNames: ['diesis', 'septimal kleisma'],
+    wikiUrl: 'https://en.xen.wiki/w/Augmented_family#August',
+    description: '1/3-octave period. Extends augmented with 7-limit by tempering out 225/224. Generator is a sharpened chromatic semitone. 15edo is the simplest tuning.' },
+
+  { name: 'Diminished', mos: ['1L_3s', '4L_1s'], genRange: [80.0, 100.0], period: 300,
     commas: ['648/625'], commaNames: ['major diesis'],
     wikiUrl: 'https://en.xen.wiki/w/Diminished_family',
     description: '1/4-octave period. Four 6/5 = octave. Minor third generator ~300¢.' },
@@ -400,7 +405,7 @@ const TEMP_COLORS = {
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a', 'Orgone': '#4a9a6a',
   'Bohpier': '#a0c060', 'Nusecond': '#6abf3a', 'Hemikleismic': '#58cf20', 'Porcupine': '#7fff00', 'Superpine': '#5aab2e', 'Ammonite': '#ebd470', 'Novisept': '#b8984c', 'Sensamagic': '#c9a84c', 'Sensi': '#e6c85e', 'Würschmidt': '#d4a030', 'Magus': '#c4922a',
   'Neominor': '#7fbfdf', 'Lovecraft': '#6a9fbf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
-  'Augmented': '#87ceeb', 'Diminished': '#cd5c5c',
+  'Augmented': '#87ceeb', 'August': '#6bb8d8', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
   'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Neptune': '#4169e1', 'Tritonic': '#c4b896', 'Alphatricot': '#d4aa70', 'Buzzard': '#c89e64', 'Thuja': '#b8944e', 'Kleismic': '#b0864c',
   'Aurora': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Hamity': '#d4724a', 'Bug': '#cd853f',
