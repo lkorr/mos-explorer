@@ -487,6 +487,7 @@ canvas { display: block; width: 100%; height: 100%; }
   flex-shrink: 0;
   flex-wrap: wrap;
   position: relative;
+  padding-right: 24px;
 }
 .ruler-sort-btn {
   font-size: 10px;
@@ -508,6 +509,35 @@ canvas { display: block; width: 100%; height: 100%; }
 .ruler-sort-btn .sort-active {
   color: #6eb5ff;
   font-weight: 700;
+}
+.gen-seq-btn {
+  margin-left: 0;
+}
+.gen-seq-btn.seq-active {
+  border-color: #50c878;
+  background: #1a3028;
+}
+.gen-seq-btn.seq-active .sort-active {
+  color: #50c878;
+}
+.gen-seq-display {
+  font-size: 11px;
+  color: #50c878;
+  padding: 2px 0 4px 0;
+  font-family: monospace;
+}
+.edo-lock-display {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6eb5ff;
+  font-family: monospace;
+}
+.interval-ruler.seq-degree {
+  border-left: 2px solid #50c878;
+}
+.interval-ruler.seq-constrained {
+  border-left: 2px solid #f5a623;
+  opacity: 0.7;
 }
 .edo-ruler-temps {
   position: absolute;
@@ -1001,6 +1031,33 @@ function buildMOSScale(genCents, n, period) {
   return { pitches, steps, L, s };
 }
 
+function buildGenSequenceScale(genSequence, n, period) {
+  period = period || S.period;
+  const k = genSequence.length;
+  const pitches = [0];
+  for (let i = 1; i < n; i++) {
+    let cum = 0;
+    for (let j = 0; j < i; j++) cum += genSequence[j % k];
+    pitches.push(((cum % period) + period) % period);
+  }
+  pitches.sort((a, b) => a - b);
+  const steps = [];
+  for (let i = 0; i < n; i++) {
+    const next = (i + 1) % n;
+    const diff = next === 0 ? period - pitches[n - 1] + pitches[0] : pitches[next] - pitches[i];
+    steps.push(diff);
+  }
+  const sorted = [...new Set(steps.map(x => Math.round(x * 100) / 100))].sort((a, b) => b - a);
+  const L = sorted[0] || 0;
+  const s = sorted.length > 1 ? sorted[sorted.length - 1] : L;
+  return { pitches, steps, L, s };
+}
+
+function buildCurrentScale(genCents, n, period) {
+  if (hasGenSequence()) return buildGenSequenceScale(S.genSequence, n, period);
+  return buildMOSScale(genCents, n, period);
+}
+
 function getGeneratorChain(genCents, n, period) {
   period = period || S.period;
   const raw = [];
@@ -1094,6 +1151,34 @@ function resetModmos() {
   S.modmos = [];
 }
 
+function hasGenSequence() {
+  return S.genSequence !== null && S.genSequence.length > 0;
+}
+
+function resetGenSequence() {
+  S.genSequence = null;
+  S.genSequenceLength = 0;
+  S.genSequenceMode = false;
+}
+
+function initGenSequence(k, genCents) {
+  S.genSequence = new Array(k).fill(genCents);
+  S.genSequenceLength = k;
+  S.genSequenceMode = false;
+}
+
+function updateGenSequenceEntry(idx, newCents) {
+  if (!S.genSequence || S.genSequence.length < 2) return;
+  const k = S.genSequence.length;
+  const genCents = S.generatorCents !== null ? S.generatorCents : 600;
+  const totalRequired = k * genCents;
+  S.genSequence[idx] = newCents;
+  const constrainIdx = idx !== k - 1 ? k - 1 : k - 2;
+  const sumOthers = S.genSequence.reduce((acc, v, i) => i === constrainIdx ? acc : acc + v, 0);
+  const computed = totalRequired - sumOthers;
+  S.genSequence[constrainIdx] = Math.max(1, computed);
+}
+
 function getEqualizedEnd(region) {
   const lo = region.lowCents + 0.01;
   const hi = region.highCents - 0.01;
@@ -1128,6 +1213,10 @@ const S = {
   circleResizing: false, circleResizeStartX: 0, circleResizeStartY: 0, circleResizeStartR: 0,
   _modmosResetBtn: null,
   _modmosDrag: null,
+  genSequence: null,
+  genSequenceLength: 0,
+  genSequenceMode: false,
+  _genSeqDrag: null,
 };
 
 const _undoStack = [];
@@ -1145,6 +1234,8 @@ function _snapState() {
     octaveStretch: S.octaveStretch,
     period: S.period,
     modmos: S.modmos.slice(),
+    genSequence: S.genSequence ? S.genSequence.slice() : null,
+    genSequenceLength: S.genSequenceLength,
   };
 }
 
@@ -1157,11 +1248,17 @@ function _snapsEqual(a, b) {
     a.octaveStretch === b.octaveStretch &&
     a.period === b.period &&
     (a.modmos || []).length === (b.modmos || []).length &&
-    (a.modmos || []).every((v, i) => Math.abs(v - ((b.modmos || [])[i] || 0)) < 0.01);
+    (a.modmos || []).every((v, i) => Math.abs(v - ((b.modmos || [])[i] || 0)) < 0.01) &&
+    a.genSequenceLength === b.genSequenceLength &&
+    (a.genSequence === null) === (b.genSequence === null) &&
+    (a.genSequence === null || (
+      a.genSequence.length === b.genSequence.length &&
+      a.genSequence.every((v, i) => Math.abs(v - b.genSequence[i]) < 0.01)
+    ));
 }
 
 function _isDragging() {
-  return S.dragging || S.genDragging || S.sliderDragging || S.sizeSbDragging || S._rulerDragging || S.circleResizing || S._stretchDragging || S._modmosDrag;
+  return S.dragging || S.genDragging || S.sliderDragging || S.sizeSbDragging || S._rulerDragging || S.circleResizing || S._stretchDragging || S._modmosDrag || S._genSeqDrag;
 }
 
 function pushUndo() {
@@ -1200,6 +1297,8 @@ function _restoreSnap(snap) {
   S.generatorCents = snap.generatorCents;
   S.modeRotation = snap.modeRotation;
   S.modmos = snap.modmos ? snap.modmos.slice() : [];
+  S.genSequence = snap.genSequence ? snap.genSequence.slice() : null;
+  S.genSequenceLength = snap.genSequenceLength || 0;
   S.octaveStretch = snap.octaveStretch;
   const absVal = 1200 + S.octaveStretch;
   document.getElementById('octave-stretch').value = absVal;
@@ -1346,7 +1445,7 @@ function render() {
   if (S.selected) {
     drawMOSCircle(ctx, W, H);
     positionPanel();
-    if (!S._modmosDrag) renderEDOGrid();
+    if (!S._modmosDrag && !S._genSeqDrag) renderEDOGrid();
   }
   // drawSizeScrollbar(ctx, W, H);
 
@@ -1847,6 +1946,7 @@ function drawMOSCircle(ctx, W, H) {
     ];
     if (circleModeLabel) parts.push({ text: '  ' + circleModeLabel, color: '#6eb5ff' });
     if (hasModmos()) parts.push({ text: '  MODMOS', color: '#50c878' });
+    if (hasGenSequence()) parts.push({ text: '  GenSeq', color: '#50c878' });
 
     let totalW = 0;
     for (const p of parts) totalW += ctx.measureText(p.text).width;
@@ -2047,7 +2147,7 @@ function drawMOSCircle(ctx, W, H) {
     return;
   }
 
-  const baseScale = buildMOSScale(gen, n, P);
+  const baseScale = buildCurrentScale(gen, n, P);
   const rotated = rotateMOSScale(baseScale, S.modeRotation, P);
   const scale = hasModmos() ? applyMODMOS(rotated, S.modmos, P) : rotated;
   const degreeAlts = scale.alts || new Array(n).fill(0);
@@ -2826,7 +2926,7 @@ function killAllNotes() {
 function buildFullScale() {
   const n = S.selected.perPeriodSize;
   const reps = getPeriodRepetitions();
-  const rotated = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
+  const rotated = rotateMOSScale(buildCurrentScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
   const base = hasModmos() ? applyMODMOS(rotated, S.modmos, S.period) : rotated;
   if (reps <= 1) return { scale: base, size: n, octave: S.period };
   const pitches = [];
@@ -4191,7 +4291,8 @@ function updatePanel() {
   // Left info section
   const wikiUrl = `https://en.xen.wiki/w/${key}`;
   const modmosTag = hasModmos() ? ' <span style="color:#50c878">(MODMOS)</span>' : '';
-  let h = `<div class="sp-title"><a href="${wikiUrl}" target="_blank" style="color:#e94560;text-decoration:none">${label}${fname ? ' — '+fname : ''}</a>${modmosTag}</div>`;
+  const genSeqTag = hasGenSequence() ? ' <span style="color:#50c878">(GenSeq)</span>' : '';
+  let h = `<div class="sp-title"><a href="${wikiUrl}" target="_blank" style="color:#e94560;text-decoration:none">${label}${fname ? ' — '+fname : ''}</a>${modmosTag}${genSeqTag}</div>`;
   const pReps = getPeriodRepetitions();
   if (pReps > 1) {
     const ppNL = nL / pReps, ppNS = nS / pReps;
@@ -4330,6 +4431,37 @@ function drawRulerCanvas(canvas, centerCents, harmonics, pxPerCent, isGen) {
     ctx.stroke();
   }
 
+  // EDO step markers
+  if (S.edos && S.edos.length) {
+    const edoVisible = S.edos.filter(g =>
+      g.cents >= viewLow - 1 && g.cents <= viewHigh + 1
+    );
+    const edoPlaced = [];
+    const edoMinPx = 32;
+    for (const g of edoVisible) {
+      const x = Math.round((g.cents - viewLow) * pxPerCent);
+      if (edoPlaced.some(px => Math.abs(x - px) < edoMinPx)) continue;
+      edoPlaced.push(x);
+      const dist = Math.abs(g.cents - centerCents);
+      const isClose = dist < 0.5;
+      ctx.strokeStyle = isClose ? '#6eb5ff88' : '#6eb5ff22';
+      ctx.lineWidth = isClose ? 1.5 : 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, ht * 0.65);
+      ctx.lineTo(x + 0.5, ht * 0.85);
+      ctx.stroke();
+      const octaveRatio = 1200 / S.period;
+      const octEdo = g.edo * octaveRatio;
+      const isCleanOctEdo = Math.abs(octEdo - Math.round(octEdo)) < 0.001;
+      const dispEdo = isCleanOctEdo ? Math.round(octEdo) : g.edo;
+      const dispStep = isCleanOctEdo ? Math.round(g.cents * dispEdo / 1200) : g.step;
+      ctx.fillStyle = isClose ? '#6eb5ff' : '#6eb5ff55';
+      ctx.font = '8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${dispStep}\\${dispEdo}`, x, ht * 0.97);
+    }
+  }
+
   // Harmonic ratio markers
   const visible = harmonics.filter(r => r.cents >= viewLow - 2 && r.cents <= viewHigh + 2);
   visible.sort((a, b) => (a.n * a.d) - (b.n * b.d));
@@ -4389,7 +4521,9 @@ function renderEDOGrid() {
   const harmonics = buildHarmonicRatios();
   const reps = getPeriodRepetitions();
 
-  const baseScale = buildMOSScale(genCents, sel.perPeriodSize, S.period);
+  if (hasGenSequence() && S.genSequenceLength >= sel.perPeriodSize) resetGenSequence();
+
+  const baseScale = buildCurrentScale(genCents, sel.perPeriodSize, S.period);
   const rotatedScale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
   const scale = hasModmos() ? applyMODMOS(rotatedScale, S.modmos, S.period) : rotatedScale;
 
@@ -4403,12 +4537,13 @@ function renderEDOGrid() {
     intervals = scale.pitches.slice(1);
   }
 
+  const genSeqKey = hasGenSequence() ? '|gs:' + S.genSequence.map(v => v.toFixed(2)).join(',') : '';
   const modmosKey = hasModmos() ? '|' + S.modmos.map(v => Math.round(v * 10) / 10).join(',') : '';
-  const rulerKey = sel.key + '|' + intervals.length + '|' + S.rulerSort + '|' + reps + (S.rulerSort === 'generator' ? '|' + (S.modeRotation || 0) : '') + modmosKey;
+  const rulerKey = sel.key + '|' + intervals.length + '|' + S.rulerSort + '|' + reps + (S.rulerSort === 'generator' ? '|' + (S.modeRotation || 0) : '') + modmosKey + genSeqKey;
   if (S._rulerBuiltKey !== rulerKey) {
     const ppN = sel.perPeriodSize;
     const n = reps > 1 ? ppN * reps : intervals.length + 1;
-    const byGen = S.rulerSort === 'generator' && reps <= 1 && !hasModmos();
+    const byGen = (S.rulerSort === 'generator' || hasGenSequence()) && reps <= 1 && !hasModmos();
 
     const genDistMap = {};
     let sortOrder;
@@ -4439,15 +4574,31 @@ function renderEDOGrid() {
     let h = '<div class="edo-ruler-header">';
     h += '<span class="edo-ruler-cents"></span>';
     h += '<span class="edo-ruler-hardness"></span>';
+    h += '<span class="edo-lock-display"></span>';
     if (reps <= 1) {
       h += `<button class="ruler-sort-btn" onclick="toggleRulerSort()" title="Toggle ruler ordering">`;
       h += byGen
         ? `<span class="sort-active">gen stack</span> / degree`
         : `gen stack / <span class="sort-active">degree</span>`;
       h += `</button>`;
+      const seqActive = hasGenSequence();
+      const seqSelecting = S.genSequenceMode;
+      h += `<button class="ruler-sort-btn gen-seq-btn${seqActive ? ' seq-active' : ''}" `
+         + `onclick="toggleGenSequence()" `
+         + `title="${seqSelecting ? 'Click a degree to set sequence length' : seqActive ? 'Generator sequence active — click to disable' : 'Enable generator sequence mode'}">`;
+      h += seqActive
+        ? `<span class="sort-active">gen seq</span>`
+        : seqSelecting
+          ? `<span style="color:#f5a623">click degree...</span>`
+          : `gen sequence`;
+      h += `</button>`;
     }
     h += '<span class="edo-ruler-temps"></span>';
     h += '</div>';
+
+    if (hasGenSequence()) {
+      h += `<div class="gen-seq-display">gen sequence: (${S.genSequence.map(v => stretchCents(v).toFixed(1)).join(', ')})</div>`;
+    }
 
     h += '<div class="interval-ruler" data-ruler="gen">';
     h += '<div class="interval-ruler-label"><span class="degree-name">Generator</span> <span class="degree-ratio"></span></div>';
@@ -4459,7 +4610,12 @@ function renderEDOGrid() {
     h += '<div class="edo-rulers-scroll">';
     for (const i of sortOrder) {
       const genDist = genDistMap[i];
-      h += `<div class="interval-ruler" data-ruler="${i}">`;
+      const isSeqDeg = hasGenSequence() && genDist !== undefined && genDist >= 1 && genDist < S.genSequenceLength;
+      const isSeqAfter = hasGenSequence() && genDist !== undefined && genDist >= S.genSequenceLength;
+      let rulerCls = 'interval-ruler';
+      if (isSeqDeg) rulerCls += ' seq-degree';
+      else if (isSeqAfter) rulerCls += ' seq-constrained';
+      h += `<div class="${rulerCls}" data-ruler="${i}"${byGen && genDist !== undefined ? ` data-gen-dist="${genDist}"` : ''}>`;
       h += `<div class="interval-ruler-label"><span class="degree-name">Degree ${i + 1}</span>`;
       if (byGen) h += ` <span style="color:#f5a623;font-size:10px">(${genDist}g)</span>`;
       h += ` <span class="degree-cents"></span> <span class="degree-ratio"></span></div>`;
@@ -4540,6 +4696,31 @@ function renderEDOGrid() {
       if (canvas) drawRulerCanvas(canvas, intervals[i], harmonics, 30, false);
     }
   }
+  updateEdoLockDisplay(edoEl, intervals);
+}
+
+function updateEdoLockDisplay(edoEl, intervals) {
+  const lockEl = edoEl && edoEl.querySelector('.edo-lock-display');
+  if (!lockEl || !S.edos || !intervals.length) { if (lockEl) lockEl.textContent = ''; return; }
+  const allPitches = [0, ...intervals];
+  const octR = 1200 / S.period;
+  let bestEdo = null;
+  for (let edo = 2; edo <= S.maxEDO; edo++) {
+    const step = S.period / edo;
+    const allMatch = allPitches.every(p => {
+      const nearest = Math.round(p / step) * step;
+      return Math.abs(p - nearest) < 0.05;
+    });
+    if (allMatch) { bestEdo = edo; break; }
+  }
+  if (bestEdo) {
+    const octEdo = bestEdo * octR;
+    const isClean = Math.abs(octEdo - Math.round(octEdo)) < 0.001;
+    const dispEdo = isClean ? Math.round(octEdo) : bestEdo;
+    lockEl.textContent = dispEdo + 'edo';
+  } else {
+    lockEl.textContent = '';
+  }
 }
 
 function updateRulerIntervals() {
@@ -4549,7 +4730,7 @@ function updateRulerIntervals() {
   const genCents = S.generatorCents !== null ? S.generatorCents : (sel.lowCents + sel.highCents) / 2;
   const harmonics = buildHarmonicRatios();
   const reps = getPeriodRepetitions();
-  const baseScale = buildMOSScale(genCents, sel.perPeriodSize, S.period);
+  const baseScale = buildCurrentScale(genCents, sel.perPeriodSize, S.period);
   const rotatedScale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
   const scale = hasModmos() ? applyMODMOS(rotatedScale, S.modmos, S.period) : rotatedScale;
   let intervals;
@@ -4561,6 +4742,11 @@ function updateRulerIntervals() {
   } else {
     intervals = scale.pitches.slice(1);
   }
+  const seqDisplay = edoEl.querySelector('.gen-seq-display');
+  if (seqDisplay && hasGenSequence()) {
+    seqDisplay.textContent = 'gen sequence: (' + S.genSequence.map(v => stretchCents(v).toFixed(1)).join(', ') + ')';
+  }
+  updateEdoLockDisplay(edoEl, intervals);
   const scrollContainer = edoEl.querySelector('.edo-rulers-scroll');
   if (!scrollContainer) return;
   for (let i = 0; i < intervals.length; i++) {
@@ -4598,7 +4784,7 @@ function buildScaleWorkshopURL() {
   if (!S.selected || S.generatorCents === null) return null;
   const gen = S.generatorCents;
   const n = S.selected.perPeriodSize;
-  const baseScale = buildMOSScale(gen, n, S.period);
+  const baseScale = buildCurrentScale(gen, n, S.period);
   const rotated = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
   const scale = hasModmos() ? applyMODMOS(rotated, S.modmos, S.period) : rotated;
   const pitches = scale.pitches.slice(1);
@@ -4623,9 +4809,10 @@ function buildScaleWorkshopURL() {
     lines = centsLines;
     const mosLabel = mosDisplayLabel(S.selected.key);
     const modSuffix = isMod ? ' MODMOS' : '';
+    const seqSuffix = hasGenSequence() ? ' GenSeq' : '';
     const periodSuffix = !isStandardOctave ? `, ${effectivePeriod.toFixed(1)}¢ equave` : '';
     const stretchSuffix = S.octaveStretch !== 0 ? `, stretch ${S.octaveStretch > 0 ? '+' : ''}${S.octaveStretch}¢` : '';
-    scaleName = `${mosLabel}${modSuffix} (${stretchCents(gen).toFixed(2)}¢ gen${periodSuffix}${stretchSuffix})`;
+    scaleName = `${mosLabel}${modSuffix}${seqSuffix} (${stretchCents(gen).toFixed(2)}¢ gen${periodSuffix}${stretchSuffix})`;
   }
 
   const data = encodeURIComponent(lines.join('\n'));
@@ -4638,6 +4825,36 @@ function toggleRulerSort() {
   renderEDOGrid();
 }
 
+function toggleGenSequence() {
+  if (hasGenSequence()) {
+    resetGenSequence();
+    S._rulerBuiltKey = null;
+    updatePanel();
+    render();
+    return;
+  }
+  if (S.genSequenceMode) {
+    S.genSequenceMode = false;
+    S._rulerBuiltKey = null;
+    renderEDOGrid();
+    return;
+  }
+  S.genSequenceMode = true;
+  S.rulerSort = 'generator';
+  if (hasModmos()) resetModmos();
+  S._rulerBuiltKey = null;
+  renderEDOGrid();
+}
+
+function scaleGenSequence(newGenCents) {
+  if (!hasGenSequence() || !S.genSequence.length) return;
+  const oldTotal = S.genSequence.reduce((a, b) => a + b, 0);
+  if (oldTotal < 0.01) return;
+  const newTotal = S.genSequenceLength * newGenCents;
+  const ratio = newTotal / oldTotal;
+  S.genSequence = S.genSequence.map(v => v * ratio);
+}
+
 function rulerSetGenFromCents(cents) {
   const sel = S.selected;
   if (!sel) return;
@@ -4647,12 +4864,14 @@ function rulerSetGenFromCents(cents) {
     if (adj) {
       S.selected = adj;
       S.generatorCents = Math.max(adj.lowCents, Math.min(adj.highCents, clamped));
+      scaleGenSequence(S.generatorCents);
       updatePanel();
       render();
       return;
     }
   }
   S.generatorCents = Math.max(sel.lowCents, Math.min(sel.highCents, cents));
+  scaleGenSequence(S.generatorCents);
   updatePanel();
   render();
 }
@@ -4662,12 +4881,38 @@ function setupRulerGlobalHandlers() {
   S._rulerGlobalInit = true;
 
   document.addEventListener('mousemove', e => {
+    if (S._genSeqDrag && S.selected && hasGenSequence()) {
+      const d = S._genSeqDrag;
+      const dx = e.clientX - d.startX;
+      let newGenVal = d.startCents - dx / 30;
+      if (d.edoSnaps && d.edoSnaps.length) {
+        const degreeCents = d.priorSum + newGenVal;
+        let bestSnap = null, bestDist = 0.4;
+        for (const snap of d.edoSnaps) {
+          const dist = Math.abs(degreeCents - snap);
+          if (dist < bestDist) { bestDist = dist; bestSnap = snap; }
+        }
+        if (bestSnap !== null) newGenVal = bestSnap - d.priorSum;
+      }
+      updateGenSequenceEntry(d.genDistIdx, Math.max(1, newGenVal));
+      render();
+      updateRulerIntervals();
+      return;
+    }
     if (!S._rulerDragging || !S.selected) return;
     const dx = e.clientX - S._rulerDragStartX;
     rulerSetGenFromCents(S._rulerDragStartCents - dx / 30);
   });
 
   document.addEventListener('mouseup', () => {
+    if (S._genSeqDrag) {
+      S._genSeqDrag = null;
+      document.querySelectorAll('.seq-degree .interval-ruler-track').forEach(t => t.style.cursor = 'grab');
+      S._rulerBuiltKey = null;
+      renderEDOGrid();
+      pushUndo();
+      return;
+    }
     if (!S._rulerDragging) return;
     S._rulerDragging = false;
     const track = document.querySelector('.gen-track');
@@ -4701,12 +4946,24 @@ function setupRulerInteraction(edoEl) {
   const scrollArea = edoEl.querySelector('.edo-rulers-scroll');
   if (scrollArea) {
     scrollArea.addEventListener('click', e => {
-      const trackEl = e.target.closest('.interval-ruler-track');
-      if (!trackEl || !S.selected) return;
-      const ruler = trackEl.closest('.interval-ruler');
-      if (!ruler) return;
+      const ruler = e.target.closest('.interval-ruler');
+      if (!ruler || !S.selected) return;
       const idx = ruler.dataset.ruler;
       if (idx === 'gen') return;
+
+      if (S.genSequenceMode && S.generatorCents !== null) {
+        const genDist = parseInt(ruler.dataset.genDist, 10);
+        if (!genDist || genDist < 2) return;
+        pushUndo();
+        initGenSequence(genDist, S.generatorCents);
+        S._rulerBuiltKey = null;
+        updatePanel();
+        render();
+        return;
+      }
+
+      const trackEl = e.target.closest('.interval-ruler-track');
+      if (!trackEl) return;
       const centsEl = ruler.querySelector('.degree-cents');
       if (!centsEl) return;
       const cents = parseFloat(centsEl.textContent);
@@ -4771,6 +5028,50 @@ function setupRulerInteraction(edoEl) {
     const genCents = S.generatorCents !== null ? S.generatorCents : (S.selected.lowCents + S.selected.highCents) / 2;
     rulerSetGenFromCents(genCents + delta);
   }, { passive: false });
+
+  if (hasGenSequence() && scrollArea) {
+    const seqRulers = scrollArea.querySelectorAll('.interval-ruler.seq-degree');
+    seqRulers.forEach(ruler => {
+      const seqTrack = ruler.querySelector('.interval-ruler-track');
+      if (!seqTrack) return;
+      const genDist = parseInt(ruler.dataset.genDist, 10);
+      seqTrack.style.cursor = 'grab';
+      seqTrack.addEventListener('mousedown', e => {
+        if (!S.selected || !hasGenSequence()) return;
+        const seqEndRuler = scrollArea.querySelector(`.interval-ruler[data-gen-dist="${S.genSequenceLength}"]`);
+        const seqEndCentsEl = seqEndRuler && seqEndRuler.querySelector('.degree-cents');
+        const seqEndCents = seqEndCentsEl ? parseFloat(seqEndCentsEl.textContent) : null;
+        let edoSnaps = null;
+        if (seqEndCents !== null && S.edos) {
+          for (const g of S.edos) {
+            if (Math.abs(g.cents - seqEndCents) < 0.05) {
+              const baseEdo = g.edo;
+              edoSnaps = new Set();
+              for (const eg of S.edos) {
+                for (let mult = baseEdo; mult <= S.maxEDO; mult += baseEdo) {
+                  const steps = eg.cents * mult / S.period;
+                  if (Math.abs(steps - Math.round(steps)) < 0.001) { edoSnaps.add(eg.cents); break; }
+                }
+              }
+              edoSnaps = [...edoSnaps].sort((a, b) => a - b);
+              break;
+            }
+          }
+        }
+        let priorSum = 0;
+        for (let si = 0; si < genDist - 1; si++) priorSum += S.genSequence[si];
+        S._genSeqDrag = {
+          genDistIdx: genDist - 1,
+          startX: e.clientX,
+          startCents: S.genSequence[genDist - 1],
+          edoSnaps,
+          priorSum,
+        };
+        seqTrack.style.cursor = 'grabbing';
+        e.preventDefault();
+      });
+    });
+  }
 }
 
 // ================================================================
@@ -4867,6 +5168,7 @@ function setup() {
       const n = S.selected.perPeriodSize;
       const origDeg = dot.origDeg !== undefined ? dot.origDeg : (dot.degree % n);
       if (origDeg === 0) { playCircleDot(dot); return; }
+      if (hasGenSequence()) { playCircleDot(dot); return; }
       while (S.modmos.length < n) S.modmos.push(0);
       const rotScl = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
       const baseCents = rotScl.pitches[origDeg];
@@ -5352,6 +5654,27 @@ function setup() {
 
   window.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    if (S.genSequenceMode && e.key === 'Escape') {
+      e.preventDefault();
+      S.genSequenceMode = false;
+      S._rulerBuiltKey = null;
+      renderEDOGrid();
+      return;
+    }
+    if (S._genSeqDrag && e.key === 'Escape') {
+      e.preventDefault();
+      S.genSequence[S._genSeqDrag.genDistIdx] = S._genSeqDrag.startCents;
+      const k = S.genSequence.length;
+      const genCents = S.generatorCents !== null ? S.generatorCents : 600;
+      const totalRequired = k * genCents;
+      const sumOthers = S.genSequence.reduce((acc, v, i) => i === k - 1 ? acc : acc + v, 0);
+      S.genSequence[k - 1] = totalRequired - sumOthers;
+      S._genSeqDrag = null;
+      S._rulerBuiltKey = null;
+      render();
+      updateRulerIntervals();
+      return;
+    }
     if (S._modmosDrag && e.key === 'Escape') {
       e.preventDefault();
       const d = S._modmosDrag;
@@ -5625,6 +5948,7 @@ function buildShareURL() {
   if (S.modeRotation) params.set('mode', S.modeRotation);
   if (S.octaveStretch !== 0) params.set('stretch', S.octaveStretch);
   if (hasModmos()) params.set('modmos', S.modmos.map(v => Math.round(v * 100) / 100).join(','));
+  if (hasGenSequence()) params.set('genseq', S.genSequence.map(v => v.toFixed(4).replace(/\.?0+$/, '')).join(','));
   const qs = params.toString();
   return window.location.origin + window.location.pathname + (qs ? '?' + qs : '');
 }
@@ -5639,6 +5963,7 @@ function restoreFromURL() {
   const mode = params.has('mode') ? parseInt(params.get('mode'), 10) : 0;
   const stretch = params.has('stretch') ? parseFloat(params.get('stretch')) : 0;
   const modmosStr = params.get('modmos');
+  const genseqStr = params.get('genseq');
 
   if (isNaN(period) || period <= 0) return;
 
@@ -5695,6 +6020,11 @@ function restoreFromURL() {
       if (mode && !isNaN(mode)) S.modeRotation = mode;
       if (modmosStr) {
         S.modmos = modmosStr.split(',').map(Number);
+      }
+      if (genseqStr) {
+        S.genSequence = genseqStr.split(',').map(Number);
+        S.genSequenceLength = S.genSequence.length;
+        S.rulerSort = 'generator';
       }
     }
   }

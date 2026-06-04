@@ -165,7 +165,7 @@ const TEMPERAMENTS = [
   { name: 'Tricot / Slendric', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [228.57, 240.0],
     commas: ['1029/1024'], commaNames: ['gamelisma'],
     wikiUrl: 'https://en.xen.wiki/w/Slendric',
-    description: 'Three 8/7 generators = 3/2. 2.3.7 subgroup. Very accurate. <br> <br> Historically this temperament has been called slendric, because in the Indonesian Gamelan scale Slendro, some might say their fifth is ~roughly~ divided into 3 steps - even though the step sizes aren&#39t evenly spaced at all. <br> <br> It&#39s a bit chauvinistic if you ask me. Imagine if you will, an alien species coming to earth and they analyze all of western classical music theory. They then fly away and tell the rest of the universe that the earthlings play music in 7edo, and name 7edo "Diatonic". <br> <br> So just call it tricot, will you?' },
+    description: 'Three 8/7 generators = 3/2. 2.3.7 subgroup. Very accurate. <br> <br> Historically this temperament has been called slendric, because in the Indonesian Gamelan scale Slendro, some might say their fifth is ~roughly~ divided into 3 steps - even though the step sizes aren&#39t evenly spaced at all. <br> <br> So it would be way easier to just call this temperament tricot, meaning we divided the fifth into 3. ' },
 
   { name: 'Hemipyth', mos: ['2L_1s', '3L_2s', '3L_5s'], genRange: [240.0, 257.14], period: 600,
     commas: [], commaNames: [],
