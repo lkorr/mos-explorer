@@ -1174,13 +1174,10 @@ function initGenSequence(k, genCents) {
 function updateGenSequenceEntry(idx, newCents) {
   if (!S.genSequence || S.genSequence.length < 2) return;
   const k = S.genSequence.length;
-  const genCents = S.generatorCents !== null ? S.generatorCents : 600;
-  const totalRequired = k * genCents;
+  const delta = newCents - S.genSequence[idx];
   S.genSequence[idx] = newCents;
-  const constrainIdx = idx !== k - 1 ? k - 1 : k - 2;
-  const sumOthers = S.genSequence.reduce((acc, v, i) => i === constrainIdx ? acc : acc + v, 0);
-  const computed = totalRequired - sumOthers;
-  S.genSequence[constrainIdx] = Math.max(1, computed);
+  const next = (idx + 1) % k;
+  S.genSequence[next] = Math.max(1, S.genSequence[next] - delta);
 }
 
 function getEqualizedEnd(region) {
@@ -4948,6 +4945,7 @@ function setupRulerGlobalHandlers() {
         if (bestSnap !== null) newGenVal = bestSnap - d.priorSum;
       }
       updateGenSequenceEntry(d.genDistIdx, Math.max(1, newGenVal));
+      updateHeldNotes();
       render();
       updateRulerIntervals();
       return;
@@ -5113,10 +5111,14 @@ function setupRulerInteraction(edoEl) {
         }
         let priorSum = 0;
         for (let si = 0; si < genDist - 1; si++) priorSum += S.genSequence[si];
+        const seqIdx = genDist - 1;
+        const nextIdx = (seqIdx + 1) % S.genSequence.length;
         S._genSeqDrag = {
-          genDistIdx: genDist - 1,
+          genDistIdx: seqIdx,
+          nextIdx,
           startX: e.clientX,
-          startCents: S.genSequence[genDist - 1],
+          startCents: S.genSequence[seqIdx],
+          startNextCents: S.genSequence[nextIdx],
           edoSnaps,
           priorSum,
         };
@@ -5717,13 +5719,10 @@ function setup() {
     if (S._genSeqDrag && e.key === 'Escape') {
       e.preventDefault();
       S.genSequence[S._genSeqDrag.genDistIdx] = S._genSeqDrag.startCents;
-      const k = S.genSequence.length;
-      const genCents = S.generatorCents !== null ? S.generatorCents : 600;
-      const totalRequired = k * genCents;
-      const sumOthers = S.genSequence.reduce((acc, v, i) => i === k - 1 ? acc : acc + v, 0);
-      S.genSequence[k - 1] = totalRequired - sumOthers;
+      S.genSequence[S._genSeqDrag.nextIdx] = S._genSeqDrag.startNextCents;
       S._genSeqDrag = null;
       S._rulerBuiltKey = null;
+      updateHeldNotes();
       render();
       updateRulerIntervals();
       return;
