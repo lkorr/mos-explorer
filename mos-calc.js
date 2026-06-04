@@ -225,16 +225,24 @@ function buildProductScale(g1, g2, n, modeRot, domeIndex, period) {
   const rounded = steps.map(x => Math.round(x * 100) / 100);
   const distinctSizes = [...new Set(rounded)].sort((a, b) => b - a);
 
-  let L, M, s, word;
-  if (distinctSizes.length >= 3) {
+  let L, M, s, x = 0, word;
+  function labelStep(v) {
+    if (Math.abs(v - L) < 0.5) return 'L';
+    if (Math.abs(v - s) < 0.5) return 's';
+    if (x > 0 && Math.abs(v - x) < 0.5) return 'x';
+    return 'M';
+  }
+  if (distinctSizes.length >= 4) {
     L = distinctSizes[0];
     M = distinctSizes[1];
     s = distinctSizes[distinctSizes.length - 1];
-    word = rounded.map(v => {
-      if (Math.abs(v - L) < 0.5) return 'L';
-      if (Math.abs(v - s) < 0.5) return 's';
-      return 'M';
-    }).join('');
+    x = distinctSizes[distinctSizes.length - 2];
+    word = rounded.map(labelStep).join('');
+  } else if (distinctSizes.length === 3) {
+    L = distinctSizes[0];
+    M = distinctSizes[1];
+    s = distinctSizes[2];
+    word = rounded.map(labelStep).join('');
   } else if (distinctSizes.length === 2) {
     L = distinctSizes[0];
     M = 0;
@@ -258,19 +266,15 @@ function buildProductScale(g1, g2, n, modeRot, domeIndex, period) {
       const diff = next === 0 ? period - pitches[n - 1] + pitches[0] : pitches[next] - pitches[i];
       newSteps.push(diff);
     }
-    const newRounded = newSteps.map(x => Math.round(x * 100) / 100);
-    word = newRounded.map(v => {
-      if (Math.abs(v - L) < 0.5) return 'L';
-      if (Math.abs(v - s) < 0.5) return 's';
-      return 'M';
-    }).join('');
+    const newRounded = newSteps.map(v => Math.round(v * 100) / 100);
+    word = newRounded.map(labelStep).join('');
     steps.length = 0;
     steps.push(...newSteps);
   }
 
   const variety = computeVariety(pitches, period);
 
-  return { pitches, steps, word, variety, L, M, s };
+  return { pitches, steps, word, variety, L, M, s, x };
 }
 
 function findMV3Windows(g, N, period) {
@@ -990,7 +994,8 @@ const COMMANDS = {
       console.log(`Product scale: g1=${g1}¢, g2=${g2}¢, size=${n}, period=${period}¢`);
       console.log(`Word: ${result.word}`);
       console.log(`Variety: ${result.variety} (${result.variety <= 3 ? 'MV3 ✓' : 'MV' + result.variety + ' ✗'})`);
-      console.log(`L=${result.L.toFixed(4)}¢  M=${result.M ? result.M.toFixed(4) : '—'}¢  s=${result.s.toFixed(4)}¢`);
+      const xStr = result.x > 0 ? `  x=${result.x.toFixed(4)}¢` : '';
+      console.log(`L=${result.L.toFixed(4)}¢  M=${result.M ? result.M.toFixed(4) : '—'}¢${xStr}  s=${result.s.toFixed(4)}¢`);
       console.log(`Pitches: ${result.pitches.map(p => p.toFixed(2)).join(', ')}`);
       console.log(`Steps:   ${result.steps.map(s => s.toFixed(2)).join(', ')}`);
     },
