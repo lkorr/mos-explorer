@@ -532,12 +532,16 @@ canvas { display: block; width: 100%; height: 100%; }
   color: #6eb5ff;
   font-family: monospace;
 }
-.interval-ruler.seq-degree {
-  border-left: 2px solid #50c878;
+@keyframes seq-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+.interval-ruler.seq-degree .interval-ruler-label {
+  font-size: 13px;
+  animation: seq-pulse 2.5s ease-in-out infinite;
 }
 .interval-ruler.seq-constrained {
-  border-left: 2px solid #f5a623;
-  opacity: 0.7;
+  opacity: 0.5;
 }
 .edo-ruler-temps {
   position: absolute;
@@ -1207,7 +1211,7 @@ const S = {
   canvas: null, ctx: null, dpr: 1, W: 0, H: 0,
   _parentArrow: null, _childArrow: null, _modeButtons: [], _lastClickX: undefined, _lastClickY: undefined,
   _tempBars: [],
-  rulerSort: 'degree',
+  rulerSort: 'generator',
   edoMultiplesOnly: false,
   _circleRadius: null,
   circleResizing: false, circleResizeStartX: 0, circleResizeStartY: 0, circleResizeStartR: 0,
@@ -1217,6 +1221,8 @@ const S = {
   genSequenceLength: 0,
   genSequenceMode: false,
   _genSeqDrag: null,
+  _smoothColors: {},
+  _smoothColorTime: 0,
 };
 
 const _undoStack = [];
@@ -2203,19 +2209,66 @@ function drawMOSCircle(ctx, W, H) {
     stepSizeSet.add(stepBucket(steps[i]));
   }
   const uniqueSteps = [...stepSizeSet].sort((a, b) => b - a);
-  const stepColorMap = {};
+  const targetColorMap = {};
   const bucketL = stepBucket(L);
   const bucketS = stepBucket(s);
-  stepColorMap[bucketL] = Lcolor;
-  stepColorMap[bucketS] = sColor;
+  targetColorMap[bucketL] = Lcolor;
+  targetColorMap[bucketS] = sColor;
+  // Assign colors to intermediate step sizes based on proximity to neighbors
+  // uniqueSteps is sorted descending; process each intermediate step by interpolating
+  // between its nearest already-known neighbors (L and s are always known)
   const modSteps = uniqueSteps.filter(v => v !== bucketL && v !== bucketS);
   if (modSteps.length > 0) {
-    modSteps.sort((a, b) => b - a);
-    const baseHues = [150, 30, 280, 200, 60, 320];
     for (let i = 0; i < modSteps.length; i++) {
-      const hue = baseHues[i % baseHues.length] + Math.floor(i / baseHues.length) * 17;
-      stepColorMap[modSteps[i]] = hslToHex(hue, 0.7, 0.55);
+      const stepSize = modSteps[i];
+      let nearestAbove = bucketL, nearestBelow = bucketS;
+      for (const v of uniqueSteps) {
+        if (v > stepSize && v < nearestAbove && targetColorMap[v]) nearestAbove = v;
+        if (v < stepSize && v > nearestBelow && targetColorMap[v]) nearestBelow = v;
+      }
+      const aboveColor = targetColorMap[nearestAbove] || Lcolor;
+      const belowColor = targetColorMap[nearestBelow] || sColor;
+      const range = nearestAbove - nearestBelow;
+      const t = range > 0.01 ? (stepSize - nearestBelow) / range : 0.5;
+      const baseBlend = lerpColor(belowColor, aboveColor, t);
+      const pairRatio = nearestBelow > 0.01 ? stepSize / nearestBelow : 20;
+      const pairSoftness = Math.max(0, Math.min(1, 1 - (pairRatio - 1) / 2));
+      const distinctColor = lerpColor(baseBlend, complementaryColor(baseBlend), 0.3);
+      targetColorMap[stepSize] = lerpColor(distinctColor, baseBlend, pairSoftness);
     }
+  }
+
+  // Temporal smoothing — lerp stored RGB toward targets each frame.
+  // Key by rank (L, s, mod0, mod1...) not bucket value, so colors don't
+  // reset when a step's rounded cent value changes by 1.
+  const now = performance.now();
+  const dt = S._smoothColorTime ? (now - S._smoothColorTime) / 1000 : 0;
+  S._smoothColorTime = now;
+  const smoothRate = dt > 0 ? 1 - Math.exp(-8 * dt) : 1;
+  const rankKeys = {};
+  rankKeys[bucketL] = 'L';
+  rankKeys[bucketS] = 's';
+  for (let i = 0; i < modSteps.length; i++) rankKeys[modSteps[i]] = 'mod' + i;
+  const stepColorMap = {};
+  const usedRanks = new Set();
+  for (const bucket of uniqueSteps) {
+    const rank = rankKeys[bucket] || ('x' + bucket);
+    usedRanks.add(rank);
+    const target = hexToRGB(targetColorMap[bucket] || '#50c878');
+    const prev = S._smoothColors[rank];
+    if (prev && dt > 0) {
+      const r = prev[0] + (target[0] - prev[0]) * smoothRate;
+      const g = prev[1] + (target[1] - prev[1]) * smoothRate;
+      const b = prev[2] + (target[2] - prev[2]) * smoothRate;
+      S._smoothColors[rank] = [r, g, b];
+      stepColorMap[bucket] = rgbToHex(r, g, b);
+    } else {
+      S._smoothColors[rank] = target;
+      stepColorMap[bucket] = targetColorMap[bucket] || '#50c878';
+    }
+  }
+  for (const key of Object.keys(S._smoothColors)) {
+    if (!usedRanks.has(key)) delete S._smoothColors[key];
   }
   function getStepColor(step) {
     return stepColorMap[stepBucket(step)] || '#50c878';
