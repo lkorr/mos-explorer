@@ -3100,6 +3100,21 @@ function handleClick() {
 
   const edoMarker = hitEDOMarker(mx, my);
   if (edoMarker && S.selected) {
+    if (hasModmos()) {
+      const n = S.selected.perPeriodSize;
+      const oldScale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
+      const oldChroma = oldScale.L - oldScale.s;
+      const newScale = rotateMOSScale(buildMOSScale(edoMarker.cents, n, S.period), S.modeRotation, S.period);
+      const newChroma = newScale.L - newScale.s;
+      if (newChroma > 0.01) {
+        for (let i = 0; i < S.modmos.length; i++) {
+          if (Math.abs(S.modmos[i]) > 0.01) {
+            const centOffset = S.modmos[i] * oldChroma;
+            S.modmos[i] = Math.round(centOffset / newChroma);
+          }
+        }
+      }
+    }
     S.generatorCents = edoMarker.cents;
     updatePanel();
     render();
