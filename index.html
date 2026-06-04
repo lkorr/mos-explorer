@@ -1063,6 +1063,37 @@ function rotateMOSScale(scale, rotation, period) {
   return { pitches, steps, L, s };
 }
 
+function applyMODMOS(scale, modmos, period) {
+  period = period || S.period;
+  if (!modmos.length) return scale;
+  const chroma = scale.L - scale.s;
+  const n = scale.pitches.length;
+  const tagged = scale.pitches.map((p, i) => {
+    const raw = i === 0 ? 0 : (modmos[i] || 0);
+    const offset = raw * chroma;
+    return { cents: offset !== 0 ? ((p + offset) % period + period) % period : p, alt: offset, origDeg: i };
+  });
+  tagged.sort((a, b) => a.cents - b.cents);
+  const pitches = tagged.map(t => t.cents);
+  const alts = tagged.map(t => t.alt);
+  const origDegs = tagged.map(t => t.origDeg);
+  const steps = [];
+  for (let i = 0; i < n; i++) {
+    const next = (i + 1) % n;
+    const diff = next === 0 ? period - pitches[n - 1] + pitches[0] : pitches[next] - pitches[i];
+    steps.push(diff);
+  }
+  return { pitches, steps, L: scale.L, s: scale.s, alts, origDegs };
+}
+
+function hasModmos() {
+  return S.modmos.some(v => Math.abs(v) > 0.01);
+}
+
+function resetModmos() {
+  S.modmos = [];
+}
+
 function getEqualizedEnd(region) {
   const lo = region.lowCents + 0.01;
   const hi = region.highCents - 0.01;
@@ -1083,6 +1114,7 @@ const S = {
   hovered: null, selected: null,
   generatorCents: null,
   modeRotation: 0,
+  modmos: [],
   dragging: false, dragX0: 0, dragY0: 0, dragMin0: 0, dragMax0: 0, dragMinSize0: 0,
   genDragging: false,
   sliderDragging: false,
@@ -1094,6 +1126,8 @@ const S = {
   edoMultiplesOnly: false,
   _circleRadius: null,
   circleResizing: false, circleResizeStartX: 0, circleResizeStartY: 0, circleResizeStartR: 0,
+  _modmosResetBtn: null,
+  _modmosDrag: null,
 };
 
 const _undoStack = [];
@@ -1110,6 +1144,7 @@ function _snapState() {
     modeRotation: S.modeRotation,
     octaveStretch: S.octaveStretch,
     period: S.period,
+    modmos: S.modmos.slice(),
   };
 }
 
@@ -1120,11 +1155,13 @@ function _snapsEqual(a, b) {
     a.generatorCents === b.generatorCents &&
     a.modeRotation === b.modeRotation &&
     a.octaveStretch === b.octaveStretch &&
-    a.period === b.period;
+    a.period === b.period &&
+    (a.modmos || []).length === (b.modmos || []).length &&
+    (a.modmos || []).every((v, i) => Math.abs(v - ((b.modmos || [])[i] || 0)) < 0.01);
 }
 
 function _isDragging() {
-  return S.dragging || S.genDragging || S.sliderDragging || S.sizeSbDragging || S._rulerDragging || S.circleResizing || S._stretchDragging;
+  return S.dragging || S.genDragging || S.sliderDragging || S.sizeSbDragging || S._rulerDragging || S.circleResizing || S._stretchDragging || S._modmosDrag;
 }
 
 function pushUndo() {
@@ -1162,6 +1199,7 @@ function _restoreSnap(snap) {
   }
   S.generatorCents = snap.generatorCents;
   S.modeRotation = snap.modeRotation;
+  S.modmos = snap.modmos ? snap.modmos.slice() : [];
   S.octaveStretch = snap.octaveStretch;
   const absVal = 1200 + S.octaveStretch;
   document.getElementById('octave-stretch').value = absVal;
@@ -1269,6 +1307,20 @@ function complementaryColor(hex) {
   const [r, g, b] = hexToRGB(hex);
   return rgbToHex(255 - r, 255 - g, 255 - b);
 }
+function hslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else { r = c; b = x; }
+  return rgbToHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+}
 
 
 // ================================================================
@@ -1294,7 +1346,7 @@ function render() {
   if (S.selected) {
     drawMOSCircle(ctx, W, H);
     positionPanel();
-    renderEDOGrid();
+    if (!S._modmosDrag) renderEDOGrid();
   }
   // drawSizeScrollbar(ctx, W, H);
 
@@ -1744,7 +1796,8 @@ function drawGeneratorMarker(ctx, W, H) {
 
 function getMOSCircleLayout(W, H) {
   const defaultR = Math.min(170, Math.min(W, H) * 0.22);
-  const radius = S._circleRadius ? Math.max(60, Math.min(S._circleRadius, Math.min(W, H) * 0.45)) : defaultR;
+  const maxR = Math.min(Math.min(W, H) * 0.45, (H - 130) / 2);
+  const radius = S._circleRadius ? Math.max(60, Math.min(S._circleRadius, maxR)) : defaultR;
   const cx = 20 + radius + 10;
   const cy = H - 20 - radius - 10;
   const sliderW = radius * 2 + 16;
@@ -1780,19 +1833,20 @@ function drawMOSCircle(ctx, W, H) {
   const titleY1 = sliderY - 22;
   const titleText = mosDisplayLabel(sel.key);
   ctx.textBaseline = 'middle';
-  if (gen !== null) {
-    const hr = computeHardness(gen, n);
-    const hardStr = hr.ratio === Infinity ? '∞' : hr.ratio.toFixed(2);
-    const udp = computeUDP(gen, n, S.modeRotation);
-    const modeName = getModeName(sel.perPeriodKey, gen, S.modeRotation);
+  const hr = gen !== null ? computeHardness(gen, n) : null;
+  const hardStr = hr ? (hr.ratio === Infinity ? '∞' : hr.ratio.toFixed(2)) : '';
+  const udp = gen !== null ? computeUDP(gen, n, S.modeRotation) : '';
+  const circleModeLabel = gen !== null ? getModeName(sel.perPeriodKey, gen, S.modeRotation) : null;
 
+  if (gen !== null) {
     ctx.font = 'bold 13px monospace';
     const parts = [
       { text: titleText + '  ', color: '#e94560' },
       { text: hardStr + '  ', color: '#f5a623' },
       { text: udp, color: '#f5a623' },
     ];
-    if (modeName) parts.push({ text: '  ' + modeName, color: '#6eb5ff' });
+    if (circleModeLabel) parts.push({ text: '  ' + circleModeLabel, color: '#6eb5ff' });
+    if (hasModmos()) parts.push({ text: '  MODMOS', color: '#50c878' });
 
     let totalW = 0;
     for (const p of parts) totalW += ctx.measureText(p.text).width;
@@ -1824,11 +1878,10 @@ function drawMOSCircle(ctx, W, H) {
     let totalW = 0;
     const titleParts = [
       { text: titleText + '  ' },
-      { text: (computeHardness(gen, n).ratio === Infinity ? '∞' : computeHardness(gen, n).ratio.toFixed(2)) + '  ' },
-      { text: computeUDP(gen, n, S.modeRotation) },
+      { text: hardStr + '  ' },
+      { text: udp },
     ];
-    const modeName = getModeName(sel.perPeriodKey, gen, S.modeRotation);
-    if (modeName) titleParts.push({ text: '  ' + modeName });
+    if (circleModeLabel) titleParts.push({ text: '  ' + circleModeLabel });
     for (const p of titleParts) totalW += ctx.measureText(p.text).width;
 
     const genPairX = cx - totalW / 2 - pairW - 10;
@@ -1935,8 +1988,20 @@ function drawMOSCircle(ctx, W, H) {
     ctx.fillText(mosLabel, sliderX, labelY);
     if (stepPat) {
       const mosW = ctx.measureText(mosLabel + '  ').width;
-      ctx.fillStyle = '#aab';
-      ctx.fillText(stepPat, sliderX + mosW, labelY);
+      if (hasModmos()) {
+        const rotScl = rotateMOSScale(buildMOSScale(gen, n, P), S.modeRotation, P);
+        const modScl = applyMODMOS(rotScl, S.modmos, P);
+        const modPat = modScl.steps.map(st => {
+          if (Math.abs(st - rotScl.L) < 0.5) return 'L';
+          if (Math.abs(st - rotScl.s) < 0.5) return 's';
+          return stretchCents(st).toFixed(0);
+        }).join(' ');
+        ctx.fillStyle = '#50c878';
+        ctx.fillText(modPat, sliderX + mosW, labelY);
+      } else {
+        ctx.fillStyle = '#aab';
+        ctx.fillText(stepPat, sliderX + mosW, labelY);
+      }
     }
   }
 
@@ -1983,16 +2048,23 @@ function drawMOSCircle(ctx, W, H) {
   }
 
   const baseScale = buildMOSScale(gen, n, P);
-  const scale = rotateMOSScale(baseScale, S.modeRotation, P);
+  const rotated = rotateMOSScale(baseScale, S.modeRotation, P);
+  const scale = hasModmos() ? applyMODMOS(rotated, S.modmos, P) : rotated;
+  const degreeAlts = scale.alts || new Array(n).fill(0);
+  const degreeOrigDegs = scale.origDegs || scale.pitches.map((_, i) => i);
 
   const reps = getPeriodRepetitions();
-  let displayPitches, displaySteps, displayL, displayS;
+  let displayPitches, displaySteps, displayL, displayS, displayAlts, displayOrigDegs;
   if (reps > 1) {
     displayPitches = [];
     displaySteps = [];
+    displayAlts = [];
+    displayOrigDegs = [];
     for (let k = 0; k < reps; k++) {
       for (let i = 0; i < scale.pitches.length; i++) {
         displayPitches.push(scale.pitches[i] + k * P);
+        displayAlts.push(degreeAlts[i]);
+        displayOrigDegs.push(degreeOrigDegs[i]);
       }
       for (let i = 0; i < scale.steps.length; i++) {
         displaySteps.push(scale.steps[i]);
@@ -2005,6 +2077,8 @@ function drawMOSCircle(ctx, W, H) {
     displaySteps = scale.steps;
     displayL = scale.L;
     displayS = scale.s;
+    displayAlts = degreeAlts;
+    displayOrigDegs = degreeOrigDegs;
   }
   const displayN = displayPitches.length;
   const displayP = reps > 1 ? P * reps : P;
@@ -2022,6 +2096,31 @@ function drawMOSCircle(ctx, W, H) {
   const compColor = complementaryColor(Lcolor);
   const sColor = lerpColor(Lcolor, compColor, 1 - softness);
 
+  // Build color map for all distinct step sizes
+  const stepBucket = v => Math.round(v);
+  const stepSizeSet = new Set();
+  for (let i = 0; i < displayN; i++) {
+    stepSizeSet.add(stepBucket(steps[i]));
+  }
+  const uniqueSteps = [...stepSizeSet].sort((a, b) => b - a);
+  const stepColorMap = {};
+  const bucketL = stepBucket(L);
+  const bucketS = stepBucket(s);
+  stepColorMap[bucketL] = Lcolor;
+  stepColorMap[bucketS] = sColor;
+  const modSteps = uniqueSteps.filter(v => v !== bucketL && v !== bucketS);
+  if (modSteps.length > 0) {
+    modSteps.sort((a, b) => b - a);
+    const baseHues = [150, 30, 280, 200, 60, 320];
+    for (let i = 0; i < modSteps.length; i++) {
+      const hue = baseHues[i % baseHues.length] + Math.floor(i / baseHues.length) * 17;
+      stepColorMap[modSteps[i]] = hslToHex(hue, 0.7, 0.55);
+    }
+  }
+  function getStepColor(step) {
+    return stepColorMap[stepBucket(step)] || '#50c878';
+  }
+
   // Pie slices
   for (let i = 0; i < displayN; i++) {
     const startC = pitches[i];
@@ -2029,8 +2128,7 @@ function drawMOSCircle(ctx, W, H) {
     const a1 = c2a(startC);
     const a2 = c2a(startC + step);
 
-    const isL = Math.abs(step - L) < 0.5;
-    const col = isL ? Lcolor : sColor;
+    const col = getStepColor(step);
 
     ctx.beginPath();
     ctx.moveTo(cx, cy);
@@ -2054,12 +2152,14 @@ function drawMOSCircle(ctx, W, H) {
     const lx = cx + Math.cos(midAngle) * labelR;
     const ly = cy + Math.sin(midAngle) * labelR;
 
-    const pieFontSize = Math.round(12 * radius / 170);
-    ctx.fillStyle = col;
-    ctx.font = 'bold ' + Math.max(6, pieFontSize) + 'px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(stretchCents(step).toFixed(0) + '¢', lx, ly);
+    if (!S._modmosDrag) {
+      const pieFontSize = Math.round(12 * radius / 170);
+      ctx.fillStyle = col;
+      ctx.font = 'bold ' + Math.max(6, pieFontSize) + 'px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(stretchCents(step).toFixed(0) + '¢', lx, ly);
+    }
   }
 
   // Period boundary markers on the circle
@@ -2099,6 +2199,209 @@ function drawMOSCircle(ctx, W, H) {
     }
   }
 
+  // MODMOS drag snap guides
+  if (S._modmosDrag) {
+    const d = S._modmosDrag;
+    const curOff = (S.modmos[d.origDeg] || 0) * d.chroma;
+    const guideFontSize = Math.max(7, Math.round(10 * radius / 170));
+    const rScale = radius / 170;
+    const outerR = radius + Math.round(14 * rScale);
+    const innerR = radius - Math.round(14 * rScale);
+
+    // Visible range: between neighbor pitches (with small margin)
+    const margin = 2;
+    const visLo = d.prevCents - margin;
+    const visHi = d.nextCents + margin;
+    function centsInRange(c) {
+      const wrapped = ((c % S.period) + S.period) % S.period;
+      if (visLo >= 0 && visHi <= S.period) return wrapped >= visLo && wrapped <= visHi;
+      // Handle wraparound at 0/period boundary
+      const lo = ((visLo % S.period) + S.period) % S.period;
+      const hi = ((visHi % S.period) + S.period) % S.period;
+      if (lo <= hi) return wrapped >= lo && wrapped <= hi;
+      return wrapped >= lo || wrapped <= hi;
+    }
+
+    // Arc bands spanning only the visible region
+    const arcA1 = c2a(visLo);
+    const arcA2 = c2a(visHi);
+    if (d.chroma > 0.5) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerR + Math.round(10 * rScale), arcA1, arcA2);
+      ctx.strokeStyle = '#50c87828';
+      ctx.lineWidth = Math.round(18 * rScale);
+      ctx.stroke();
+    }
+    if (d.edoStep > 0.5) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerR - Math.round(10 * rScale), arcA1, arcA2);
+      ctx.strokeStyle = '#f5a62320';
+      ctx.lineWidth = Math.round(18 * rScale);
+      ctx.stroke();
+    }
+
+    // Neighbor boundary markers
+    for (const bndCents of [d.prevCents, d.nextCents]) {
+      const ba = c2a(((bndCents % displayP) + displayP) % displayP);
+      const bc = Math.cos(ba), bs = Math.sin(ba);
+      ctx.beginPath();
+      ctx.moveTo(cx + bc * (innerR - Math.round(20 * rScale)), cy + bs * (innerR - Math.round(20 * rScale)));
+      ctx.lineTo(cx + bc * (outerR + Math.round(20 * rScale)), cy + bs * (outerR + Math.round(20 * rScale)));
+      ctx.strokeStyle = '#ffffff22';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Chroma snap guides (outside the circle) — only in visible range
+    if (d.chroma > 0.5) {
+      const maxSnaps = Math.floor(S.period / d.chroma);
+      const snapCount = Math.min(maxSnaps, 6);
+      for (let k = -snapCount; k <= snapCount; k++) {
+        if (k === 0) continue;
+        const snapCents = ((d.baseCents + k * d.chroma) % displayP + displayP) % displayP;
+        if (!centsInRange(snapCents)) continue;
+        const sa = c2a(snapCents);
+        const sc = Math.cos(sa), ss = Math.sin(sa);
+        const hit = Math.abs(curOff - k * d.chroma) < 0.5;
+        const tickIn = radius - Math.round(6 * rScale);
+        const tickOut = outerR + Math.round(18 * rScale);
+        ctx.beginPath();
+        ctx.moveTo(cx + sc * tickIn, cy + ss * tickIn);
+        ctx.lineTo(cx + sc * tickOut, cy + ss * tickOut);
+        ctx.strokeStyle = hit ? '#50c878' : '#50c87855';
+        ctx.lineWidth = hit ? 3 : 1.5;
+        ctx.stroke();
+        if (hit) {
+          ctx.save();
+          ctx.shadowColor = '#50c878';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.moveTo(cx + sc * tickIn, cy + ss * tickIn);
+          ctx.lineTo(cx + sc * tickOut, cy + ss * tickOut);
+          ctx.strokeStyle = '#50c878';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.restore();
+          const triSize = Math.round(5 * rScale);
+          const perpX = -ss, perpY = sc;
+          const tipX = cx + sc * (tickOut + triSize), tipY = cy + ss * (tickOut + triSize);
+          ctx.beginPath();
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(cx + sc * tickOut + perpX * triSize, cy + ss * tickOut + perpY * triSize);
+          ctx.lineTo(cx + sc * tickOut - perpX * triSize, cy + ss * tickOut - perpY * triSize);
+          ctx.closePath();
+          ctx.fillStyle = '#50c878';
+          ctx.fill();
+        }
+        const labelR = tickOut + Math.round(8 * rScale);
+        ctx.fillStyle = hit ? '#50c878' : '#50c87899';
+        ctx.font = (hit ? 'bold ' : '') + guideFontSize + 'px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((k > 0 ? '+' : '') + k + 'c', cx + sc * labelR, cy + ss * labelR);
+      }
+    }
+    // EDO grid snap guides (inside the circle) — only in visible range
+    if (d.edoStep > 0.5) {
+      const gridCount = Math.round(displayP / d.edoStep);
+      const edoN = Math.round(S.period / d.edoStep);
+      ctx.fillStyle = '#f5a62388';
+      ctx.font = 'bold ' + Math.max(8, Math.round(11 * rScale)) + 'px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(edoN + '-EDO grid', cx, cy - radius + Math.round(20 * rScale));
+      for (let k = 0; k < gridCount; k++) {
+        const gridCents = k * d.edoStep;
+        const gridOff = gridCents - d.baseCents;
+        const wrappedOff = ((gridOff + S.period / 2) % S.period + S.period) % S.period - S.period / 2;
+        const minSepCents = 12 * displayP / (2 * Math.PI * radius);
+        if (d.chroma > 0.5 && Math.abs(wrappedOff - Math.round(wrappedOff / d.chroma) * d.chroma) < minSepCents) continue;
+        const sa = c2a(gridCents);
+        const sc = Math.cos(sa), ss = Math.sin(sa);
+        const gridOffset = gridCents - d.baseCents;
+        const wrappedOffset = ((gridOffset + S.period / 2) % S.period + S.period) % S.period - S.period / 2;
+        const hit = Math.abs(curOff - wrappedOffset) < 0.5;
+        const tickOut = radius + Math.round(6 * rScale);
+        const tickIn = innerR - Math.round(18 * rScale);
+        ctx.beginPath();
+        ctx.moveTo(cx + sc * tickOut, cy + ss * tickOut);
+        ctx.lineTo(cx + sc * tickIn, cy + ss * tickIn);
+        ctx.strokeStyle = hit ? '#f5a623' : '#f5a62340';
+        ctx.lineWidth = hit ? 2.5 : 0.8;
+        ctx.stroke();
+        if (hit) {
+          ctx.save();
+          ctx.shadowColor = '#f5a623';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.moveTo(cx + sc * tickOut, cy + ss * tickOut);
+          ctx.lineTo(cx + sc * tickIn, cy + ss * tickIn);
+          ctx.strokeStyle = '#f5a623';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+          ctx.restore();
+          const triSize = Math.round(4 * rScale);
+          const perpX = -ss, perpY = sc;
+          const tipX = cx + sc * (tickIn - triSize), tipY = cy + ss * (tickIn - triSize);
+          ctx.beginPath();
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(cx + sc * tickIn + perpX * triSize, cy + ss * tickIn + perpY * triSize);
+          ctx.lineTo(cx + sc * tickIn - perpX * triSize, cy + ss * tickIn - perpY * triSize);
+          ctx.closePath();
+          ctx.fillStyle = '#f5a623';
+          ctx.fill();
+        }
+        const edoLabelR = tickIn - Math.round(8 * rScale);
+        const edoIdx = k % edoN;
+        ctx.fillStyle = hit ? '#f5a623' : '#f5a62355';
+        ctx.font = (hit ? 'bold ' : '') + Math.max(6, guideFontSize - 1) + 'px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(edoIdx + '', cx + sc * edoLabelR, cy + ss * edoLabelR);
+      }
+    }
+    // Zero/reset guide (prominent)
+    const zeroAngle = c2a(((d.baseCents) % displayP + displayP) % displayP);
+    const zc = Math.cos(zeroAngle), zs = Math.sin(zeroAngle);
+    const atZero = Math.abs(curOff) < 0.5;
+    const zTickIn = innerR - Math.round(18 * rScale);
+    const zTickOut = outerR + Math.round(18 * rScale);
+    ctx.beginPath();
+    ctx.moveTo(cx + zc * zTickIn, cy + zs * zTickIn);
+    ctx.lineTo(cx + zc * zTickOut, cy + zs * zTickOut);
+    ctx.strokeStyle = atZero ? '#ffffff' : '#ffffff55';
+    ctx.lineWidth = atZero ? 3 : 2;
+    ctx.stroke();
+    if (atZero) {
+      ctx.save();
+      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(cx + zc * zTickIn, cy + zs * zTickIn);
+      ctx.lineTo(cx + zc * zTickOut, cy + zs * zTickOut);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
+    const zLabelR = zTickOut + Math.round(8 * rScale);
+    ctx.fillStyle = atZero ? '#ffffff' : '#ffffff77';
+    ctx.font = (atZero ? 'bold ' : '') + guideFontSize + 'px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('0', cx + zc * zLabelR, cy + zs * zLabelR);
+    // Current offset readout near center
+    if (Math.abs(curOff) > 0.01) {
+      ctx.fillStyle = '#e0e0ff';
+      ctx.font = 'bold ' + Math.max(10, Math.round(14 * rScale)) + 'px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText((curOff > 0 ? '+' : '') + curOff.toFixed(1) + '¢', cx, cy + radius - Math.round(20 * rScale));
+    }
+  }
+
   // Divider lines + pitch dots + labels
   S._circleDots = [];
   const glowNow = performance.now();
@@ -2108,15 +2411,18 @@ function drawMOSCircle(ctx, W, H) {
     const sin = Math.sin(angle);
     const px = cx + cos * radius;
     const py = cy + sin * radius;
-    S._circleDots.push({ x: px, y: py, degree: i, noteOctave: 0, cents: pitches[i] });
+    S._circleDots.push({ x: px, y: py, degree: i, noteOctave: 0, cents: pitches[i], origDeg: displayOrigDegs[i] });
 
     const gs = getGlowState(i, glowNow);
     const glow = gs.intensity;
     const glowColor = gs.color;
     const isPeriodBoundary = reps > 1 && (i % n === 0);
-    const baseLineColor = (i === 0 || isPeriodBoundary) ? '#e94560' : '#8888aa';
-    const baseDotColor = (i === 0 || isPeriodBoundary) ? '#e94560' : '#ffffff';
-    const baseLabelColor = (i === 0 || isPeriodBoundary) ? '#e94560' : '#aaaaaa';
+    const degAlt = displayAlts[i] || 0;
+    const isAltered = Math.abs(degAlt) > 0.01;
+    const altColor = degAlt > 0 ? '#f5a623' : '#6eb5ff';
+    const baseLineColor = (i === 0 || isPeriodBoundary) ? '#e94560' : isAltered ? altColor : '#8888aa';
+    const baseDotColor = (i === 0 || isPeriodBoundary) ? '#e94560' : isAltered ? altColor : '#ffffff';
+    const baseLabelColor = (i === 0 || isPeriodBoundary) ? '#e94560' : isAltered ? altColor : '#aaaaaa';
 
     if (glow > 0.003) {
       ctx.save();
@@ -2164,15 +2470,19 @@ function drawMOSCircle(ctx, W, H) {
     const oy = cy + sin * outR;
 
     if (i > 0) {
+      if (S._modmosDrag) ctx.globalAlpha = 0.3;
       ctx.fillStyle = lerpColor(baseLabelColor, glowColor, glow);
       ctx.font = outFontSize + 'px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(stretchCents(pitches[i]).toFixed(0), ox, oy);
+      const altSuffix = degAlt > 0.01 ? '#' : degAlt < -0.01 ? 'b' : '';
+      ctx.fillText(stretchCents(pitches[i]).toFixed(0) + altSuffix, ox, oy);
+      if (S._modmosDrag) ctx.globalAlpha = 1;
     }
   }
 
-  // Center info — temperament name only
+  // Center info — temperament name + MODMOS step pattern + reset button
+  S._modmosResetBtn = null;
   if (Math.abs(S.octaveStretch) <= 5) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -2185,9 +2495,43 @@ function drawMOSCircle(ctx, W, H) {
       ctx.fillText(t.name, cx, cy - radius * 0.15);
     }
   }
+  if (hasModmos()) {
+    const stepFontSize = Math.max(6, Math.round(11 * radius / 170));
+    ctx.font = stepFontSize + 'px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const stepStr = steps.map(st => {
+      if (Math.abs(st - scale.L) < 0.5) return 'L';
+      if (Math.abs(st - scale.s) < 0.5) return 's';
+      return stretchCents(st).toFixed(0);
+    }).join(' ');
+    ctx.fillStyle = '#50c878';
+    ctx.fillText(stepStr, cx, cy + radius * 0.12);
+
+    const resetFontSize = Math.max(6, Math.round(10 * radius / 170));
+    ctx.font = resetFontSize + 'px monospace';
+    const resetText = '× reset';
+    const resetW = ctx.measureText(resetText).width + 8;
+    const resetH = resetFontSize + 6;
+    const resetX = cx - resetW / 2;
+    const resetY = cy + radius * 0.25;
+    ctx.fillStyle = '#2a3a5a';
+    ctx.strokeStyle = '#50c878';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(resetX, resetY, resetW, resetH, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#50c878';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(resetText, cx, resetY + resetH / 2);
+    S._modmosResetBtn = { x: resetX, y: resetY, w: resetW, h: resetH };
+  }
 
   // JI interval markers — all n/d where n,d < 20, within octave
   const jiMarkers = [];
+  const jiDimmed = !!S._modmosDrag;
   const jiSeen = new Set();
   for (let d = 1; d < 20; d++) {
     for (let n = d + 1; n < 20; n++) {
@@ -2219,9 +2563,10 @@ function drawMOSCircle(ctx, W, H) {
     const alpha = fontSize > 8 * rScale ? '99' : '55';
     ctx.strokeStyle = '#f5a623' + alpha;
     ctx.lineWidth = fontSize > 9 * rScale ? 1.5 : 1;
+    if (jiDimmed) ctx.globalAlpha = 0.4;
     ctx.stroke();
     ctx.fillStyle = '#f5a623';
-    ctx.globalAlpha = 0.4 + 0.6 * (fontSize - minFont) / (maxFont - minFont || 1);
+    ctx.globalAlpha = (0.4 + 0.6 * (fontSize - minFont) / (maxFont - minFont || 1)) * (jiDimmed ? 0.4 : 1);
     ctx.font = (fontSize > 9 * rScale ? 'bold ' : '') + Math.max(4, fontSize) + 'px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -2453,7 +2798,8 @@ function killAllNotes() {
 function buildFullScale() {
   const n = S.selected.perPeriodSize;
   const reps = getPeriodRepetitions();
-  const base = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
+  const rotated = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
+  const base = hasModmos() ? applyMODMOS(rotated, S.modmos, S.period) : rotated;
   if (reps <= 1) return { scale: base, size: n, octave: S.period };
   const pitches = [];
   for (let k = 0; k < reps; k++)
@@ -3800,7 +4146,8 @@ function updatePanel() {
 
   // Left info section
   const wikiUrl = `https://en.xen.wiki/w/${key}`;
-  let h = `<div class="sp-title"><a href="${wikiUrl}" target="_blank" style="color:#e94560;text-decoration:none">${label}${fname ? ' — '+fname : ''}</a></div>`;
+  const modmosTag = hasModmos() ? ' <span style="color:#50c878">(MODMOS)</span>' : '';
+  let h = `<div class="sp-title"><a href="${wikiUrl}" target="_blank" style="color:#e94560;text-decoration:none">${label}${fname ? ' — '+fname : ''}</a>${modmosTag}</div>`;
   const pReps = getPeriodRepetitions();
   if (pReps > 1) {
     const ppNL = nL / pReps, ppNS = nS / pReps;
@@ -3999,7 +4346,8 @@ function renderEDOGrid() {
   const reps = getPeriodRepetitions();
 
   const baseScale = buildMOSScale(genCents, sel.perPeriodSize, S.period);
-  const scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
+  const rotatedScale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
+  const scale = hasModmos() ? applyMODMOS(rotatedScale, S.modmos, S.period) : rotatedScale;
 
   let intervals;
   if (reps > 1) {
@@ -4011,11 +4359,12 @@ function renderEDOGrid() {
     intervals = scale.pitches.slice(1);
   }
 
-  const rulerKey = sel.key + '|' + intervals.length + '|' + S.rulerSort + '|' + reps + (S.rulerSort === 'generator' ? '|' + (S.modeRotation || 0) : '');
+  const modmosKey = hasModmos() ? '|' + S.modmos.map(v => Math.round(v * 10) / 10).join(',') : '';
+  const rulerKey = sel.key + '|' + intervals.length + '|' + S.rulerSort + '|' + reps + (S.rulerSort === 'generator' ? '|' + (S.modeRotation || 0) : '') + modmosKey;
   if (S._rulerBuiltKey !== rulerKey) {
     const ppN = sel.perPeriodSize;
     const n = reps > 1 ? ppN * reps : intervals.length + 1;
-    const byGen = S.rulerSort === 'generator' && reps <= 1;
+    const byGen = S.rulerSort === 'generator' && reps <= 1 && !hasModmos();
 
     const genDistMap = {};
     let sortOrder;
@@ -4149,6 +4498,51 @@ function renderEDOGrid() {
   }
 }
 
+function updateRulerIntervals() {
+  const edoEl = document.getElementById('sp-edo-container');
+  const sel = S.selected;
+  if (!sel || !edoEl) return;
+  const genCents = S.generatorCents !== null ? S.generatorCents : (sel.lowCents + sel.highCents) / 2;
+  const harmonics = buildHarmonicRatios();
+  const reps = getPeriodRepetitions();
+  const baseScale = buildMOSScale(genCents, sel.perPeriodSize, S.period);
+  const rotatedScale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
+  const scale = hasModmos() ? applyMODMOS(rotatedScale, S.modmos, S.period) : rotatedScale;
+  let intervals;
+  if (reps > 1) {
+    const allPitches = [];
+    for (let k = 0; k < reps; k++)
+      for (const p of scale.pitches) allPitches.push(p + k * S.period);
+    intervals = allPitches.slice(1);
+  } else {
+    intervals = scale.pitches.slice(1);
+  }
+  const scrollContainer = edoEl.querySelector('.edo-rulers-scroll');
+  if (!scrollContainer) return;
+  for (let i = 0; i < intervals.length; i++) {
+    const rulerEl = scrollContainer.querySelector(`[data-ruler="${i}"]`);
+    if (!rulerEl) continue;
+    const centsLabel = rulerEl.querySelector('.degree-cents');
+    if (centsLabel) centsLabel.textContent = stretchCents(intervals[i]).toFixed(1) + '¢';
+    const ratioSpan = rulerEl.querySelector('.degree-ratio');
+    if (ratioSpan) {
+      let closest = null, closestDist = Infinity;
+      for (const r of harmonics) {
+        const d = Math.abs(r.cents - intervals[i]);
+        if (d < closestDist) { closestDist = d; closest = r; }
+      }
+      if (closest && closestDist < 15) {
+        const url = `https://en.xen.wiki/w/${closest.n}/${closest.d}`;
+        ratioSpan.innerHTML = `≈ <a href="${url}" target="_blank">${closest.label}</a>`;
+      } else {
+        ratioSpan.innerHTML = '';
+      }
+    }
+    const canvas = rulerEl.querySelector('.ruler-canvas');
+    if (canvas) drawRulerCanvas(canvas, intervals[i], harmonics, 30, false);
+  }
+}
+
 function findMatchingEDO(genCents, mosSize) {
   for (const g of S.edos) {
     if (Math.abs(g.cents - genCents) < 0.001) return g;
@@ -4161,12 +4555,14 @@ function buildScaleWorkshopURL() {
   const gen = S.generatorCents;
   const n = S.selected.perPeriodSize;
   const baseScale = buildMOSScale(gen, n, S.period);
-  const scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
+  const rotated = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
+  const scale = hasModmos() ? applyMODMOS(rotated, S.modmos, S.period) : rotated;
   const pitches = scale.pitches.slice(1);
   const effectivePeriod = stretchCents(S.period);
   const isStandardOctave = Math.abs(effectivePeriod - 1200) < 1;
 
-  const edoMatch = isStandardOctave ? findMatchingEDO(gen, n) : null;
+  const isMod = hasModmos();
+  const edoMatch = (isStandardOctave && !isMod) ? findMatchingEDO(gen, n) : null;
 
   let lines;
   let scaleName;
@@ -4182,9 +4578,10 @@ function buildScaleWorkshopURL() {
     centsLines.push(effectivePeriod.toFixed(3));
     lines = centsLines;
     const mosLabel = mosDisplayLabel(S.selected.key);
+    const modSuffix = isMod ? ' MODMOS' : '';
     const periodSuffix = !isStandardOctave ? `, ${effectivePeriod.toFixed(1)}¢ equave` : '';
     const stretchSuffix = S.octaveStretch !== 0 ? `, stretch ${S.octaveStretch > 0 ? '+' : ''}${S.octaveStretch}¢` : '';
-    scaleName = `${mosLabel} (${stretchCents(gen).toFixed(2)}¢ gen${periodSuffix}${stretchSuffix})`;
+    scaleName = `${mosLabel}${modSuffix} (${stretchCents(gen).toFixed(2)}¢ gen${periodSuffix}${stretchSuffix})`;
   }
 
   const data = encodeURIComponent(lines.join('\n'));
@@ -4370,6 +4767,10 @@ function setup() {
   });
 
   cntr.addEventListener('mousedown', e => {
+    if (S._modmosDrag) {
+      e.preventDefault();
+      return;
+    }
     const rect = cvs.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
@@ -4407,8 +4808,49 @@ function setup() {
       return;
     }
 
+    if (S._modmosResetBtn) {
+      const b = S._modmosResetBtn;
+      if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+        resetModmos();
+        updatePanel();
+        render();
+        return;
+      }
+    }
+
     const dot = hitCircleDot(mx, my);
-    if (dot) { playCircleDot(dot); return; }
+    if (dot && S.selected && S.generatorCents !== null) {
+      const n = S.selected.perPeriodSize;
+      const origDeg = dot.origDeg !== undefined ? dot.origDeg : (dot.degree % n);
+      if (origDeg === 0) { playCircleDot(dot); return; }
+      while (S.modmos.length < n) S.modmos.push(0);
+      const rotScl = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
+      const baseCents = rotScl.pitches[origDeg];
+      const chroma = rotScl.L - rotScl.s;
+      let edoStep = 0;
+      for (const g of S.edos) {
+        if (Math.abs(g.cents - S.generatorCents) < 0.5) {
+          edoStep = S.period / g.edo;
+          break;
+        }
+      }
+      const prevDeg = origDeg === 1 ? 0 : origDeg - 1;
+      const nextDeg = origDeg === n - 1 ? n : origDeg + 1;
+      const prevCents = prevDeg === 0 ? 0 : rotScl.pitches[prevDeg];
+      const nextCents = nextDeg === n ? S.period : rotScl.pitches[nextDeg];
+      S._modmosDrag = {
+        origDeg,
+        baseCents,
+        chroma,
+        startOffset: S.modmos[origDeg] || 0,
+        edoStep,
+        prevCents,
+        nextCents,
+      };
+      cvs.style.cursor = 'grabbing';
+      render();
+      return;
+    } else if (dot) { playCircleDot(dot); return; }
 
     if (hitMOSCirclePanel(mx, my)) return;
 
@@ -4447,6 +4889,52 @@ function setup() {
       const delta = Math.max(dx, dy);
       S._circleRadius = S.circleResizeStartR + delta;
       render();
+      return;
+    }
+
+    if (S._modmosDrag && S.selected) {
+      const { cx, cy } = getMOSCircleLayout(S.W, S.H);
+      const ddx = mx - cx, ddy = my - cy;
+      const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (dist < 10) return;
+      const reps = getPeriodRepetitions();
+      const displayP = reps > 1 ? S.period * reps : S.period;
+      const angle = Math.atan2(ddy, ddx);
+      const normAngle = ((angle + Math.PI / 2) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      const targetCents = (normAngle / (Math.PI * 2)) * displayP;
+      const d = S._modmosDrag;
+      let offset = targetCents - d.baseCents;
+      const halfP = S.period / 2;
+      offset = ((offset + halfP) % S.period + S.period) % S.period - halfP;
+      // Collect all snap targets
+      const snapThresh = d.chroma > 0.5 ? Math.min(8, d.chroma * 0.15) : 8;
+      let bestSnap = null, bestDist = snapThresh;
+      // Zero snap
+      if (Math.abs(offset) < bestDist) { bestDist = Math.abs(offset); bestSnap = 0; }
+      // Chroma snaps
+      if (d.chroma > 0.5) {
+        const nearestChroma = Math.round(offset / d.chroma);
+        const chromaDist = Math.abs(offset - nearestChroma * d.chroma);
+        if (chromaDist < bestDist) { bestDist = chromaDist; bestSnap = nearestChroma * d.chroma; }
+      }
+      // EDO grid snaps (skip positions that coincide with a chroma)
+      if (d.edoStep > 0.5) {
+        const nearestEdo = Math.round((d.baseCents + offset) / d.edoStep) * d.edoStep;
+        const edoOffset = nearestEdo - d.baseCents;
+        const isChroma = d.chroma > 0.5 && Math.abs(edoOffset - Math.round(edoOffset / d.chroma) * d.chroma) < 0.5;
+        if (!isChroma) {
+          const edoDist = Math.abs(offset - edoOffset);
+          if (edoDist < bestDist) { bestDist = edoDist; bestSnap = edoOffset; }
+        }
+      }
+      if (bestSnap !== null) offset = bestSnap;
+      const n = S.selected.perPeriodSize;
+      while (S.modmos.length < n) S.modmos.push(0);
+      S.modmos[d.origDeg] = d.chroma > 0.01 ? offset / d.chroma : 0;
+      cvs.style.cursor = 'grabbing';
+      render();
+      updateRulerIntervals();
+      updateHeldNotes();
       return;
     }
 
@@ -4502,6 +4990,8 @@ function setup() {
         cvs.style.cursor = 'ns-resize';
       } else if (hitCircleArrow(mx, my)) {
         cvs.style.cursor = 'pointer';
+      } else if (S._modmosResetBtn && mx >= S._modmosResetBtn.x && mx <= S._modmosResetBtn.x + S._modmosResetBtn.w && my >= S._modmosResetBtn.y && my <= S._modmosResetBtn.y + S._modmosResetBtn.h) {
+        cvs.style.cursor = 'pointer';
       } else if (hitCircleDot(mx, my)) {
         cvs.style.cursor = 'pointer';
       } else if (hitTempBar(mx, my)) {
@@ -4530,6 +5020,21 @@ function setup() {
   });
 
   window.addEventListener('mouseup', e => {
+    if (S._modmosDrag) {
+      const wasCommit = e.button === 0;
+      const d = S._modmosDrag;
+      if (!wasCommit) {
+        const n = S.selected.perPeriodSize;
+        while (S.modmos.length < n) S.modmos.push(0);
+        S.modmos[d.origDeg] = d.startOffset;
+      }
+      S._modmosDrag = null;
+      cvs.style.cursor = '';
+      updatePanel();
+      render();
+      if (wasCommit) pushUndo();
+      return;
+    }
     if (S.circleResizing) {
       S.circleResizing = false;
       cvs.style.cursor = '';
@@ -4607,9 +5112,22 @@ function setup() {
   }
 
   cntr.addEventListener('contextmenu', e => {
+    if (S._modmosDrag) {
+      e.preventDefault();
+      const d = S._modmosDrag;
+      const n = S.selected.perPeriodSize;
+      while (S.modmos.length < n) S.modmos.push(0);
+      S.modmos[d.origDeg] = d.startOffset;
+      S._modmosDrag = null;
+      cvs.style.cursor = '';
+      updatePanel();
+      render();
+      return;
+    }
     const rect = cvs.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
+
     const cc = x2c(mx);
 
     if (!isOnAxisBar(my) || cc < 0 || cc > S.viewLimit) return;
@@ -4790,6 +5308,18 @@ function setup() {
 
   window.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    if (S._modmosDrag && e.key === 'Escape') {
+      e.preventDefault();
+      const d = S._modmosDrag;
+      const n = S.selected.perPeriodSize;
+      while (S.modmos.length < n) S.modmos.push(0);
+      S.modmos[d.origDeg] = d.startOffset;
+      S._modmosDrag = null;
+      cvs.style.cursor = '';
+      updatePanel();
+      render();
+      return;
+    }
     if (S.selected && S.generatorCents !== null) {
       if (e.key === 'ArrowLeft') { e.preventDefault(); handleModeButton('step-down'); return; }
       if (e.key === 'ArrowRight') { e.preventDefault(); handleModeButton('step-up'); return; }
@@ -5050,6 +5580,7 @@ function buildShareURL() {
   if (S.generatorCents !== null) params.set('gen', S.generatorCents.toFixed(4).replace(/\.?0+$/, ''));
   if (S.modeRotation) params.set('mode', S.modeRotation);
   if (S.octaveStretch !== 0) params.set('stretch', S.octaveStretch);
+  if (hasModmos()) params.set('modmos', S.modmos.map(v => Math.round(v * 100) / 100).join(','));
   const qs = params.toString();
   return window.location.origin + window.location.pathname + (qs ? '?' + qs : '');
 }
@@ -5063,6 +5594,7 @@ function restoreFromURL() {
   const gen = params.has('gen') ? parseFloat(params.get('gen')) : null;
   const mode = params.has('mode') ? parseInt(params.get('mode'), 10) : 0;
   const stretch = params.has('stretch') ? parseFloat(params.get('stretch')) : 0;
+  const modmosStr = params.get('modmos');
 
   if (isNaN(period) || period <= 0) return;
 
@@ -5117,6 +5649,9 @@ function restoreFromURL() {
         S.generatorCents = Math.max(region.lowCents, Math.min(region.highCents, gen));
       }
       if (mode && !isNaN(mode)) S.modeRotation = mode;
+      if (modmosStr) {
+        S.modmos = modmosStr.split(',').map(Number);
+      }
     }
   }
 
