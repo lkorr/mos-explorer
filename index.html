@@ -540,6 +540,16 @@ canvas { display: block; width: 100%; height: 100%; }
   font-size: 13px;
   animation: seq-pulse 2.5s ease-in-out infinite;
 }
+.interval-ruler.seq-degree .interval-ruler-track,
+.interval-ruler.seq-boundary .interval-ruler-track {
+  box-shadow: 0 0 6px 1px rgba(245, 166, 35, 0.45);
+}
+.interval-ruler.seq-boundary .interval-ruler-label .degree-name {
+  color: #f5a623;
+}
+.interval-ruler.gen-dimmed {
+  opacity: 0.45;
+}
 .interval-ruler.seq-constrained {
   opacity: 0.5;
 }
@@ -4650,7 +4660,7 @@ function renderEDOGrid() {
       h += `<div class="gen-seq-display">gen sequence: (${S.genSequence.map(v => stretchCents(v).toFixed(1)).join(', ')})</div>`;
     }
 
-    h += '<div class="interval-ruler" data-ruler="gen">';
+    h += `<div class="interval-ruler${hasGenSequence() ? ' gen-dimmed' : ''}" data-ruler="gen">`;
     h += '<div class="interval-ruler-label"><span class="degree-name">Generator</span> <span class="degree-ratio"></span></div>';
     h += '<div class="interval-ruler-track gen-track">';
     h += '<div class="ruler-indicator"></div>';
@@ -4661,9 +4671,11 @@ function renderEDOGrid() {
     for (const i of sortOrder) {
       const genDist = genDistMap[i];
       const isSeqDeg = hasGenSequence() && genDist !== undefined && genDist >= 1 && genDist < S.genSequenceLength;
-      const isSeqAfter = hasGenSequence() && genDist !== undefined && genDist >= S.genSequenceLength;
+      const isSeqBound = hasGenSequence() && genDist !== undefined && genDist === S.genSequenceLength;
+      const isSeqAfter = hasGenSequence() && genDist !== undefined && genDist > S.genSequenceLength;
       let rulerCls = 'interval-ruler';
       if (isSeqDeg) rulerCls += ' seq-degree';
+      else if (isSeqBound) rulerCls += ' seq-boundary';
       else if (isSeqAfter) rulerCls += ' seq-constrained';
       h += `<div class="${rulerCls}" data-ruler="${i}"${byGen && genDist !== undefined ? ` data-gen-dist="${genDist}"` : ''}>`;
       h += `<div class="interval-ruler-label"><span class="degree-name">Degree ${i + 1}</span>`;
@@ -4944,15 +4956,28 @@ function setupRulerGlobalHandlers() {
         }
         if (bestSnap !== null) newGenVal = bestSnap - d.priorSum;
       }
-      updateGenSequenceEntry(d.genDistIdx, Math.max(1, newGenVal));
+      const k = S.genSequence.length;
+      const idx = d.genDistIdx % k;
+      S.genSequence[idx] = Math.max(1, newGenVal);
+      if (d.isBoundary) {
+        const avg = S.genSequence.reduce((a, b) => a + b, 0) / k;
+        const sel = S.selected;
+        S.generatorCents = Math.max(sel.lowCents, Math.min(sel.highCents, avg));
+      } else {
+        const next = (idx + 1) % k;
+        const delta = Math.max(1, newGenVal) - d.startCents;
+        S.genSequence[next] = Math.max(1, d.startNextCents - delta);
+      }
       updateHeldNotes();
       render();
       updateRulerIntervals();
+      renderChordsPanel();
       return;
     }
     if (!S._rulerDragging || !S.selected) return;
     const dx = e.clientX - S._rulerDragStartX;
-    rulerSetGenFromCents(S._rulerDragStartCents - dx / 30);
+    const g = S._rulerDragGenDist || 1;
+    rulerSetGenFromCents(S._rulerDragStartCents - dx / (30 * g));
   });
 
   document.addEventListener('mouseup', () => {
@@ -4966,8 +4991,8 @@ function setupRulerGlobalHandlers() {
     }
     if (!S._rulerDragging) return;
     S._rulerDragging = false;
-    const track = document.querySelector('.gen-track');
-    if (track) track.style.cursor = 'grab';
+    S._rulerDragGenDist = 1;
+    document.querySelectorAll('.gen-track, .interval-ruler-track').forEach(t => t.style.cursor = 'grab');
     pushUndo();
   });
 }
@@ -5067,6 +5092,7 @@ function setupRulerInteraction(edoEl) {
     S._rulerDragging = true;
     S._rulerDragStartX = e.clientX;
     S._rulerDragStartCents = S.generatorCents !== null ? S.generatorCents : (S.selected.lowCents + S.selected.highCents) / 2;
+    S._rulerDragGenDist = 1;
     track.style.cursor = 'grabbing';
     e.preventDefault();
   });
@@ -5081,6 +5107,30 @@ function setupRulerInteraction(edoEl) {
   }, { passive: false });
 
   if (hasGenSequence() && scrollArea) {
+    const boundRuler = scrollArea.querySelector('.interval-ruler.seq-boundary');
+    if (boundRuler) {
+      const boundTrack = boundRuler.querySelector('.interval-ruler-track');
+      const boundGenDist = parseInt(boundRuler.dataset.genDist, 10);
+      if (boundTrack && boundGenDist) {
+        boundTrack.style.cursor = 'grab';
+        boundTrack.addEventListener('mousedown', e => {
+          if (!S.selected || !hasGenSequence()) return;
+          const seqIdx = boundGenDist - 1;
+          let priorSum = 0;
+          for (let si = 0; si < seqIdx; si++) priorSum += S.genSequence[si % S.genSequence.length];
+          S._genSeqDrag = {
+            genDistIdx: seqIdx,
+            startX: e.clientX,
+            startCents: S.genSequence[seqIdx % S.genSequence.length],
+            startGenCents: S.generatorCents,
+            isBoundary: true,
+            priorSum,
+          };
+          boundTrack.style.cursor = 'grabbing';
+          e.preventDefault();
+        });
+      }
+    }
     const seqRulers = scrollArea.querySelectorAll('.interval-ruler.seq-degree');
     seqRulers.forEach(ruler => {
       const seqTrack = ruler.querySelector('.interval-ruler-track');
@@ -5123,6 +5173,25 @@ function setupRulerInteraction(edoEl) {
           priorSum,
         };
         seqTrack.style.cursor = 'grabbing';
+        e.preventDefault();
+      });
+    });
+  }
+
+  if (!hasGenSequence() && scrollArea) {
+    scrollArea.querySelectorAll('.interval-ruler[data-gen-dist]').forEach(ruler => {
+      const degTrack = ruler.querySelector('.interval-ruler-track');
+      if (!degTrack) return;
+      const genDist = parseInt(ruler.dataset.genDist, 10);
+      if (!genDist || genDist < 1) return;
+      degTrack.style.cursor = 'grab';
+      degTrack.addEventListener('mousedown', e => {
+        if (!S.selected || hasGenSequence()) return;
+        S._rulerDragging = true;
+        S._rulerDragStartX = e.clientX;
+        S._rulerDragStartCents = S.generatorCents !== null ? S.generatorCents : (S.selected.lowCents + S.selected.highCents) / 2;
+        S._rulerDragGenDist = genDist;
+        degTrack.style.cursor = 'grabbing';
         e.preventDefault();
       });
     });
@@ -5718,13 +5787,21 @@ function setup() {
     }
     if (S._genSeqDrag && e.key === 'Escape') {
       e.preventDefault();
-      S.genSequence[S._genSeqDrag.genDistIdx] = S._genSeqDrag.startCents;
-      S.genSequence[S._genSeqDrag.nextIdx] = S._genSeqDrag.startNextCents;
+      const d = S._genSeqDrag;
+      const k = S.genSequence.length;
+      S.genSequence[d.genDistIdx % k] = d.startCents;
+      if (d.isBoundary) {
+        S.generatorCents = d.startGenCents;
+      } else {
+        const next = (d.genDistIdx + 1) % k;
+        S.genSequence[next] = d.startNextCents;
+      }
       S._genSeqDrag = null;
       S._rulerBuiltKey = null;
       updateHeldNotes();
       render();
       updateRulerIntervals();
+      renderChordsPanel();
       return;
     }
     if (S._modmosDrag && e.key === 'Escape') {
