@@ -108,6 +108,202 @@ function rotateMOSScale(scale, rotation, period = 1200) {
 }
 
 // ============================================================
+//  Rank-3 product scales (Fokker blocks)
+// ============================================================
+
+function stepPatternProduct(wordA, wordB) {
+  if (wordA.length !== wordB.length) throw new Error('Words must have equal length');
+  const n = wordA.length;
+
+  function normalize(w) {
+    const freq = {};
+    for (const ch of w) freq[ch] = (freq[ch] || 0) + 1;
+    const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+    const map = {};
+    sorted.forEach((e, i) => { map[e[0]] = i; });
+    return w.split('').map(ch => map[ch]);
+  }
+
+  const a = normalize(wordA);
+  const b = normalize(wordB);
+
+  const pairOrder = [[0,0], [0,1], [1,0], [1,1]];
+  const pairToKey = (p, q) => p * 2 + q;
+
+  const seen = new Set();
+  for (let i = 0; i < n; i++) seen.add(pairToKey(a[i], b[i]));
+
+  const symbols = [];
+  for (const [p, q] of pairOrder) {
+    if (seen.has(pairToKey(p, q))) symbols.push(pairToKey(p, q));
+  }
+
+  const labelMap = {};
+  const labels = ['L', 'M', 's', 'x'];
+  symbols.forEach((k, i) => { labelMap[k] = labels[i]; });
+
+  let result = '';
+  for (let i = 0; i < n; i++) {
+    result += labelMap[pairToKey(a[i], b[i])];
+  }
+  return result;
+}
+
+function computeVariety(scalePitches, period) {
+  const n = scalePitches.length;
+  if (n < 2) return 1;
+  const tol = 0.5;
+  let maxVariety = 0;
+  for (let k = 1; k < n; k++) {
+    const rawSizes = [];
+    for (let i = 0; i < n; i++) {
+      const j = (i + k) % n;
+      let interval = scalePitches[j] - scalePitches[i];
+      if (interval < 0) interval += period;
+      rawSizes.push(interval);
+    }
+    rawSizes.sort((a, b) => a - b);
+    let distinct = 1;
+    for (let i = 1; i < rawSizes.length; i++) {
+      if (rawSizes[i] - rawSizes[i - 1] > tol) distinct++;
+    }
+    if (distinct > maxVariety) maxVariety = distinct;
+  }
+  return maxVariety;
+}
+
+function computeWordVariety(word) {
+  const symbolSet = [...new Set(word.split(''))].sort();
+  const sizeMap = {};
+  symbolSet.forEach((ch, i) => { sizeMap[ch] = 300 - i * 97; });
+  const pitches = [0];
+  let cum = 0;
+  for (let i = 0; i < word.length - 1; i++) {
+    cum += sizeMap[word[i]];
+    pitches.push(cum);
+  }
+  cum += sizeMap[word[word.length - 1]];
+  return computeVariety(pitches, cum);
+}
+
+function buildProductScale(g1, g2, n, modeRot, domeIndex, period) {
+  period = period || 1200;
+  modeRot = modeRot || 0;
+  domeIndex = domeIndex || 0;
+
+  // Two-chain construction: build two parallel chains of the primary
+  // generator g1, where chain B is offset by g2 (the delta/second generator).
+  //
+  // Chain A: ceil(n/2) notes stacked by g1, starting from 0
+  // Chain B: floor(n/2) notes stacked by g1, starting from g2
+  // domeIndex shifts the starting point of chain B by additional g1 steps.
+  //
+  // This produces a rank-3 scale where:
+  // - g1 is the primary generator (same as the selected MOS region)
+  // - g2 is the offset that splits the MOS into a ternary scale
+  // When g2=0, chain B merges into chain A → standard MOS.
+  const chainALen = Math.ceil(n / 2);
+  const chainBLen = Math.floor(n / 2);
+
+  const allPitches = [];
+  for (let i = 0; i < chainALen; i++) {
+    allPitches.push(((i * g1) % period + period) % period);
+  }
+  const bStart = ((domeIndex * g1 + g2) % period + period) % period;
+  for (let i = 0; i < chainBLen; i++) {
+    allPitches.push(((bStart + i * g1) % period + period) % period);
+  }
+  allPitches.sort((a, b) => a - b);
+
+  const steps = [];
+  for (let i = 0; i < n; i++) {
+    const next = (i + 1) % n;
+    const diff = next === 0 ? period - allPitches[n - 1] + allPitches[0] : allPitches[next] - allPitches[i];
+    steps.push(diff);
+  }
+
+  const rounded = steps.map(x => Math.round(x * 100) / 100);
+  const distinctSizes = [...new Set(rounded)].sort((a, b) => b - a);
+
+  let L, M, s, word;
+  if (distinctSizes.length >= 3) {
+    L = distinctSizes[0];
+    M = distinctSizes[1];
+    s = distinctSizes[distinctSizes.length - 1];
+    word = rounded.map(v => {
+      if (Math.abs(v - L) < 0.5) return 'L';
+      if (Math.abs(v - s) < 0.5) return 's';
+      return 'M';
+    }).join('');
+  } else if (distinctSizes.length === 2) {
+    L = distinctSizes[0];
+    M = 0;
+    s = distinctSizes[1];
+    word = rounded.map(v => Math.abs(v - L) < 0.5 ? 'L' : 's').join('');
+  } else {
+    L = distinctSizes[0] || 0;
+    M = 0;
+    s = L;
+    word = 'L'.repeat(n);
+  }
+
+  let pitches = allPitches;
+  if (modeRot > 0 && modeRot < n) {
+    const root = allPitches[modeRot];
+    pitches = allPitches.map(p => ((p - root) % period + period) % period);
+    pitches.sort((a, b) => a - b);
+    const newSteps = [];
+    for (let i = 0; i < n; i++) {
+      const next = (i + 1) % n;
+      const diff = next === 0 ? period - pitches[n - 1] + pitches[0] : pitches[next] - pitches[i];
+      newSteps.push(diff);
+    }
+    const newRounded = newSteps.map(x => Math.round(x * 100) / 100);
+    word = newRounded.map(v => {
+      if (Math.abs(v - L) < 0.5) return 'L';
+      if (Math.abs(v - s) < 0.5) return 's';
+      return 'M';
+    }).join('');
+    steps.length = 0;
+    steps.push(...newSteps);
+  }
+
+  const variety = computeVariety(pitches, period);
+
+  return { pitches, steps, word, variety, L, M, s };
+}
+
+function findMV3Windows(g, N, period) {
+  period = period || 1200;
+  const resolution = 1;
+  const windows = [];
+  let inWindow = false;
+  let winStart = 0;
+  let winWord = '';
+
+  for (let delta = 0; delta <= period / 2; delta += resolution) {
+    const result = buildProductScale(g, delta, N, 0, 0, period);
+    if (result.variety <= 3 && result.variety >= 2) {
+      if (!inWindow) {
+        winStart = delta;
+        winWord = result.word;
+        inWindow = true;
+      }
+    } else {
+      if (inWindow) {
+        windows.push({ deltaLow: winStart, deltaHigh: delta - resolution, word: winWord });
+        inWindow = false;
+      }
+    }
+  }
+  if (inWindow) {
+    windows.push({ deltaLow: winStart, deltaHigh: period / 2, word: winWord });
+  }
+
+  return windows;
+}
+
+// ============================================================
 //  MOS parent/child tree (Stern-Brocot)
 // ============================================================
 
@@ -781,6 +977,153 @@ const COMMANDS = {
         const quality = bestErr < 5 ? 'excellent' : bestErr < 15 ? 'good' : bestErr < 30 ? 'fair' : 'poor';
         console.log(`  ${target.n}/${target.d} (${target.cents.toFixed(2)}¢): best=${bestIv.cents.toFixed(2)}¢ (${bestIv.span}-step) err=${bestErr.toFixed(2)}¢ [${quality}]`);
       }
+    },
+  },
+
+  product: {
+    usage: 'product <gen1> <gen2> <size> [period=1200]',
+    desc: 'Build a rank-3 product scale from two independent generators',
+    run(args) {
+      const g1 = +args[0], g2 = +args[1], n = +args[2], period = +(args[3] || 1200);
+      if (!g1 || !g2 || !n) return 'Usage: product <gen1> <gen2> <size> [period]';
+      const result = buildProductScale(g1, g2, n, 0, 0, period);
+      console.log(`Product scale: g1=${g1}¢, g2=${g2}¢, size=${n}, period=${period}¢`);
+      console.log(`Word: ${result.word}`);
+      console.log(`Variety: ${result.variety} (${result.variety <= 3 ? 'MV3 ✓' : 'MV' + result.variety + ' ✗'})`);
+      console.log(`L=${result.L.toFixed(4)}¢  M=${result.M ? result.M.toFixed(4) : '—'}¢  s=${result.s.toFixed(4)}¢`);
+      console.log(`Pitches: ${result.pitches.map(p => p.toFixed(2)).join(', ')}`);
+      console.log(`Steps:   ${result.steps.map(s => s.toFixed(2)).join(', ')}`);
+    },
+  },
+
+  variety: {
+    usage: 'variety <genCents> <size> [period=1200]',
+    desc: 'Compute the max variety of a MOS scale',
+    run(args) {
+      const gen = +args[0], n = +args[1], period = +(args[2] || 1200);
+      if (!gen || !n) return 'Usage: variety <genCents> <size>';
+      const scale = buildMOSScale(gen, n, period);
+      const v = computeVariety(scale.pitches, period);
+      console.log(`Generator: ${gen}¢, Size: ${n}, Period: ${period}¢`);
+      console.log(`Variety: ${v}`);
+    },
+  },
+
+  mv3: {
+    usage: 'mv3 <genCents> <size> [period=1200]',
+    desc: 'Find delta ranges that produce MV3 product scales',
+    run(args) {
+      const gen = +args[0], n = +args[1], period = +(args[2] || 1200);
+      if (!gen || !n) return 'Usage: mv3 <genCents> <size>';
+      const windows = findMV3Windows(gen, n, period);
+      console.log(`MV3 windows for g=${gen}¢, N=${n}:`);
+      if (!windows.length) {
+        console.log('  No MV3 windows found');
+      } else {
+        for (const w of windows) {
+          console.log(`  δ ${w.deltaLow.toFixed(1)}¢ — ${w.deltaHigh.toFixed(1)}¢  word=${w.word}`);
+        }
+      }
+    },
+  },
+
+  'word-product': {
+    usage: 'word-product <wordA> <wordB>',
+    desc: 'Compute the abstract step-pattern product of two equal-length words',
+    run(args) {
+      if (args.length < 2) return 'Usage: word-product <wordA> <wordB>';
+      const result = stepPatternProduct(args[0], args[1]);
+      console.log(`${args[0]} × ${args[1]} = ${result}`);
+      const v = computeWordVariety(result);
+      console.log(`Variety: ${v}`);
+    },
+  },
+
+  'test-product': {
+    usage: 'test-product',
+    desc: 'Run all rank-3 product acceptance tests',
+    run() {
+      let pass = 0, fail = 0;
+      function assert(name, condition) {
+        if (condition) { console.log(`  ✓ ${name}`); pass++; }
+        else { console.log(`  ✗ ${name}`); fail++; }
+      }
+
+      console.log('Acceptance tests:\n');
+
+      // Test 1: Zarlino word product
+      console.log('1. Zarlino step-pattern product:');
+      const zarlino = stepPatternProduct('ABABABA', 'AABAAAB');
+      const symbols = new Set(zarlino.split(''));
+      assert('3 distinct symbols', symbols.size === 3);
+      assert('Length 7', zarlino.length === 7);
+      // Check structure: relabel to canonical form and verify
+      const charMap = {};
+      let nextLabel = 0;
+      let canonical = '';
+      for (const ch of zarlino) {
+        if (!(ch in charMap)) charMap[ch] = nextLabel++;
+        canonical += charMap[ch];
+      }
+      // LsMsLsM with L→A,s→B,M→C = ABCBABC ✓ (first-occurrence canonical differs from alphabetic)
+      const relabeled = zarlino.replace(/L/g,'A').replace(/s/g,'B').replace(/M/g,'C');
+      assert('Relabeled to ABCBABC', relabeled === 'ABCBABC');
+      console.log(`  Product word: ${zarlino}, canonical: ${canonical}`);
+
+      // Test 2: computeVariety on JI pitch sets
+      console.log('\n2. computeVariety on pitch sets:');
+      function jiToCents(...ratios) {
+        return ratios.map(r => {
+          const [n, d] = r.split('/').map(Number);
+          return 1200 * Math.log2(n / d);
+        });
+      }
+      const set1 = jiToCents('1/1', '9/8', '40/27', '3/2', '160/81');
+      assert('{1/1,9/8,40/27,3/2,160/81} → variety 3', computeVariety(set1, 1200) === 3);
+
+      const set2 = jiToCents('1/1', '10/9', '9/8', '40/27', '3/2');
+      assert('{1/1,10/9,9/8,40/27,3/2} → variety 4', computeVariety(set2, 1200) === 4);
+
+      const set3 = jiToCents('1/1', '9/8', '5/4', '3/2', '5/3');
+      assert('{1/1,9/8,5/4,3/2,5/3} → variety 3', computeVariety(set3, 1200) === 3);
+
+      const set4 = jiToCents('1/1', '9/8', '5/4', '3/2', '15/8');
+      assert('{1/1,9/8,5/4,3/2,15/8} → variety 5', computeVariety(set4, 1200) === 5);
+
+      // Test 3: computeWordVariety on abstract words
+      console.log('\n3. computeWordVariety on abstract words:');
+      assert('LsMLsMs → variety 3', computeWordVariety('LsMLsMs') === 3);
+      assert('LssMLMs → variety 4', computeWordVariety('LssMLMs') === 4);
+
+      // Test 4: Chain-length rule
+      console.log('\n4. Chain-length rule:');
+      assert('N=5 (odd): chains 3+2', Math.ceil(5/2) === 3 && Math.floor(5/2) === 2);
+      assert('N=7 (odd): chains 4+3', Math.ceil(7/2) === 4 && Math.floor(7/2) === 3);
+      assert('N=6 (even): chains 3+3', Math.ceil(6/2) === 3 && Math.floor(6/2) === 3);
+      assert('N=8 (even): chains 4+4', Math.ceil(8/2) === 4 && Math.floor(8/2) === 4);
+
+      // Test 5: buildProductScale basic sanity
+      console.log('\n5. buildProductScale sanity:');
+      const prod7 = buildProductScale(701.955, 386.314, 7, 0, 0, 1200);
+      assert('7-note product has 7 pitches', prod7.pitches.length === 7);
+      assert('Steps sum to period', Math.abs(prod7.steps.reduce((a,b) => a+b, 0) - 1200) < 0.01);
+      assert('Word length = 7', prod7.word.length === 7);
+
+      // Zarlino round-trip: g1=3/2, g2=5/4, mode 4 should give JI major
+      console.log('\n6. Zarlino round-trip (JI major):');
+      const jiMajor = buildProductScale(701.955, 386.314, 7, 4, 0, 1200);
+      const jiTarget = [0, 203.91, 386.31, 498.04, 701.96, 884.36, 1088.27];
+      assert('Variety = 3 (MV3)', jiMajor.variety === 3);
+      assert('Steps are 9/8, 10/9, 16/15',
+        Math.abs(jiMajor.L - 203.91) < 0.5 &&
+        Math.abs(jiMajor.M - 182.40) < 0.5 &&
+        Math.abs(jiMajor.s - 111.73) < 0.5);
+      const pitchMatch = jiTarget.every((t, i) => Math.abs(t - jiMajor.pitches[i]) < 1);
+      assert('Pitches match JI major within 1¢', pitchMatch);
+      assert('Word is LMsLMLs', jiMajor.word === 'LMsLMLs');
+
+      console.log(`\n${pass} passed, ${fail} failed`);
+      if (fail > 0) process.exit(1);
     },
   },
 

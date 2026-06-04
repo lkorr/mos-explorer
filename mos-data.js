@@ -503,3 +503,19 @@ const MODE_NAMES = {
   '3L_5s': ['Mode 1', 'Mode 2', 'Mode 3', 'Mode 4', 'Mode 5', 'Mode 6', 'Mode 7', 'Mode 8'],
   '7L_5s': ['Mode 1', 'Mode 2', 'Mode 3', 'Mode 4', 'Mode 5', 'Mode 6', 'Mode 7', 'Mode 8', 'Mode 9', 'Mode 10', 'Mode 11', 'Mode 12'],
 };
+
+const PRODUCT_WORDS = {
+  '5L_2s': [
+    { name: 'Zarlino', word: 'LMsLMLs',
+      factors: ['ABABABA', 'AABAAAB'],
+      wikiUrl: 'https://en.xen.wiki/w/Zarlino' },
+    { name: 'Nicetone', word: 'LsMLsMs',
+      factors: ['ABABABA', 'AABABAB'],
+      wikiUrl: 'https://en.xen.wiki/w/Nicetone' },
+  ],
+  '3L_4s': [
+    { name: 'Byzantine', word: 'sLMsLsM',
+      factors: ['AABABAB', 'ABAAABB'],
+      wikiUrl: null },
+  ],
+};

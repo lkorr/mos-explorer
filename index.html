@@ -1072,6 +1072,147 @@ function getEqualizedEnd(region) {
 }
 
 // ================================================================
+//  Rank-3 product scales (Fokker blocks)
+// ================================================================
+
+function stepPatternProduct(wordA, wordB) {
+  if (wordA.length !== wordB.length) throw new Error('Words must have equal length');
+  const n = wordA.length;
+  function normalize(w) {
+    const freq = {};
+    for (const ch of w) freq[ch] = (freq[ch] || 0) + 1;
+    const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+    const map = {};
+    sorted.forEach((e, i) => { map[e[0]] = i; });
+    return w.split('').map(ch => map[ch]);
+  }
+  const a = normalize(wordA);
+  const b = normalize(wordB);
+  const pairOrder = [[0,0], [0,1], [1,0], [1,1]];
+  const pairToKey = (p, q) => p * 2 + q;
+  const seen = new Set();
+  for (let i = 0; i < n; i++) seen.add(pairToKey(a[i], b[i]));
+  const symbols = [];
+  for (const [p, q] of pairOrder) {
+    if (seen.has(pairToKey(p, q))) symbols.push(pairToKey(p, q));
+  }
+  const labelMap = {};
+  const labels = ['L', 'M', 's', 'x'];
+  symbols.forEach((k, i) => { labelMap[k] = labels[i]; });
+  let result = '';
+  for (let i = 0; i < n; i++) result += labelMap[pairToKey(a[i], b[i])];
+  return result;
+}
+
+function computeVariety(scalePitches, period) {
+  const n = scalePitches.length;
+  if (n < 2) return 1;
+  const tol = 0.5;
+  let maxVariety = 0;
+  for (let k = 1; k < n; k++) {
+    const rawSizes = [];
+    for (let i = 0; i < n; i++) {
+      const j = (i + k) % n;
+      let interval = scalePitches[j] - scalePitches[i];
+      if (interval < 0) interval += period;
+      rawSizes.push(interval);
+    }
+    rawSizes.sort((a, b) => a - b);
+    let distinct = 1;
+    for (let i = 1; i < rawSizes.length; i++) {
+      if (rawSizes[i] - rawSizes[i - 1] > tol) distinct++;
+    }
+    if (distinct > maxVariety) maxVariety = distinct;
+  }
+  return maxVariety;
+}
+
+function buildProductScale(g1, g2, n, modeRot, domeIndex, period) {
+  period = period || S.period;
+  modeRot = modeRot || 0;
+  domeIndex = domeIndex || 0;
+  const chainALen = Math.ceil(n / 2);
+  const chainBLen = Math.floor(n / 2);
+  const allPitches = [];
+  for (let i = 0; i < chainALen; i++) {
+    allPitches.push(((i * g1) % period + period) % period);
+  }
+  const bStart = ((domeIndex * g1 + g2) % period + period) % period;
+  for (let i = 0; i < chainBLen; i++) {
+    allPitches.push(((bStart + i * g1) % period + period) % period);
+  }
+  allPitches.sort((a, b) => a - b);
+
+  const steps = [];
+  for (let i = 0; i < n; i++) {
+    const next = (i + 1) % n;
+    const diff = next === 0 ? period - allPitches[n - 1] + allPitches[0] : allPitches[next] - allPitches[i];
+    steps.push(diff);
+  }
+  const rounded = steps.map(x => Math.round(x * 100) / 100);
+  const distinctSizes = [...new Set(rounded)].sort((a, b) => b - a);
+
+  let L, M, s, word;
+  if (distinctSizes.length >= 3) {
+    L = distinctSizes[0];
+    M = distinctSizes[1];
+    s = distinctSizes[distinctSizes.length - 1];
+    word = rounded.map(v => {
+      if (Math.abs(v - L) < 0.5) return 'L';
+      if (Math.abs(v - s) < 0.5) return 's';
+      return 'M';
+    }).join('');
+  } else if (distinctSizes.length === 2) {
+    L = distinctSizes[0]; M = 0; s = distinctSizes[1];
+    word = rounded.map(v => Math.abs(v - L) < 0.5 ? 'L' : 's').join('');
+  } else {
+    L = distinctSizes[0] || 0; M = 0; s = L;
+    word = 'L'.repeat(n);
+  }
+
+  let pitches = allPitches;
+  if (modeRot > 0 && modeRot < n) {
+    const root = allPitches[modeRot];
+    pitches = allPitches.map(p => ((p - root) % period + period) % period);
+    pitches.sort((a, b) => a - b);
+    const newSteps = [];
+    for (let i = 0; i < n; i++) {
+      const next = (i + 1) % n;
+      const diff = next === 0 ? period - pitches[n - 1] + pitches[0] : pitches[next] - pitches[i];
+      newSteps.push(diff);
+    }
+    const newRounded = newSteps.map(x => Math.round(x * 100) / 100);
+    word = newRounded.map(v => {
+      if (Math.abs(v - L) < 0.5) return 'L';
+      if (Math.abs(v - s) < 0.5) return 's';
+      return 'M';
+    }).join('');
+    steps.length = 0;
+    steps.push(...newSteps);
+  }
+
+  const variety = computeVariety(pitches, period);
+  return { pitches, steps, word, variety, L, M, s };
+}
+
+function findMV3Windows(g, N, period) {
+  period = period || S.period;
+  const resolution = 1;
+  const windows = [];
+  let inWindow = false, winStart = 0, winWord = '';
+  for (let delta = 0; delta <= period / 2; delta += resolution) {
+    const result = buildProductScale(g, delta, N, 0, 0, period);
+    if (result.variety <= 3 && result.variety >= 2) {
+      if (!inWindow) { winStart = delta; winWord = result.word; inWindow = true; }
+    } else {
+      if (inWindow) { windows.push({ deltaLow: winStart, deltaHigh: delta - resolution, word: winWord }); inWindow = false; }
+    }
+  }
+  if (inWindow) windows.push({ deltaLow: winStart, deltaHigh: period / 2, word: winWord });
+  return windows;
+}
+
+// ================================================================
 //  STATE
 // ================================================================
 
@@ -1094,6 +1235,16 @@ const S = {
   edoMultiplesOnly: false,
   _circleRadius: null,
   circleResizing: false, circleResizeStartX: 0, circleResizeStartY: 0, circleResizeStartR: 0,
+  combineMode: 'none',
+  gen2Cents: null,
+  selected2: null,
+  domeIndex: 0,
+  gen2Dragging: false,
+  _productScale: null,
+  _mv3Windows: null,
+  _mv3CacheKey: null,
+  _combineBtn: null,
+  _domeButtons: [],
 };
 
 const _undoStack = [];
@@ -1110,6 +1261,9 @@ function _snapState() {
     modeRotation: S.modeRotation,
     octaveStretch: S.octaveStretch,
     period: S.period,
+    combineMode: S.combineMode,
+    gen2Cents: S.gen2Cents,
+    domeIndex: S.domeIndex,
   };
 }
 
@@ -1120,11 +1274,14 @@ function _snapsEqual(a, b) {
     a.generatorCents === b.generatorCents &&
     a.modeRotation === b.modeRotation &&
     a.octaveStretch === b.octaveStretch &&
-    a.period === b.period;
+    a.period === b.period &&
+    a.combineMode === b.combineMode &&
+    a.gen2Cents === b.gen2Cents &&
+    a.domeIndex === b.domeIndex;
 }
 
 function _isDragging() {
-  return S.dragging || S.genDragging || S.sliderDragging || S.sizeSbDragging || S._rulerDragging || S.circleResizing || S._stretchDragging;
+  return S.dragging || S.genDragging || S.sliderDragging || S.sizeSbDragging || S._rulerDragging || S.circleResizing || S._stretchDragging || S.gen2Dragging;
 }
 
 function pushUndo() {
@@ -1168,6 +1325,11 @@ function _restoreSnap(snap) {
   const slider = document.getElementById('octave-stretch-slider');
   slider.value = Math.max(+slider.min, Math.min(+slider.max, absVal));
   document.getElementById('stretch-reset').style.display = S.octaveStretch !== 0 ? '' : 'none';
+  S.combineMode = snap.combineMode || 'none';
+  S.gen2Cents = snap.gen2Cents !== undefined ? snap.gen2Cents : null;
+  S.domeIndex = snap.domeIndex || 0;
+  S._productScale = null;
+  S._mv3Windows = null;
   S._harmonicRatios = null;
   S._edoTableKey = null;
   S._rulerBuiltKey = null;
@@ -1736,6 +1898,41 @@ function drawGeneratorMarker(ctx, W, H) {
       labelDrawn = true;
     }
   }
+
+  if (S.combineMode === 'product' && S.gen2Cents !== null && S.selected) {
+    let labelDrawn2 = false;
+    for (let k = 0; k < reps; k++) {
+      const g2AtCopy = S.gen2Cents + k * S.period;
+      const x2 = c2x(g2AtCopy);
+      if (x2 < -10 || x2 > W + 10) continue;
+
+      ctx.strokeStyle = '#50c878';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x2, 40);
+      ctx.lineTo(x2, H - 10);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#50c878';
+      ctx.beginPath();
+      ctx.moveTo(x2, 40);
+      ctx.lineTo(x2 - 5, 48);
+      ctx.lineTo(x2, 56);
+      ctx.lineTo(x2 + 5, 48);
+      ctx.closePath();
+      ctx.fill();
+
+      if (!labelDrawn2) {
+        ctx.fillStyle = '#50c878';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('g₂ ' + stretchCents(S.gen2Cents).toFixed(1) + '¢', x2, 36);
+        labelDrawn2 = true;
+      }
+    }
+  }
 }
 
 // ================================================================
@@ -1759,6 +1956,7 @@ function drawMOSCircle(ctx, W, H) {
   const n = sel.perPeriodSize;
   const gen = S.generatorCents;
   const P = S.period;
+  let isProduct = S.combineMode === 'product' && S.gen2Cents !== null;
 
   const { radius, cx, cy, sliderW, sliderH, sliderX, sliderY } = getMOSCircleLayout(W, H);
 
@@ -1789,9 +1987,14 @@ function drawMOSCircle(ctx, W, H) {
     ctx.font = 'bold 13px monospace';
     const parts = [
       { text: titleText + '  ', color: '#e94560' },
-      { text: hardStr + '  ', color: '#f5a623' },
-      { text: udp, color: '#f5a623' },
     ];
+    if (isProduct && S._productScale) {
+      const v = S._productScale.variety;
+      parts.push({ text: 'MV' + v + '  ', color: v <= 3 ? '#50c878' : '#f5a623' });
+    } else {
+      parts.push({ text: hardStr + '  ', color: '#f5a623' });
+    }
+    parts.push({ text: udp, color: '#f5a623' });
     if (modeName) parts.push({ text: '  ' + modeName, color: '#6eb5ff' });
 
     let totalW = 0;
@@ -1925,7 +2128,9 @@ function drawMOSCircle(ctx, W, H) {
   ctx.fillText('collapsed', sliderX + sliderW * colLabel, sliderY + sliderH + 12);
 
   if (gen !== null) {
-    const stepPat = computeStepPattern(gen, n, S.modeRotation);
+    const stepPat = isProduct && S._productScale
+      ? S._productScale.word
+      : computeStepPattern(gen, n, S.modeRotation);
     const mosLabel = mosDisplayLabel(sel.key);
     ctx.font = '11px monospace';
     ctx.textBaseline = 'middle';
@@ -1937,6 +2142,55 @@ function drawMOSCircle(ctx, W, H) {
       const mosW = ctx.measureText(mosLabel + '  ').width;
       ctx.fillStyle = '#aab';
       ctx.fillText(stepPat, sliderX + mosW, labelY);
+    }
+
+    // "× Combine" toggle
+    const combBtnW = 72, combBtnH = 16;
+    const combBtnX = sliderX + sliderW - combBtnW;
+    const combBtnY = labelY - combBtnH / 2;
+    const combActive = S.combineMode === 'product';
+    ctx.fillStyle = combActive ? '#1a3a2a' : '#1e2a4a';
+    ctx.strokeStyle = combActive ? '#50c878' : '#2a3a5a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(combBtnX, combBtnY, combBtnW, combBtnH, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = combActive ? '#50c878' : '#8899bb';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(combActive ? '× Product' : '× Combine', combBtnX + combBtnW / 2, combBtnY + combBtnH / 2);
+    S._combineBtn = { x: combBtnX, y: combBtnY, w: combBtnW, h: combBtnH };
+
+    // Dome selector (only when product mode active)
+    S._domeButtons = [];
+    if (combActive) {
+      const domeBtnW = 18, domeBtnH = 14;
+      const domeY = combBtnY;
+      const domeRightX = combBtnX - 6;
+
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#aab';
+      ctx.fillText('dome ' + S.domeIndex, domeRightX - domeBtnW * 2 - 8, domeY + domeBtnH / 2);
+
+      for (let i = 0; i < 2; i++) {
+        const bx = domeRightX - (2 - i) * (domeBtnW + 2);
+        ctx.fillStyle = '#1e2a4a';
+        ctx.strokeStyle = '#2a3a5a';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(bx, domeY, domeBtnW, domeBtnH, 3);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#8899bb';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(i === 0 ? '◀' : '▶', bx + domeBtnW / 2, domeY + domeBtnH / 2);
+        S._domeButtons.push({ x: bx, y: domeY, w: domeBtnW, h: domeBtnH, action: i === 0 ? 'dome-prev' : 'dome-next' });
+      }
     }
   }
 
@@ -1982,8 +2236,16 @@ function drawMOSCircle(ctx, W, H) {
     return;
   }
 
-  const baseScale = buildMOSScale(gen, n, P);
-  const scale = rotateMOSScale(baseScale, S.modeRotation, P);
+  let scale;
+  if (isProduct) {
+    S._productScale = buildProductScale(gen, S.gen2Cents, n, S.modeRotation, S.domeIndex, P);
+    scale = S._productScale;
+  } else {
+    isProduct = false;
+    S._productScale = null;
+    const baseScale = buildMOSScale(gen, n, P);
+    scale = rotateMOSScale(baseScale, S.modeRotation, P);
+  }
 
   const reps = getPeriodRepetitions();
   let displayPitches, displaySteps, displayL, displayS;
@@ -2020,7 +2282,8 @@ function drawMOSCircle(ctx, W, H) {
 
   const Lcolor = regionColor;
   const compColor = complementaryColor(Lcolor);
-  const sColor = lerpColor(Lcolor, compColor, 1 - softness);
+  const Mcolor = isProduct ? lerpColor(Lcolor, compColor, 0.5) : null;
+  const sColor = isProduct ? compColor : lerpColor(Lcolor, compColor, 1 - softness);
 
   // Pie slices
   for (let i = 0; i < displayN; i++) {
@@ -2029,8 +2292,17 @@ function drawMOSCircle(ctx, W, H) {
     const a1 = c2a(startC);
     const a2 = c2a(startC + step);
 
-    const isL = Math.abs(step - L) < 0.5;
-    const col = isL ? Lcolor : sColor;
+    let col;
+    if (isProduct && S._productScale) {
+      const pS = S._productScale;
+      const threshLM = (pS.L + (pS.M || pS.L)) / 2;
+      const threshMs = ((pS.M || pS.s) + pS.s) / 2;
+      if (step > threshLM) col = Lcolor;
+      else if (step < threshMs) col = sColor;
+      else col = Mcolor || Lcolor;
+    } else {
+      col = Math.abs(step - L) < 0.5 ? Lcolor : sColor;
+    }
 
     ctx.beginPath();
     ctx.moveTo(cx, cy);
@@ -2172,8 +2444,44 @@ function drawMOSCircle(ctx, W, H) {
     }
   }
 
-  // Center info — temperament name only
-  if (Math.abs(S.octaveStretch) <= 5) {
+  // Center info
+  if (isProduct && S._productScale) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const pS = S._productScale;
+    const rScale = radius / 170;
+
+    let productName = null;
+    if (typeof PRODUCT_WORDS !== 'undefined') {
+      const mosKey = sel.perPeriodKey;
+      const entries = PRODUCT_WORDS[mosKey];
+      if (entries) {
+        for (const entry of entries) {
+          if (pS.word === entry.word) { productName = entry; break; }
+          const rotations = [];
+          let w = pS.word;
+          for (let r = 0; r < w.length; r++) {
+            rotations.push(w.slice(r) + w.slice(0, r));
+          }
+          if (rotations.includes(entry.word)) { productName = entry; break; }
+        }
+      }
+    }
+
+    if (productName) {
+      ctx.fillStyle = '#50c878';
+      ctx.font = 'bold ' + Math.max(7, Math.round(14 * rScale)) + 'px monospace';
+      ctx.fillText(productName.name, cx, cy - radius * 0.22);
+    }
+
+    ctx.fillStyle = pS.variety <= 3 ? '#50c878' : '#f5a623';
+    ctx.font = 'bold ' + Math.max(7, Math.round(11 * rScale)) + 'px monospace';
+    const lmsStr = pS.L.toFixed(0) + ':' + (pS.M || 0).toFixed(0) + ':' + pS.s.toFixed(0);
+    ctx.fillText('L:M:s = ' + lmsStr, cx, cy - radius * 0.08);
+    ctx.font = Math.max(6, Math.round(10 * rScale)) + 'px monospace';
+    ctx.fillStyle = '#aab';
+    ctx.fillText('g₂ = ' + stretchCents(S.gen2Cents).toFixed(1) + '¢', cx, cy + radius * 0.08);
+  } else if (Math.abs(S.octaveStretch) <= 5) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const activeTemps = getTemperamentsAtCursor(sel.perPeriodKey, gen, sel.lowCents, sel.highCents);
@@ -2270,9 +2578,18 @@ function hitMOSCirclePanel(mx, my) {
   return mx >= panelLeft && mx <= panelRight && my >= panelTop && my <= panelBot;
 }
 
+function hitCombineButton(mx, my) {
+  if (!S._combineBtn) return false;
+  const b = S._combineBtn;
+  return mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h;
+}
+
 function hitModeButton(mx, my) {
   if (!S._modeButtons) return null;
   for (const b of S._modeButtons) {
+    if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) return b.action;
+  }
+  for (const b of S._domeButtons) {
     if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) return b.action;
   }
   return null;
@@ -2285,6 +2602,9 @@ function handleModeButton(action) {
   else if (action === 'step-down') S.modeRotation = (S.modeRotation - 1 + n) % n;
   else if (action === 'gen-up') S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, 1);
   else if (action === 'gen-down') S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, -1);
+  else if (action === 'dome-prev') { S.domeIndex = (S.domeIndex - 1 + n) % n; S._productScale = null; }
+  else if (action === 'dome-next') { S.domeIndex = (S.domeIndex + 1) % n; S._productScale = null; }
+  S._rulerBuiltKey = null;
   updatePanel();
   render();
 }
@@ -2453,6 +2773,18 @@ function killAllNotes() {
 function buildFullScale() {
   const n = S.selected.perPeriodSize;
   const reps = getPeriodRepetitions();
+
+  if (S.combineMode === 'product' && S.gen2Cents !== null && S.generatorCents !== null) {
+    const product = buildProductScale(S.generatorCents, S.gen2Cents, n, S.modeRotation, S.domeIndex, S.period);
+    S._productScale = product;
+    if (reps <= 1) return { scale: product, size: n, octave: S.period };
+    const pitches = [];
+    for (let k = 0; k < reps; k++)
+      for (const p of product.pitches) pitches.push(p + k * S.period);
+    return { scale: { pitches }, size: n * reps, octave: S.period * reps };
+  }
+
+  S._productScale = null;
   const base = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
   if (reps <= 1) return { scale: base, size: n, octave: S.period };
   const pitches = [];
@@ -3998,8 +4330,13 @@ function renderEDOGrid() {
   const harmonics = buildHarmonicRatios();
   const reps = getPeriodRepetitions();
 
-  const baseScale = buildMOSScale(genCents, sel.perPeriodSize, S.period);
-  const scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
+  let scale;
+  if (S.combineMode === 'product' && S._productScale) {
+    scale = S._productScale;
+  } else {
+    const baseScale = buildMOSScale(genCents, sel.perPeriodSize, S.period);
+    scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
+  }
 
   let intervals;
   if (reps > 1) {
@@ -4011,7 +4348,8 @@ function renderEDOGrid() {
     intervals = scale.pitches.slice(1);
   }
 
-  const rulerKey = sel.key + '|' + intervals.length + '|' + S.rulerSort + '|' + reps + (S.rulerSort === 'generator' ? '|' + (S.modeRotation || 0) : '');
+  const productKey = S.combineMode === 'product' ? '|p|' + S.gen2Cents + '|' + S.domeIndex : '';
+  const rulerKey = sel.key + '|' + intervals.length + '|' + S.rulerSort + '|' + reps + (S.rulerSort === 'generator' ? '|' + (S.modeRotation || 0) : '') + productKey;
   if (S._rulerBuiltKey !== rulerKey) {
     const ppN = sel.perPeriodSize;
     const n = reps > 1 ? ppN * reps : intervals.length + 1;
@@ -4160,13 +4498,19 @@ function buildScaleWorkshopURL() {
   if (!S.selected || S.generatorCents === null) return null;
   const gen = S.generatorCents;
   const n = S.selected.perPeriodSize;
-  const baseScale = buildMOSScale(gen, n, S.period);
-  const scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
+
+  let scale;
+  if (S.combineMode === 'product' && S._productScale) {
+    scale = S._productScale;
+  } else {
+    const baseScale = buildMOSScale(gen, n, S.period);
+    scale = rotateMOSScale(baseScale, S.modeRotation || 0, S.period);
+  }
   const pitches = scale.pitches.slice(1);
   const effectivePeriod = stretchCents(S.period);
   const isStandardOctave = Math.abs(effectivePeriod - 1200) < 1;
 
-  const edoMatch = isStandardOctave ? findMatchingEDO(gen, n) : null;
+  const edoMatch = (isStandardOctave && S.combineMode === 'none') ? findMatchingEDO(gen, n) : null;
 
   let lines;
   let scaleName;
@@ -4392,6 +4736,21 @@ function setup() {
       return;
     }
 
+    if (hitCombineButton(mx, my)) {
+      S.combineMode = S.combineMode === 'product' ? 'none' : 'product';
+      if (S.combineMode === 'product' && S.gen2Cents === null && S.generatorCents !== null) {
+        const scale = buildMOSScale(S.generatorCents, S.selected.perPeriodSize, S.period);
+        S.gen2Cents = scale.L / 3;
+      }
+      S._productScale = null;
+      S._mv3Windows = null;
+      S._rulerBuiltKey = null;
+      updatePanel();
+      render();
+      pushUndo();
+      return;
+    }
+
     const modeAction = hitModeButton(mx, my);
     if (modeAction) { handleModeButton(modeAction); return; }
 
@@ -4416,6 +4775,18 @@ function setup() {
       const cc = x2c(mx);
       const reps = getPeriodRepetitions();
       const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
+
+      if (S.combineMode === 'product' && S.gen2Cents !== null) {
+        const g2Pos = ((S.gen2Cents % S.period) + S.period) % S.period;
+        const pxDist = Math.abs(c2x(reduced) - c2x(g2Pos));
+        const genPxDist = Math.abs(c2x(reduced) - c2x(S.generatorCents));
+        if (pxDist < 12 && pxDist < genPxDist) {
+          S.gen2Dragging = true;
+          cvs.style.cursor = 'ew-resize';
+          return;
+        }
+      }
+
       if (reduced >= S.selected.lowCents && reduced <= S.selected.highCents) {
         S.genDragging = true;
         S.generatorCents = reduced;
@@ -4462,6 +4833,18 @@ function setup() {
       return;
     }
 
+    if (S.gen2Dragging) {
+      const cc = x2c(mx);
+      const reps = getPeriodRepetitions();
+      const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
+      S.gen2Cents = Math.max(0, Math.min(S.period, reduced));
+      S._productScale = null;
+      S._rulerBuiltKey = null;
+      updatePanel();
+      render();
+      return;
+    }
+
     if (S.genDragging) {
       setGenFromScreenX(mx);
       return;
@@ -4496,6 +4879,8 @@ function setup() {
       hitTest(mx, my, e);
       if (hitCircleResizeGrip(mx, my)) {
         cvs.style.cursor = 'nesw-resize';
+      } else if (hitCombineButton(mx, my)) {
+        cvs.style.cursor = 'pointer';
       } else if (hitModeButton(mx, my)) {
         cvs.style.cursor = 'pointer';
       } else if (hitSizeScrollbar(mx, my)) {
@@ -4546,6 +4931,15 @@ function setup() {
     }
     if (S.sliderDragging) {
       S.sliderDragging = false;
+      cvs.style.cursor = '';
+      clearTimeout(_chordTrailingTimer);
+      _chordLastRenderTime = 0;
+      renderChordsPanel();
+      pushUndo();
+      return;
+    }
+    if (S.gen2Dragging) {
+      S.gen2Dragging = false;
       cvs.style.cursor = '';
       clearTimeout(_chordTrailingTimer);
       _chordLastRenderTime = 0;
@@ -4698,9 +5092,17 @@ function setup() {
       t0x = e.touches[0].clientX;
       t0y = e.touches[0].clientY;
 
-      const touchModeAction = hitModeButton(mx, my);
-      if (touchModeAction) {
-        handleModeButton(touchModeAction);
+      if (hitCombineButton(mx, my)) {
+        S.combineMode = S.combineMode === 'product' ? 'none' : 'product';
+        if (S.combineMode === 'product' && S.gen2Cents === null && S.generatorCents !== null) {
+          const sc = buildMOSScale(S.generatorCents, S.selected.perPeriodSize, S.period);
+          S.gen2Cents = sc.L / 3;
+        }
+        S._productScale = null; S._mv3Windows = null; S._rulerBuiltKey = null;
+        updatePanel(); render(); pushUndo();
+      } else if (hitModeButton(mx, my)) {
+        const tma = hitModeButton(mx, my);
+        handleModeButton(tma);
       } else if (hitSizeScrollbar(mx, my)) {
         S.sizeSbDragging = true;
         setSizeFromScrollbarY(my);
@@ -5050,6 +5452,9 @@ function buildShareURL() {
   if (S.generatorCents !== null) params.set('gen', S.generatorCents.toFixed(4).replace(/\.?0+$/, ''));
   if (S.modeRotation) params.set('mode', S.modeRotation);
   if (S.octaveStretch !== 0) params.set('stretch', S.octaveStretch);
+  if (S.combineMode !== 'none') params.set('combine', S.combineMode);
+  if (S.gen2Cents !== null) params.set('gen2', S.gen2Cents.toFixed(4).replace(/\.?0+$/, ''));
+  if (S.domeIndex !== 0) params.set('dome', S.domeIndex);
   const qs = params.toString();
   return window.location.origin + window.location.pathname + (qs ? '?' + qs : '');
 }
@@ -5119,6 +5524,13 @@ function restoreFromURL() {
       if (mode && !isNaN(mode)) S.modeRotation = mode;
     }
   }
+
+  const combine = params.get('combine') || 'none';
+  const gen2 = params.has('gen2') ? parseFloat(params.get('gen2')) : null;
+  const dome = params.has('dome') ? parseInt(params.get('dome'), 10) : 0;
+  S.combineMode = combine;
+  if (gen2 !== null && !isNaN(gen2)) S.gen2Cents = gen2;
+  if (!isNaN(dome)) S.domeIndex = dome;
 
   updatePanel();
   render();
