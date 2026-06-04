@@ -187,7 +187,7 @@ function computeWordVariety(word) {
 }
 
 function buildProductScale(g1, g2, n, modeRot, domeIndex, period) {
-  period = period || 1200;
+  period = period || (typeof S !== 'undefined' ? S.period : 1200);
   modeRot = modeRot || 0;
   domeIndex = domeIndex || 0;
 
@@ -274,7 +274,7 @@ function buildProductScale(g1, g2, n, modeRot, domeIndex, period) {
 }
 
 function findMV3Windows(g, N, period) {
-  period = period || 1200;
+  period = period || (typeof S !== 'undefined' ? S.period : 1200);
   const resolution = 1;
   const windows = [];
   let inWindow = false;

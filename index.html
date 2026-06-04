@@ -1237,12 +1237,9 @@ const S = {
   circleResizing: false, circleResizeStartX: 0, circleResizeStartY: 0, circleResizeStartR: 0,
   combineMode: 'none',
   gen2Cents: null,
-  selected2: null,
   domeIndex: 0,
   gen2Dragging: false,
   _productScale: null,
-  _mv3Windows: null,
-  _mv3CacheKey: null,
   _combineBtn: null,
   _domeButtons: [],
 };
@@ -1329,7 +1326,6 @@ function _restoreSnap(snap) {
   S.gen2Cents = snap.gen2Cents !== undefined ? snap.gen2Cents : null;
   S.domeIndex = snap.domeIndex || 0;
   S._productScale = null;
-  S._mv3Windows = null;
   S._harmonicRatios = null;
   S._edoTableKey = null;
   S._rulerBuiltKey = null;
@@ -2295,10 +2291,8 @@ function drawMOSCircle(ctx, W, H) {
     let col;
     if (isProduct && S._productScale) {
       const pS = S._productScale;
-      const threshLM = (pS.L + (pS.M || pS.L)) / 2;
-      const threshMs = ((pS.M || pS.s) + pS.s) / 2;
-      if (step > threshLM) col = Lcolor;
-      else if (step < threshMs) col = sColor;
+      if (Math.abs(step - pS.L) < 0.5) col = Lcolor;
+      else if (Math.abs(step - pS.s) < 0.5) col = sColor;
       else col = Mcolor || Lcolor;
     } else {
       col = Math.abs(step - L) < 0.5 ? Lcolor : sColor;
@@ -2602,9 +2596,8 @@ function handleModeButton(action) {
   else if (action === 'step-down') S.modeRotation = (S.modeRotation - 1 + n) % n;
   else if (action === 'gen-up') S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, 1);
   else if (action === 'gen-down') S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, -1);
-  else if (action === 'dome-prev') { S.domeIndex = (S.domeIndex - 1 + n) % n; S._productScale = null; }
-  else if (action === 'dome-next') { S.domeIndex = (S.domeIndex + 1) % n; S._productScale = null; }
-  S._rulerBuiltKey = null;
+  else if (action === 'dome-prev') { S.domeIndex = (S.domeIndex - 1 + n) % n; S._productScale = null; S._rulerBuiltKey = null; }
+  else if (action === 'dome-next') { S.domeIndex = (S.domeIndex + 1) % n; S._productScale = null; S._rulerBuiltKey = null; }
   updatePanel();
   render();
 }
@@ -4743,7 +4736,6 @@ function setup() {
         S.gen2Cents = scale.L / 3;
       }
       S._productScale = null;
-      S._mv3Windows = null;
       S._rulerBuiltKey = null;
       updatePanel();
       render();
@@ -4837,7 +4829,7 @@ function setup() {
       const cc = x2c(mx);
       const reps = getPeriodRepetitions();
       const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
-      S.gen2Cents = Math.max(0, Math.min(S.period, reduced));
+      S.gen2Cents = Math.max(1, Math.min(S.period - 1, reduced));
       S._productScale = null;
       S._rulerBuiltKey = null;
       updatePanel();
@@ -5098,7 +5090,7 @@ function setup() {
           const sc = buildMOSScale(S.generatorCents, S.selected.perPeriodSize, S.period);
           S.gen2Cents = sc.L / 3;
         }
-        S._productScale = null; S._mv3Windows = null; S._rulerBuiltKey = null;
+        S._productScale = null; S._rulerBuiltKey = null;
         updatePanel(); render(); pushUndo();
       } else if (hitModeButton(mx, my)) {
         const tma = hitModeButton(mx, my);
