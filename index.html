@@ -1069,7 +1069,7 @@ function applyMODMOS(scale, modmos, period) {
   const chroma = scale.L - scale.s;
   const n = scale.pitches.length;
   const tagged = scale.pitches.map((p, i) => {
-    const raw = i === 0 ? 0 : (modmos[i] || 0);
+    const raw = modmos[i] || 0;
     const offset = raw * chroma;
     return { cents: offset !== 0 ? ((p + offset) % period + period) % period : p, alt: offset, origDeg: i };
   });
@@ -2623,13 +2623,41 @@ function hitModeButton(mx, my) {
   return null;
 }
 
+function getRotationDegreeMap(genCents, n, rotation, period) {
+  period = period || S.period;
+  const base = buildMOSScale(genCents, n, period);
+  const root = base.pitches[rotation % n];
+  const tagged = base.pitches.map((p, baseIdx) => ({
+    cents: ((p - root) % period + period) % period,
+    baseIdx,
+  }));
+  tagged.sort((a, b) => a.cents - b.cents);
+  return tagged.map(t => t.baseIdx);
+}
+
 function handleModeButton(action) {
   if (!S.selected || S.generatorCents === null) return;
   const n = S.selected.perPeriodSize;
+  const oldRotation = S.modeRotation;
   if (action === 'step-up') S.modeRotation = (S.modeRotation + 1) % n;
   else if (action === 'step-down') S.modeRotation = (S.modeRotation - 1 + n) % n;
   else if (action === 'gen-up') S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, 1);
   else if (action === 'gen-down') S.modeRotation = rotateByGenerator(S.generatorCents, n, S.modeRotation, -1);
+  if (hasModmos() && oldRotation !== S.modeRotation) {
+    const oldMap = getRotationDegreeMap(S.generatorCents, n, oldRotation, S.period);
+    const newMap = getRotationDegreeMap(S.generatorCents, n, S.modeRotation, S.period);
+    const baseToNew = {};
+    for (let i = 0; i < n; i++) baseToNew[newMap[i]] = i;
+    const oldModmos = S.modmos.slice();
+    S.modmos = new Array(n).fill(0);
+    for (let i = 0; i < Math.min(oldModmos.length, n); i++) {
+      if (Math.abs(oldModmos[i]) > 0.01) {
+        const baseIdx = oldMap[i];
+        const newIdx = baseToNew[baseIdx];
+        if (newIdx !== undefined) S.modmos[newIdx] = oldModmos[i];
+      }
+    }
+  }
   updatePanel();
   render();
 }
