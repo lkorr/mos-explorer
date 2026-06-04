@@ -1635,7 +1635,7 @@ function drawEDOs(ctx, W, H, vr) {
       const x = c2x(oc);
       if (slots.some(s => Math.abs(x - s) < minPx * 0.65)) continue;
       slots.push(x);
-      S._edoMarkers.push({ x, cents: g.cents, y: baseY + 22, h: 40 });
+      S._edoMarkers.push({ x, cents: g.cents, edo: g.edo, y: baseY + 22, h: 40 });
 
       const octEdo = g.edo * octaveRatio;
       const isCleanOctEdo = Math.abs(octEdo - Math.round(octEdo)) < 0.001;
@@ -3091,7 +3091,6 @@ function hitTempBar(mx, my) {
 function handleClick() {
   const mx = S._lastClickX !== undefined ? S._lastClickX : 0;
   const my = S._lastClickY !== undefined ? S._lastClickY : 0;
-
   const tempBar = hitTempBar(mx, my);
   if (tempBar) {
     window.open(tempBar.url, '_blank');
@@ -3102,15 +3101,17 @@ function handleClick() {
   if (edoMarker && S.selected) {
     if (hasModmos()) {
       const n = S.selected.perPeriodSize;
-      const oldScale = rotateMOSScale(buildMOSScale(S.generatorCents, n, S.period), S.modeRotation, S.period);
+      const oldScale = buildMOSScale(S.generatorCents, n, S.period);
       const oldChroma = oldScale.L - oldScale.s;
-      const newScale = rotateMOSScale(buildMOSScale(edoMarker.cents, n, S.period), S.modeRotation, S.period);
+      const newScale = buildMOSScale(edoMarker.cents, n, S.period);
       const newChroma = newScale.L - newScale.s;
-      if (newChroma > 0.01) {
+      if (oldChroma > 0.01 && newChroma > 0.01) {
+        const newEdoStep = S.period / edoMarker.edo;
         for (let i = 0; i < S.modmos.length; i++) {
           if (Math.abs(S.modmos[i]) > 0.01) {
             const centOffset = S.modmos[i] * oldChroma;
-            S.modmos[i] = Math.round(centOffset / newChroma);
+            const nearestEdoSnap = Math.round(centOffset / newEdoStep) * newEdoStep;
+            S.modmos[i] = nearestEdoSnap / newChroma;
           }
         }
       }
