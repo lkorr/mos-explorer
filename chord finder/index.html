@@ -2095,8 +2095,8 @@ canvas.addEventListener('click', (e) => {
     const ei = findNearestEdoTriad(cx, cy);
     if (ei >= 0) {
       const t = edoOverlayTriads[ei];
-      const freqs = t.pitchCents.map(c => 220 * Math.pow(2, c / 1200));
-      playFreqs(freqs, 'triangle', false);
+      const freqs = t.pitchCents.map(c => synthRootHz * Math.pow(2, c / 1200));
+      playFreqs(freqs, synthWaveform, false);
     }
   }
 });
@@ -2109,14 +2109,13 @@ canvas.addEventListener('contextmenu', (e) => {
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   const idx = findNearestChord(cx, cy);
   if (idx >= 0) {
-    playChord(filteredChords[idx], 220, 'triangle', true);
+    playChord(filteredChords[idx], synthRootHz, synthWaveform, true);
   } else {
     const ei = findNearestEdoTriad(cx, cy);
     if (ei >= 0) {
       const t = edoOverlayTriads[ei];
-      const rootHz = 220;
-      const freqs = t.pitchCents.map(c => rootHz * Math.pow(2, c / 1200));
-      playFreqs(freqs, 'triangle', true);
+      const freqs = t.pitchCents.map(c => synthRootHz * Math.pow(2, c / 1200));
+      playFreqs(freqs, synthWaveform, true);
     }
   }
 });
@@ -2138,7 +2137,7 @@ function selectChord(idx) {
   selectedChordKey = c.key;
   selectedInversionKeys = new Set(chordInversionKeys(c.p, c.q, c.r));
   history.replaceState(null, '', '#' + c.key);
-  playChord(c, 220, 'triangle', false);
+  playChord(c, synthRootHz, synthWaveform, false);
   showPanel(c);
   drawPlot();
 }
