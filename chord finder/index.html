@@ -449,7 +449,7 @@ body {
   <span class="app-title">JI Chord Explorer</span>
   <div class="ctrl-group">
     <label>Max r:</label>
-    <input type="number" id="cfg-max-r" value="100" min="6" max="128">
+    <input type="number" id="cfg-max-r" value="64" min="6" max="128">
   </div>
   <div class="ctrl-group">
     <label>Frame:</label>
@@ -457,10 +457,6 @@ body {
     <span style="color:#556">–</span>
     <input type="number" id="cfg-frame-max" value="1199" min="0" max="1200" step="10">
     <span style="color:#8888aa">¢</span>
-  </div>
-  <div class="ctrl-group">
-    <label>Max odd-limit:</label>
-    <input type="number" id="cfg-max-odd" value="100" min="1" max="999">
   </div>
   <div class="ctrl-group">
     <label>Mode:</label>
@@ -500,13 +496,8 @@ body {
   </div>
   <div class="filter-group">
     <label>Max r:</label>
-    <input type="range" id="flt-max-r" value="128" min="4" max="128">
-    <span class="range-val" id="flt-max-r-val">128</span>
-  </div>
-  <div class="filter-group">
-    <label>Max odd-limit:</label>
-    <input type="range" id="flt-max-odd" value="100" min="1" max="100">
-    <span class="range-val" id="flt-max-odd-val">100</span>
+    <input type="range" id="flt-max-r" value="64" min="4" max="64">
+    <span class="range-val" id="flt-max-r-val">64</span>
   </div>
   <div class="filter-group">
     <label>Max hardness:</label>
@@ -2182,18 +2173,15 @@ function applyFilters() {
   const region = document.getElementById('flt-region').value;
   const contour = document.getElementById('flt-contour').value;
   const maxR = +document.getElementById('flt-max-r').value || 128;
-  const maxOdd = +document.getElementById('flt-max-odd').value || 100;
   const maxHard = +document.getElementById('flt-max-hard').value || 99;
   const search = document.getElementById('flt-search').value.trim().toLowerCase();
 
   document.getElementById('flt-max-r-val').textContent = maxR;
-  document.getElementById('flt-max-odd-val').textContent = maxOdd;
 
   filteredChords = allChords.filter(c => {
     if (region && c.region !== region) return false;
     if (contour && c.contour !== contour) return false;
     if (c.r > maxR) return false;
-    if (c.ol > maxOdd) return false;
     if (c.H > maxHard) return false;
     if (search) {
       if (!c.key.includes(search) &&
@@ -2218,14 +2206,13 @@ function generate() {
   const fMaxEl = document.getElementById('cfg-frame-max');
   const fMin = fMinEl.value !== '' ? +fMinEl.value : 0;
   const fMax = fMaxEl.value !== '' ? +fMaxEl.value : 1199;
-  const maxOdd = +document.getElementById('cfg-max-odd').value || 100;
   const mode = document.getElementById('cfg-gen-mode').value;
 
   const t0 = performance.now();
   if (mode === 'thirds') {
-    allChords = enumerateThirdsMode(fMin, fMax, maxOdd);
+    allChords = enumerateThirdsMode(fMin, fMax, maxR * 2 - 1);
   } else {
-    allChords = enumerateChords(maxR, fMin, fMax, maxOdd);
+    allChords = enumerateChords(maxR, fMin, fMax, maxR * 2 - 1);
   }
   const dt = (performance.now() - t0).toFixed(0);
   document.getElementById('status-text').textContent =
@@ -2240,7 +2227,7 @@ function generate() {
 
 document.getElementById('btn-regenerate').addEventListener('click', generate);
 
-['flt-region', 'flt-contour', 'flt-max-r', 'flt-max-odd', 'flt-max-hard', 'flt-search'].forEach(id => {
+['flt-region', 'flt-contour', 'flt-max-r', 'flt-max-hard', 'flt-search'].forEach(id => {
   document.getElementById(id).addEventListener('input', applyFilters);
 });
 
@@ -2273,7 +2260,6 @@ function openFromHash() {
   if (idx < 0) {
     document.getElementById('flt-region').value = '';
     document.getElementById('flt-contour').value = '';
-    document.getElementById('flt-max-odd').value = '100';
     document.getElementById('flt-max-hard').value = '99';
     document.getElementById('flt-reveal').value = '80';
     document.getElementById('flt-reveal-val').textContent = '80';
