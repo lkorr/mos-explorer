@@ -229,6 +229,17 @@ body {
   padding: 6px 16px 10px;
   min-height: 0;
 }
+.panel-roll-col {
+  flex: 1;
+  min-width: 80px;
+  align-self: flex-start;
+  height: 56px;
+}
+.panel-roll-col canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
 
 /* Panel columns */
 .panel-header-col {
@@ -248,6 +259,7 @@ body {
   font-size: 14px;
   color: #e0e0e0;
   font-weight: 600;
+  min-height: 1.4em;
 }
 .panel-generic {
   font-size: 11px;
@@ -305,8 +317,8 @@ body {
 .panel-stop-btn:hover { border-color: #e94560; }
 
 .panel-desc-col {
-  flex: 1;
-  min-width: 0;
+  flex-shrink: 0;
+  width: 420px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -316,6 +328,10 @@ body {
   display: flex;
   gap: 12px;
   align-items: start;
+}
+.panel-desc-row > .panel-section {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .panel-section {
   display: flex;
@@ -354,9 +370,9 @@ body {
 
 .panel-edo-col {
   flex-shrink: 0;
-  min-width: 320px;
-  flex: 1;
+  width: 380px;
   overflow-y: auto;
+  min-height: 0;
 }
 .panel-edo-title {
   font-size: 12px;
@@ -449,7 +465,7 @@ body {
   <span class="app-title">JI Chord Explorer</span>
   <div class="ctrl-group">
     <label>Max r:</label>
-    <input type="number" id="cfg-max-r" value="64" min="6" max="128">
+    <input type="number" id="cfg-max-r" value="100" min="6" max="128">
   </div>
   <div class="ctrl-group">
     <label>Frame:</label>
@@ -469,22 +485,6 @@ body {
 </div>
 
 <div id="filter-bar">
-  <div class="filter-group">
-    <label>Region:</label>
-    <select id="flt-region">
-      <option value="">all</option>
-      <option value="narrow">narrow</option>
-      <option value="minor-third">minor-third</option>
-      <option value="major-third">major-third</option>
-      <option value="diminished">diminished</option>
-      <option value="subperfect">subperfect</option>
-      <option value="perfect">perfect</option>
-      <option value="superperfect">superperfect</option>
-      <option value="augmented">augmented</option>
-      <option value="wide">wide</option>
-      <option value="octave">octave</option>
-    </select>
-  </div>
   <div class="filter-group">
     <label>Contour:</label>
     <select id="flt-contour">
@@ -1122,6 +1122,82 @@ function playEdoApprox(approx, rootHz, waveform) {
 }
 
 // ═══════════════════════════════════════════
+// CONTINUOUS PLAY (click-drag on grid)
+// ═══════════════════════════════════════════
+
+let contPlayState = null;
+
+function positionToFreqs(F, sH, rootHz) {
+  let a, b;
+  if (sH >= 0) {
+    a = F * (sH + 1) / (sH + 2);
+    b = F / (sH + 2);
+  } else {
+    a = F / (2 - sH);
+    b = F * (1 - sH) / (2 - sH);
+  }
+  return [
+    rootHz,
+    rootHz * Math.pow(2, a / 1200),
+    rootHz * Math.pow(2, F / 1200),
+  ];
+}
+
+function contPlayStart(F, sH, rootHz, waveform) {
+  contPlayStop();
+  const ctx = getAudioCtx();
+  const master = ctx.createGain();
+  master.gain.value = 0.30;
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -24; comp.knee.value = 12;
+  comp.ratio.value = 12; comp.attack.value = 0.003; comp.release.value = 0.1;
+  comp.connect(master);
+  master.connect(ctx.destination);
+
+  const freqs = positionToFreqs(F, sH, rootHz);
+  const oscs = freqs.map(f => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = waveform || 'triangle';
+    osc.frequency.value = f;
+    osc.connect(gain);
+    gain.connect(comp);
+    const t = ctx.currentTime;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(1, t + 0.02);
+    osc.start(t);
+    return { osc, gain };
+  });
+
+  contPlayState = { oscs, master, comp };
+}
+
+function contPlayUpdate(F, sH, rootHz) {
+  if (!contPlayState) return;
+  const freqs = positionToFreqs(F, sH, rootHz);
+  const now = getAudioCtx().currentTime;
+  for (let i = 0; i < contPlayState.oscs.length; i++) {
+    contPlayState.oscs[i].osc.frequency.setTargetAtTime(freqs[i], now, 0.03);
+  }
+}
+
+function contPlayStop() {
+  if (!contPlayState) return;
+  const now = getAudioCtx().currentTime;
+  for (const { osc, gain } of contPlayState.oscs) {
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.08);
+    osc.stop(now + 0.1);
+  }
+  contPlayState = null;
+}
+
+function positionToRootHz() {
+  return synthRootHz;
+}
+
+// ═══════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════
 
@@ -1273,11 +1349,39 @@ let dragStartX = 0, dragStartY = 0;
 let dragStartFrameMin = 0, dragStartFrameMax = 0;
 let dragStartSignedMin = 0, dragStartSignedMax = 0;
 
+let isContPlaying = false;
+let contPlayDragged = false;
+let contPlayStartPos = null;
+let contPlayCursorF = 0;
+let contPlayCursorSH = 0;
+
 canvas.addEventListener('mousedown', (e) => {
-  if (e.button !== 0) return;
   const rect = canvas.getBoundingClientRect();
   const cx = e.clientX - rect.left;
   const cy = e.clientY - rect.top;
+
+  if (e.button === 1 || (e.button === 0 && e.altKey)) {
+    e.preventDefault();
+    if (cx < PADDING.left && cy >= PADDING.top && cy <= rect.height - PADDING.bottom) {
+      isYAxisDrag = true;
+      dragStartY = e.clientY;
+      dragStartSignedMin = viewSignedMin;
+      dragStartSignedMax = viewSignedMax;
+      canvas.style.cursor = 'ns-resize';
+      return;
+    }
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    dragStartFrameMin = viewFrameMin;
+    dragStartFrameMax = viewFrameMax;
+    dragStartSignedMin = viewSignedMin;
+    dragStartSignedMax = viewSignedMax;
+    canvas.style.cursor = 'grabbing';
+    return;
+  }
+
+  if (e.button !== 0) return;
 
   if (cx < PADDING.left && cy >= PADDING.top && cy <= rect.height - PADDING.bottom) {
     isYAxisDrag = true;
@@ -1289,16 +1393,25 @@ canvas.addEventListener('mousedown', (e) => {
     return;
   }
 
+  const inPlot = cx >= PADDING.left && cx <= rect.width - PADDING.right &&
+                 cy >= PADDING.top && cy <= rect.height - PADDING.bottom;
+  if (!inPlot) return;
+
+  const F = canvasToFrame(cx);
+  const sH = canvasToSigned(cy);
   const idx = findNearestChord(cx, cy);
   if (idx >= 0) return;
-  isDragging = true;
-  dragStartX = e.clientX;
-  dragStartY = e.clientY;
-  dragStartFrameMin = viewFrameMin;
-  dragStartFrameMax = viewFrameMax;
-  dragStartSignedMin = viewSignedMin;
-  dragStartSignedMax = viewSignedMax;
-  canvas.style.cursor = 'grabbing';
+
+  contPlayStartPos = { x: e.clientX, y: e.clientY };
+  contPlayCursorF = F;
+  contPlayCursorSH = sH;
+  contPlayDragged = false;
+
+  const rootHz = positionToRootHz();
+  stopAll();
+  contPlayStart(F, sH, rootHz, synthWaveform);
+  isContPlaying = true;
+  canvas.style.cursor = 'crosshair';
 });
 
 window.addEventListener('mousemove', (e) => {
@@ -1313,6 +1426,57 @@ window.addEventListener('mousemove', (e) => {
     viewSignedMin = center - newRange / 2;
     viewSignedMax = center + newRange / 2;
     scheduleRedraw(false);
+    return;
+  }
+  if (isContPlaying) {
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const F = canvasToFrame(cx);
+    const sH = canvasToSigned(cy);
+    contPlayCursorF = F;
+    contPlayCursorSH = sH;
+    const rootHz = positionToRootHz();
+
+    contPlayUpdate(F, sH, rootHz);
+    contPlayDragged = true;
+
+    let lower, upper;
+    if (sH >= 0) {
+      lower = F * (sH + 1) / (sH + 2);
+      upper = F / (sH + 2);
+    } else {
+      lower = F / (2 - sH);
+      upper = F * (1 - sH) / (2 - sH);
+    }
+    const H = Math.max(lower, upper) / Math.min(lower, upper);
+
+    const hitIdx = findNearestChord(cx, cy);
+    if (hitIdx >= 0 && filteredChords[hitIdx].key !== selectedChordKey) {
+      const hitChord = filteredChords[hitIdx];
+      selectedChordKey = hitChord.key;
+      selectedInversionKeys = new Set(chordInversionKeys(hitChord.p, hitChord.q, hitChord.r));
+      showPanel(hitChord);
+    }
+
+    if (document.getElementById('panel-roll-canvas')) {
+      drawPianoRoll([0, lower, F]);
+    }
+
+    const tooltip = document.getElementById('tooltip');
+    tooltip.innerHTML = `
+      <div class="tt-detail">root <span style="color:#50c878">${rootHz.toFixed(1)} Hz</span></div>
+      <div class="tt-detail">lower <span>${lower.toFixed(1)}¢</span> · upper <span>${upper.toFixed(1)}¢</span></div>
+      <div class="tt-detail">frame <span style="color:#f5a623">${F.toFixed(1)}¢</span> · hardness <span style="color:#bb86fc">${H.toFixed(3)}</span></div>
+    `;
+    tooltip.style.display = 'block';
+    let tx = e.clientX + 14, ty = e.clientY - 10;
+    const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+    if (tx + tw > window.innerWidth - 8) tx = e.clientX - tw - 14;
+    if (ty + th > window.innerHeight - 8) ty = e.clientY - th - 10;
+    if (ty < 4) ty = 4;
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top = ty + 'px';
     return;
   }
   if (!isDragging) return;
@@ -1345,6 +1509,12 @@ window.addEventListener('mouseup', () => {
   if (isYAxisDrag) {
     isYAxisDrag = false;
     canvas.style.cursor = 'default';
+  }
+  if (isContPlaying) {
+    isContPlaying = false;
+    contPlayStop();
+    document.getElementById('tooltip').style.display = 'none';
+    drawPlot(false);
   }
 });
 
@@ -1562,14 +1732,14 @@ function drawPlot(shouldResize) {
     }
     const x = pL + (c.F - viewFrameMin) * xScale;
     const y = pT + (1 - (c.signedH - viewSignedMin) / (viewSignedMax - viewSignedMin)) * (H - pT - pB);
-    const auraWorldR = 6 * Math.max(1, 10 * c.invSqrtOl);
-    const auraR = Math.max(10 * dpr, Math.min(auraWorldR * dotScale, 150 * dpr)) * vis;
+    const dotWorldR = 0.85 * Math.max(0.6, 3 * c.invSqrtOl);
+    const auraR = dotWorldR * dotScale * 6 * vis;
     if (x < pL - auraR || x > W - pR + auraR || y < pT - auraR || y > H - pB + auraR) continue;
     visNodes.push({ i, c, x, y, vis, auraR, isSelected, isInversion });
   }
 
   // Proximity declutter: shrink/fade nodes crowded by a more important neighbor
-  // Sort by complexity (low ol first = most important) for the suppression pass
+  // Use refXScale (home zoom) for clutter radius so suppression is zoom-invariant
   visNodes.sort((a, b) => a.c.ol - b.c.ol);
   for (let j = 0; j < visNodes.length; j++) {
     const n = visNodes[j];
@@ -1577,14 +1747,16 @@ function drawPlot(shouldResize) {
     for (let k = 0; k < j; k++) {
       const m = visNodes[k];
       if (m.c.ol >= n.c.ol) continue;
-      const dx = n.x - m.x, dy = n.y - m.y;
-      const d2 = dx * dx + dy * dy;
+      const dF = n.c.F - m.c.F;
+      const dS = n.c.signedH - m.c.signedH;
       const mScale = Math.max(0.6, 3 * m.c.invSqrtOl);
-      const mDotR = 0.85 * mScale * dotScale;
-      const clutterR = mDotR * 5;
-      if (d2 < clutterR * clutterR) {
-        const dist = Math.sqrt(d2);
-        const proximity = 1 - dist / clutterR;
+      const clutterCents = mScale * 25;
+      const clutterS = clutterCents / 200;
+      const normF = dF / clutterCents;
+      const normS = dS / clutterS;
+      const d2 = normF * normF + normS * normS;
+      if (d2 < 1) {
+        const proximity = 1 - Math.sqrt(d2);
         const importance = Math.min(1, (n.c.ol - m.c.ol) / m.c.ol);
         const suppress = proximity * importance;
         n.vis *= (1 - suppress * 0.7);
@@ -1738,6 +1910,22 @@ function drawPlot(shouldResize) {
       }
     }
   }
+
+  if (isContPlaying && contPlayDragged) {
+    const cursorX = plotX(contPlayCursorF);
+    const cursorY = plotY(contPlayCursorSH);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 1 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(cursorX, Math.max(pT, cursorY - 12 * dpr));
+    ctx.lineTo(cursorX, Math.min(H - pB, cursorY + 12 * dpr));
+    ctx.moveTo(Math.max(pL, cursorX - 12 * dpr), cursorY);
+    ctx.lineTo(Math.min(W - pR, cursorX + 12 * dpr), cursorY);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 
@@ -1819,7 +2007,7 @@ function findNearestEdoTriad(cx, cy) {
 }
 
 canvas.addEventListener('mousemove', (e) => {
-  if (isDragging || isYAxisDrag) return;
+  if (isDragging || isYAxisDrag || isContPlaying) return;
   const rect = canvas.getBoundingClientRect();
   const cx = e.clientX - rect.left;
   const cy = e.clientY - rect.top;
@@ -1863,7 +2051,7 @@ canvas.addEventListener('mousemove', (e) => {
     `;
     tooltip.style.display = 'block';
   } else {
-    canvas.style.cursor = 'grab';
+    canvas.style.cursor = 'crosshair';
     tooltip.style.display = 'none';
   }
 
@@ -1890,6 +2078,13 @@ canvas.addEventListener('mouseleave', () => {
 
 canvas.addEventListener('click', (e) => {
   if (isDragging) return;
+  if (contPlayStartPos) {
+    const dx = e.clientX - contPlayStartPos.x;
+    const dy = e.clientY - contPlayStartPos.y;
+    const wasDrag = Math.sqrt(dx * dx + dy * dy) > 5;
+    contPlayStartPos = null;
+    if (wasDrag) return;
+  }
   const rect = canvas.getBoundingClientRect();
   const cx = e.clientX - rect.left;
   const cy = e.clientY - rect.top;
@@ -1905,6 +2100,8 @@ canvas.addEventListener('click', (e) => {
     }
   }
 });
+
+canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
 
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
@@ -1944,6 +2141,81 @@ function selectChord(idx) {
   playChord(c, 220, 'triangle', false);
   showPanel(c);
   drawPlot();
+}
+
+function drawPianoRoll(pitchCents) {
+  const rc = document.getElementById('panel-roll-canvas');
+  if (!rc) return;
+  const rr = rc.parentElement.getBoundingClientRect();
+  if (rr.width < 1 || rr.height < 1) return;
+  const rd = window.devicePixelRatio || 1;
+  rc.width = rr.width * rd;
+  rc.height = rr.height * rd;
+  const rx = rc.getContext('2d');
+  const padL = 10 * rd, padR = 6 * rd, padT = 4 * rd, padB = 14 * rd;
+  const pw = rc.width - padL - padR;
+  const ph = rc.height - padT - padB;
+
+  const cMin = -20, cMax = 1200;
+  const cRange = cMax - cMin;
+  const cToX = c => padL + ((c - cMin) / cRange) * pw;
+
+  rx.fillStyle = '#0d1528';
+  rx.fillRect(padL, padT, pw, ph);
+  rx.strokeStyle = '#2a3a5a';
+  rx.lineWidth = rd;
+  rx.strokeRect(padL, padT, pw, ph);
+
+  // Dotted lines at every 100c
+  rx.lineWidth = rd * 0.5;
+  rx.font = `${7 * rd}px monospace`;
+  rx.fillStyle = '#555570';
+  rx.textAlign = 'center';
+  rx.textBaseline = 'top';
+  for (let c = 0; c <= 1200; c += 100) {
+    const x = cToX(c);
+    if (x < padL || x > padL + pw) continue;
+    rx.strokeStyle = '#2a3a5a';
+    rx.setLineDash([2 * rd, 3 * rd]);
+    rx.beginPath();
+    rx.moveTo(x, padT);
+    rx.lineTo(x, padT + ph);
+    rx.stroke();
+    rx.setLineDash([]);
+    rx.fillText(c, x, padT + ph + 2 * rd);
+  }
+
+  // Chord note bars (vertical bars at each pitch)
+  const barW = Math.max(3 * rd, pw * 0.008);
+  const colors = ['#e94560', '#6eb5ff', '#f5a623'];
+  rx.font = `${8 * rd}px monospace`;
+  rx.textBaseline = 'top';
+  rx.textAlign = 'center';
+  for (let i = 0; i < pitchCents.length; i++) {
+    const x = cToX(pitchCents[i]) - barW / 2;
+    rx.fillStyle = colors[i];
+    rx.fillRect(x, padT + 1 * rd, barW, ph - 2 * rd);
+    rx.fillText(Math.round(pitchCents[i]), x + barW / 2, padT + ph + 2 * rd);
+  }
+
+  // Interval span lines between adjacent notes
+  rx.lineWidth = rd;
+  for (let i = 0; i < pitchCents.length - 1; i++) {
+    const x0 = cToX(pitchCents[i]);
+    const x1 = cToX(pitchCents[i + 1]);
+    const midY = padT + ph * 0.5;
+    rx.strokeStyle = i === 0 ? '#6eb5ff66' : '#f5a62366';
+    rx.beginPath();
+    rx.moveTo(x0, midY);
+    rx.lineTo(x1, midY);
+    rx.stroke();
+    const diff = pitchCents[i + 1] - pitchCents[i];
+    rx.fillStyle = i === 0 ? '#6eb5ffaa' : '#f5a623aa';
+    rx.font = `${7 * rd}px monospace`;
+    rx.textAlign = 'center';
+    rx.textBaseline = 'middle';
+    rx.fillText(Math.round(diff) + '¢', (x0 + x1) / 2, midY + 7 * rd);
+  }
 }
 
 function showPanel(c) {
@@ -2007,19 +2279,25 @@ function showPanel(c) {
           <div class="panel-section-title">Intervals</div>
           <div class="panel-row">
             <span class="panel-row-label">Lower</span>
-            <span class="panel-row-value" style="color:#6eb5ff">${c.q}/${c.p}</span>
+            <span class="panel-row-value" style="color:#6eb5ff">${c.q/gcd(c.q,c.p)}/${c.p/gcd(c.q,c.p)}</span>
             <span class="panel-row-value" style="color:#e94560">${c.a.toFixed(1)}¢</span>
           </div>
           <div class="panel-row">
             <span class="panel-row-label">Upper</span>
-            <span class="panel-row-value" style="color:#f5a623">${c.r}/${c.q}</span>
+            <span class="panel-row-value" style="color:#f5a623">${c.r/gcd(c.r,c.q)}/${c.q/gcd(c.r,c.q)}</span>
             <span class="panel-row-value" style="color:#e94560">${c.b.toFixed(1)}¢</span>
           </div>
           <div class="panel-row">
             <span class="panel-row-label">Frame</span>
-            <span class="panel-row-value" style="color:#bb86fc">${c.r}/${c.p}</span>
+            <span class="panel-row-value" style="color:#bb86fc">${c.r/gcd(c.r,c.p)}/${c.p/gcd(c.r,c.p)}</span>
             <span class="panel-row-value" style="color:#f5a623">${c.F.toFixed(1)}¢</span>
           </div>
+          ${invChords.length > 0 ? `
+          <div class="panel-section-title" style="margin-top:4px">Inversions</div>
+          ${invChords.map(ic => `<div class="panel-row">
+            <a href="#" class="inv-link" data-key="${ic.key}" style="color:#e94560;text-decoration:none;cursor:pointer">${ic.key}</a>
+            ${ic.displayName ? `<span class="panel-row-value" style="color:#888;font-size:12px">${ic.displayName}</span>` : ''}
+          </div>`).join('')}` : ''}
         </div>
 
         <div class="panel-section">
@@ -2036,50 +2314,22 @@ function showPanel(c) {
             <span class="panel-row-label">Region</span>
             <span class="panel-row-value">${c.region}</span>
           </div>
-        </div>
-
-        <div class="panel-section">
-          <div class="panel-section-title">Complexity</div>
-          <div class="panel-row">
-            <span class="panel-row-label">Odd-limit</span>
-            <span class="panel-row-value" style="color:#50c878">${c.ol}</span>
-          </div>
-          <div class="panel-row">
-            <span class="panel-row-label">p·q·r</span>
-            <span class="panel-row-value" style="color:#888">${c.product}</span>
-          </div>
-          <div class="panel-row">
-            <span class="panel-row-label">Dyad limits</span>
-            <span class="panel-row-value" style="color:#888;font-size:12px">${oddLimit(c.q,c.p)} · ${oddLimit(c.r,c.q)} · ${oddLimit(c.r,c.p)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel-desc-row">
-        ${invChords.length > 0 ? `
-        <div class="panel-section">
-          <div class="panel-section-title">Inversions</div>
-          ${invChords.map(ic => `<div class="panel-row">
-            <a href="#" class="inv-link" data-key="${ic.key}" style="color:#e94560;text-decoration:none;cursor:pointer">${ic.key}</a>
-            ${ic.displayName ? `<span class="panel-row-value" style="color:#888;font-size:12px">${ic.displayName}</span>` : ''}
-          </div>`).join('')}
-        </div>` : ''}
-
-        ${compChord ? `
-        <div class="panel-section">
-          <div class="panel-section-title">Complement</div>
+          ${compChord ? `
+          <div class="panel-section-title" style="margin-top:4px">Complement</div>
           <div class="panel-row">
             <a href="#" class="inv-link" data-key="${compChord.key}" style="color:#e94560;text-decoration:none;cursor:pointer">${compChord.key}</a>
             ${compChord.displayName ? `<span class="panel-row-value" style="color:#888;font-size:12px">${compChord.displayName}</span>` : ''}
-          </div>
-        </div>` : `
-        <div class="panel-section">
-          <div class="panel-section-title">Complement</div>
+          </div>` : `
+          <div class="panel-section-title" style="margin-top:4px">Complement</div>
           <div class="panel-row">
             <span class="panel-row-value" style="color:#888">${compKey}</span>
-          </div>
-        </div>`}
+          </div>`}
+        </div>
       </div>
+    </div>
+
+    <div class="panel-roll-col">
+      <canvas id="panel-roll-canvas" width="1" height="1"></canvas>
     </div>
 
     <div class="panel-edo-col">
@@ -2098,6 +2348,8 @@ function showPanel(c) {
       </table>
     </div>
   `;
+
+  requestAnimationFrame(() => drawPianoRoll(c.pitchCents));
 
   const getAudio = () => ({
     rootHz: +document.getElementById('p-root').value || 220,
@@ -2198,7 +2450,6 @@ document.addEventListener('keydown', (e) => {
 // ═══════════════════════════════════════════
 
 function applyFilters() {
-  const region = document.getElementById('flt-region').value;
   const contour = document.getElementById('flt-contour').value;
   const maxR = +document.getElementById('flt-max-r').value || 128;
   const maxHard = +document.getElementById('flt-max-hard').value || 99;
@@ -2207,7 +2458,6 @@ function applyFilters() {
   document.getElementById('flt-max-r-val').textContent = maxR;
 
   filteredChords = allChords.filter(c => {
-    if (region && c.region !== region) return false;
     if (contour && c.contour !== contour) return false;
     if (c.r > maxR) return false;
     if (c.H > maxHard) return false;
@@ -2229,7 +2479,7 @@ function applyFilters() {
 // ═══════════════════════════════════════════
 
 function generate() {
-  const maxR = +document.getElementById('cfg-max-r').value || 64;
+  const maxR = +document.getElementById('cfg-max-r').value || 100;
   const fMinEl = document.getElementById('cfg-frame-min');
   const fMaxEl = document.getElementById('cfg-frame-max');
   const fMin = fMinEl.value !== '' ? +fMinEl.value : 0;
@@ -2247,7 +2497,7 @@ function generate() {
     `Generated ${allChords.length} chords in ${dt}ms (${mode} mode, r≤${maxR})`;
   const fltR = document.getElementById('flt-max-r');
   fltR.max = maxR;
-  fltR.value = maxR;
+  fltR.value = Math.min(64, maxR);
   filteredChords = allChords;
   computeViewBounds();
   applyFilters();
@@ -2255,7 +2505,7 @@ function generate() {
 
 document.getElementById('btn-regenerate').addEventListener('click', generate);
 
-['flt-region', 'flt-contour', 'flt-max-r', 'flt-max-hard', 'flt-search'].forEach(id => {
+['flt-contour', 'flt-max-r', 'flt-max-hard', 'flt-search'].forEach(id => {
   document.getElementById(id).addEventListener('input', applyFilters);
 });
 
@@ -2286,7 +2536,6 @@ function openFromHash() {
   if (!hash) return;
   let idx = filteredChords.findIndex(c => c.key === hash);
   if (idx < 0) {
-    document.getElementById('flt-region').value = '';
     document.getElementById('flt-contour').value = '';
     document.getElementById('flt-max-hard').value = '99';
     document.getElementById('flt-reveal').value = '50';
