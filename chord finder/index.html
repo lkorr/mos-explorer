@@ -231,7 +231,7 @@ body {
 }
 .panel-roll-col {
   flex: 1;
-  min-width: 80px;
+  min-width: 60px;
   align-self: flex-start;
   height: 56px;
 }
@@ -370,7 +370,6 @@ body {
 
 .panel-edo-col {
   flex-shrink: 0;
-  width: 380px;
   overflow-y: auto;
   min-height: 0;
 }
@@ -517,7 +516,14 @@ body {
   </div>
   <div class="filter-group">
     <label>EDO overlay:</label>
-    <input type="number" id="flt-edo-overlay" min="2" max="200" placeholder="–" style="
+    <input type="text" id="flt-edo-overlay" placeholder="12,19,31" title="Comma-separated EDOs" style="
+      width:80px;background:#0d1528;border:1px solid #2a3a5a;border-radius:3px;
+      color:#50c878;padding:2px 4px;font-size:11px;font-family:monospace;
+    ">
+  </div>
+  <div class="filter-group">
+    <label>EDO ≤</label>
+    <input type="number" id="flt-edo-upto" min="2" max="72" placeholder="–" title="Show all EDOs up to N" style="
       width:42px;background:#0d1528;border:1px solid #2a3a5a;border-radius:3px;
       color:#50c878;padding:2px 4px;font-size:11px;font-family:monospace;
     ">
@@ -1010,6 +1016,7 @@ function generateEdoTriads(n) {
   const stepSize = 1200 / n;
   for (let x = 1; x < n; x++) {
     for (let y = x + 1; y <= n; y++) {
+      if (gcd3(x, y, n) > 1) continue;
       const a = x * stepSize;
       const b = (y - x) * stepSize;
       const F = y * stepSize;
@@ -1874,39 +1881,27 @@ function drawPlot(shouldResize) {
 
   // EDO overlay triads
   if (edoOverlayTriads.length > 0) {
-    const edoR = 3.5 * dpr;
+    ctx.font = `${9 * dpr}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     for (let i = 0; i < edoOverlayTriads.length; i++) {
       const t = edoOverlayTriads[i];
       const x = plotX(t.F);
       const y = plotY(t.signedH);
-      if (x < pL - edoR || x > W - pR + edoR || y < pT - edoR || y > H - pB + edoR) continue;
+      if (x < pL - 10 * dpr || x > W - pR + 10 * dpr || y < pT - 6 * dpr || y > H - pB + 6 * dpr) continue;
       const isHov = i === hoveredEdoTriad;
-
-      ctx.beginPath();
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(Math.PI / 4);
-      ctx.rect(-edoR, -edoR, edoR * 2, edoR * 2);
-      ctx.restore();
-      ctx.strokeStyle = isHov ? '#ffffff' : 'rgba(80,200,120,0.7)';
-      ctx.lineWidth = (isHov ? 2 : 1.2) * dpr;
-      ctx.stroke();
+      ctx.fillStyle = isHov ? '#ffffff' : 'rgba(80,200,120,0.7)';
+      ctx.fillText(t.edo, x, y);
 
       if (isHov) {
-        ctx.beginPath();
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(Math.PI / 4);
-        ctx.rect(-edoR, -edoR, edoR * 2, edoR * 2);
-        ctx.restore();
-        ctx.fillStyle = 'rgba(80,200,120,0.25)';
-        ctx.fill();
-
         ctx.font = `bold ${11 * dpr}px monospace`;
         ctx.fillStyle = '#50c878';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
-        ctx.fillText(t.label, x + edoR + 4 * dpr, y - 2 * dpr);
+        ctx.fillText(t.label, x + 10 * dpr, y - 2 * dpr);
+        ctx.font = `${9 * dpr}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
       }
     }
   }
@@ -2513,18 +2508,23 @@ document.getElementById('flt-reveal').addEventListener('input', () => {
   scheduleRedraw(false);
 });
 
-document.getElementById('flt-edo-overlay').addEventListener('input', () => {
-  const val = +document.getElementById('flt-edo-overlay').value;
-  if (val >= 2 && val <= 200) {
-    edoOverlayN = val;
-    edoOverlayTriads = generateEdoTriads(val);
-  } else {
-    edoOverlayN = 0;
-    edoOverlayTriads = [];
+function updateEdoOverlay() {
+  const edoList = document.getElementById('flt-edo-overlay').value
+    .split(',').map(s => +s.trim()).filter(n => n >= 2 && n <= 200);
+  const upto = +document.getElementById('flt-edo-upto').value;
+  const edos = new Set(edoList);
+  if (upto >= 2 && upto <= 72) {
+    for (let n = 2; n <= upto; n++) edos.add(n);
+  }
+  edoOverlayTriads = [];
+  for (const n of [...edos].sort((a, b) => a - b)) {
+    for (const t of generateEdoTriads(n)) edoOverlayTriads.push(t);
   }
   hoveredEdoTriad = -1;
   requestAnimationFrame(drawPlot);
-});
+}
+document.getElementById('flt-edo-overlay').addEventListener('input', updateEdoOverlay);
+document.getElementById('flt-edo-upto').addEventListener('input', updateEdoOverlay);
 
 // ═══════════════════════════════════════════
 // URL HASH STATE
