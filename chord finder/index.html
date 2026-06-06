@@ -528,6 +528,14 @@ body {
       color:#50c878;padding:2px 4px;font-size:11px;font-family:monospace;
     ">
   </div>
+  <div class="filter-group">
+    <label>Steps:</label>
+    <input type="text" id="flt-steps" placeholder="5/4, 6/5, 9/7" title="Only show chords whose steps are all in this list" style="
+      width:320px;background:#0d1528;border:1px solid #2a3a5a;border-radius:3px;
+      color:#e0e0e0;padding:2px 6px;font-size:11px;font-family:monospace;
+    ">
+    <button class="filter-btn" id="btn-tertian" title="Fill with tertian third intervals">tertian triads</button>
+  </div>
   <button class="filter-btn" id="btn-reset-view" title="Reset zoom">Reset view</button>
   <span id="chord-count"></span>
 </div>
@@ -1707,7 +1715,8 @@ function drawPlot(shouldResize) {
   const zoomRatio = refArea / Math.max(viewArea, 0.01);
 
   // Pre-compute visible nodes (reused by hover detection)
-  const hasSearch = document.getElementById('flt-search').value.trim() !== '';
+  const hasSearch = document.getElementById('flt-search').value.trim() !== '' ||
+                    document.getElementById('flt-steps').value.trim() !== '';
   const reveal = +document.getElementById('flt-reveal').value;
   const revealScale = 0.2 + 1.8 * ((100 - reveal) / 100);
   const threshold = 3.75 + 1.8 * Math.pow(zoomRatio, 0.46) * revealScale;
@@ -2443,11 +2452,24 @@ document.addEventListener('keydown', (e) => {
 // FILTERS
 // ═══════════════════════════════════════════
 
+function parseStepRatios(str) {
+  if (!str.trim()) return null;
+  const ratios = [];
+  for (const tok of str.split(',')) {
+    const m = tok.trim().match(/^(\d+)\s*[\/\:]\s*(\d+)$/);
+    if (!m) continue;
+    const n = +m[1], d = +m[2];
+    if (d > 0 && n > d) ratios.push([n, d]);
+  }
+  return ratios.length ? ratios : null;
+}
+
 function applyFilters() {
   const contour = document.getElementById('flt-contour').value;
   const maxR = +document.getElementById('flt-max-r').value || 128;
   const maxHard = +document.getElementById('flt-max-hard').value || 99;
   const search = document.getElementById('flt-search').value.trim().toLowerCase();
+  const stepRatios = parseStepRatios(document.getElementById('flt-steps').value);
 
   document.getElementById('flt-max-r-val').textContent = maxR;
 
@@ -2460,6 +2482,11 @@ function applyFilters() {
           !(c.displayName && c.displayName.toLowerCase().includes(search)) &&
           !(c.name && c.name.toLowerCase().includes(search)) &&
           !c.genericName.toLowerCase().includes(search)) return false;
+    }
+    if (stepRatios) {
+      const lowerOk = stepRatios.some(([n, d]) => c.q * d === c.p * n);
+      const upperOk = stepRatios.some(([n, d]) => c.r * d === c.q * n);
+      if (!lowerOk || !upperOk) return false;
     }
     return true;
   });
@@ -2499,8 +2526,14 @@ function generate() {
 
 document.getElementById('btn-regenerate').addEventListener('click', generate);
 
-['flt-contour', 'flt-max-r', 'flt-max-hard', 'flt-search'].forEach(id => {
+['flt-contour', 'flt-max-r', 'flt-max-hard', 'flt-search', 'flt-steps'].forEach(id => {
   document.getElementById(id).addEventListener('input', applyFilters);
+});
+
+document.getElementById('btn-tertian').addEventListener('click', () => {
+  const el = document.getElementById('flt-steps');
+  el.value = '5/4, 6/5, 7/6, 9/7, 11/9, 13/10, 13/11, 14/11, 15/13, 27/22';
+  applyFilters();
 });
 
 document.getElementById('flt-reveal').addEventListener('input', () => {
@@ -2540,6 +2573,7 @@ function openFromHash() {
     document.getElementById('flt-reveal').value = '50';
     document.getElementById('flt-reveal-val').textContent = '50';
     document.getElementById('flt-search').value = '';
+    document.getElementById('flt-steps').value = '';
     applyFilters();
     idx = filteredChords.findIndex(c => c.key === hash);
   }
