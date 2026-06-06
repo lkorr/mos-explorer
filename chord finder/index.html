@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Just-Intonation Chord Explorer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a3a5a; border-radius: 3px; }
+* { scrollbar-width: thin; scrollbar-color: #2a3a5a transparent; }
+
+/* ── Top bar ── */
+#top-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px;
+  background: #16213e;
+  border-bottom: 1px solid #0f3460;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+#top-bar .app-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e94560;
+  white-space: nowrap;
+}
+.ctrl-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #a0a0c0;
+}
+.ctrl-group label { cursor: default; white-space: nowrap; }
+.ctrl-group input[type="number"] {
+  width: 52px;
+  background: #0d1528;
+  border: 1px solid #2a3a5a;
+  border-radius: 3px;
+  color: #e0e0e0;
+  padding: 2px 4px;
+  font-size: 11px;
+  font-family: monospace;
+  text-align: center;
+}
+.ctrl-group input[type="number"]:focus { border-color: #e94560; outline: none; }
+.ctrl-group input[type="number"]::-webkit-inner-spin-button,
+.ctrl-group input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.ctrl-group input[type="number"] { -moz-appearance: textfield; }
+.ctrl-group select {
+  background: #0d1528;
+  border: 1px solid #2a3a5a;
+  border-radius: 3px;
+  color: #e0e0e0;
+  padding: 2px 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.ctrl-group select:focus { border-color: #e94560; outline: none; }
+
+/* ── Filter bar ── */
+#filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 20px;
+  background: #1a1a3e;
+  border-bottom: 1px solid #0f3460;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #8888aa;
+}
+.filter-group label { white-space: nowrap; }
+.filter-group select, .filter-group input[type="number"] {
+  background: #0d1528;
+  border: 1px solid #2a3a5a;
+  border-radius: 3px;
+  color: #e0e0e0;
+  padding: 2px 4px;
+  font-size: 11px;
+}
+.filter-group input[type="number"] {
+  width: 46px;
+  font-family: monospace;
+  text-align: center;
+}
+.filter-group select { cursor: pointer; }
+.filter-group select:focus, .filter-group input:focus { border-color: #e94560; outline: none; }
+.filter-group input[type="number"]::-webkit-inner-spin-button,
+.filter-group input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.filter-group input[type="number"] { -moz-appearance: textfield; }
+.filter-group input[type="range"] {
+  width: 90px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #2a3a5a;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.filter-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #6eb5ff;
+  border: 1px solid #0d1528;
+  cursor: pointer;
+}
+.filter-group input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #6eb5ff;
+  border: 1px solid #0d1528;
+  cursor: pointer;
+}
+.filter-group .range-val {
+  font-family: monospace;
+  font-size: 11px;
+  color: #e0e0e0;
+  min-width: 24px;
+  text-align: right;
+}
+.filter-sep { color: #2a3a5a; }
+#chord-count { color: #6eb5ff; font-weight: 600; margin-left: auto; }
+
+.filter-btn {
+  background: #1e2a4a;
+  border: 1px solid #2a3a5a;
+  border-radius: 3px;
+  color: #8899bb;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.filter-btn:hover { border-color: #4a6a9a; color: #dde; }
+
+/* ── Canvas plot ── */
+#plot-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+#plot-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Tooltip ── */
+#tooltip {
+  position: fixed;
+  background: #16213ef0;
+  border: 1px solid #e94560;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  pointer-events: none;
+  display: none;
+  z-index: 100;
+  max-width: 280px;
+  line-height: 1.6;
+}
+#tooltip .tt-ratio { font-weight: 700; color: #e94560; font-size: 14px; }
+#tooltip .tt-name { color: #e0e0e0; }
+#tooltip .tt-detail { color: #a0a0c0; }
+#tooltip .tt-detail span { font-family: monospace; }
+.tt-bright { color: #f5a623; }
+.tt-neutral { color: #8888aa; }
+.tt-dark { color: #6eb5ff; }
+
+/* ── Bottom info panel ── */
+#info-panel {
+  flex-shrink: 0;
+  height: 0;
+  background: #16213ef0;
+  border-top: 1px solid #0f3460;
+  overflow: hidden;
+  transition: height 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+#info-panel.open {
+  height: 240px;
+}
+
+#info-panel .panel-resize {
+  height: 5px;
+  cursor: ns-resize;
+  flex-shrink: 0;
+  background: transparent;
+}
+#info-panel .panel-resize:hover,
+#info-panel .panel-resize:active {
+  background: #e9456044;
+}
+
+#info-panel .panel-inner {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  gap: 16px;
+  padding: 6px 16px 10px;
+  min-height: 0;
+}
+
+/* Panel columns */
+.panel-header-col {
+  flex-shrink: 0;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.panel-ratio {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e94560;
+  font-family: monospace;
+}
+.panel-name {
+  font-size: 14px;
+  color: #e0e0e0;
+  font-weight: 600;
+}
+.panel-generic {
+  font-size: 11px;
+  color: #8888aa;
+  font-style: italic;
+}
+.panel-wiki a {
+  color: #6eb5ff;
+  text-decoration: none;
+  font-size: 11px;
+}
+.panel-wiki a:hover { text-decoration: underline; }
+.panel-audio {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.panel-audio select, .panel-audio input[type="number"] {
+  background: #0d1528;
+  border: 1px solid #2a3a5a;
+  border-radius: 3px;
+  color: #e0e0e0;
+  padding: 2px 4px;
+  font-size: 11px;
+}
+.panel-audio input[type="number"] { width: 55px; font-family: monospace; }
+.panel-audio input[type="number"]::-webkit-inner-spin-button,
+.panel-audio input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.panel-audio input[type="number"] { -moz-appearance: textfield; }
+.panel-audio select { cursor: pointer; }
+.panel-audio label { font-size: 10px; color: #8888aa; }
+.panel-play-btn {
+  background: #1a2a3a;
+  border: 1px solid #2a3a5a;
+  border-radius: 4px;
+  color: #50c878;
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.panel-play-btn:hover { background: #2a3a5a; border-color: #50c878; }
+.panel-stop-btn {
+  background: #1a2a3a;
+  border: 1px solid #2a3a5a;
+  border-radius: 4px;
+  color: #e94560;
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.panel-stop-btn:hover { border-color: #e94560; }
+
+.panel-desc-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+.panel-desc-row {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+}
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.panel-section-title {
+  font-size: 11px;
+  color: #556;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 0 0 3px 0;
+  border-bottom: 1px solid #1e2a4a;
+  margin-bottom: 2px;
+}
+.panel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 1px 0;
+}
+.panel-row-label {
+  font-size: 12px;
+  color: #8888aa;
+  white-space: nowrap;
+}
+.panel-row-value {
+  font-size: 14px;
+  font-family: monospace;
+  color: #e0e0e0;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.panel-edo-col {
+  flex-shrink: 0;
+  min-width: 320px;
+  flex: 1;
+  overflow-y: auto;
+}
+.panel-edo-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6eb5ff;
+  margin-bottom: 4px;
+}
+.panel-edo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.panel-edo-table th {
+  padding: 3px 6px;
+  background: #0d1528;
+  color: #a0a0c0;
+  font-weight: 600;
+  text-align: right;
+  border-bottom: 1px solid #2a3a5a;
+  font-size: 10px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.panel-edo-table th:first-child { text-align: center; }
+.panel-edo-table th:nth-child(2) { text-align: left; }
+.panel-edo-table th.sort-asc::after { content: ' ▲'; font-size: 8px; }
+.panel-edo-table th.sort-desc::after { content: ' ▼'; font-size: 8px; }
+.panel-edo-table th:hover { color: #e0e0ff; }
+.panel-edo-table td {
+  padding: 2px 6px;
+  border-bottom: 1px solid #1a2a3a;
+  font-family: monospace;
+  text-align: right;
+  white-space: nowrap;
+}
+.panel-edo-table td:first-child { text-align: center; }
+.panel-edo-table td:nth-child(2) { text-align: left; }
+.panel-edo-table .edo-play-btn {
+  background: #1a2a3a;
+  border: 1px solid #2a3a5a;
+  border-radius: 3px;
+  color: #50c878;
+  font-size: 11px;
+  width: 22px;
+  height: 18px;
+  cursor: pointer;
+  padding: 0;
+}
+.panel-edo-table .edo-play-btn:hover { background: #2a3a5a; border-color: #50c878; }
+
+.panel-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  cursor: pointer;
+  color: #888;
+  font-size: 16px;
+  background: none;
+  border: none;
+  z-index: 10;
+}
+.panel-close:hover { color: #e94560; }
+
+#status-bar {
+  padding: 4px 20px;
+  background: #16213e;
+  border-top: 1px solid #0f3460;
+  font-size: 11px;
+  color: #556;
+  flex-shrink: 0;
+  display: flex;
+  gap: 16px;
+}
+
+@media (max-width: 700px) {
+  #top-bar, #filter-bar { padding: 6px 10px; gap: 8px; }
+  .panel-header-col { width: 140px; }
+  .panel-edo-col { min-width: 200px; }
+  #info-panel .panel-inner { padding: 6px 10px; gap: 10px; }
+}
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <span class="app-title">JI Chord Explorer</span>
+  <div class="ctrl-group">
+    <label>Max r:</label>
+    <input type="number" id="cfg-max-r" value="100" min="6" max="128">
+  </div>
+  <div class="ctrl-group">
+    <label>Frame:</label>
+    <input type="number" id="cfg-frame-min" value="0" min="0" max="1200" step="10">
+    <span style="color:#556">–</span>
+    <input type="number" id="cfg-frame-max" value="1199" min="0" max="1200" step="10">
+    <span style="color:#8888aa">¢</span>
+  </div>
+  <div class="ctrl-group">
+    <label>Max odd-limit:</label>
+    <input type="number" id="cfg-max-odd" value="100" min="1" max="999">
+  </div>
+  <div class="ctrl-group">
+    <label>Mode:</label>
+    <select id="cfg-gen-mode">
+      <option value="enumerate">Enumerate all</option>
+      <option value="thirds">Stack of thirds</option>
+    </select>
+  </div>
+  <button class="filter-btn" id="btn-regenerate" style="color:#50c878;border-color:#50c878">Generate</button>
+</div>
+
+<div id="filter-bar">
+  <div class="filter-group">
+    <label>Region:</label>
+    <select id="flt-region">
+      <option value="">all</option>
+      <option value="narrow">narrow</option>
+      <option value="minor-third">minor-third</option>
+      <option value="major-third">major-third</option>
+      <option value="diminished">diminished</option>
+      <option value="subperfect">subperfect</option>
+      <option value="perfect">perfect</option>
+      <option value="superperfect">superperfect</option>
+      <option value="augmented">augmented</option>
+      <option value="wide">wide</option>
+      <option value="octave">octave</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Contour:</label>
+    <select id="flt-contour">
+      <option value="">all</option>
+      <option value="bright">bright</option>
+      <option value="neutral">neutral</option>
+      <option value="dark">dark</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Max r:</label>
+    <input type="range" id="flt-max-r" value="128" min="4" max="128">
+    <span class="range-val" id="flt-max-r-val">128</span>
+  </div>
+  <div class="filter-group">
+    <label>Max odd-limit:</label>
+    <input type="range" id="flt-max-odd" value="100" min="1" max="100">
+    <span class="range-val" id="flt-max-odd-val">100</span>
+  </div>
+  <div class="filter-group">
+    <label>Max hardness:</label>
+    <input type="number" id="flt-max-hard" value="99" min="1" max="99" step="0.1">
+  </div>
+  <div class="filter-group">
+    <label>Reveal:</label>
+    <input type="range" id="flt-reveal" value="80" min="0" max="100">
+    <span class="range-val" id="flt-reveal-val">80</span>
+  </div>
+  <div class="filter-group">
+    <label>Search:</label>
+    <input type="text" id="flt-search" placeholder="ratio or name" style="
+      width:100px;background:#0d1528;border:1px solid #2a3a5a;border-radius:3px;
+      color:#e0e0e0;padding:2px 6px;font-size:11px;font-family:inherit;
+    ">
+  </div>
+  <div class="filter-group">
+    <label>EDO overlay:</label>
+    <input type="number" id="flt-edo-overlay" min="2" max="200" placeholder="–" style="
+      width:42px;background:#0d1528;border:1px solid #2a3a5a;border-radius:3px;
+      color:#50c878;padding:2px 4px;font-size:11px;font-family:monospace;
+    ">
+  </div>
+  <button class="filter-btn" id="btn-reset-view" title="Reset zoom">Reset view</button>
+  <span id="chord-count"></span>
+</div>
+
+<div id="plot-container">
+  <canvas id="plot-canvas"></canvas>
+</div>
+<div id="tooltip"></div>
+
+<div id="info-panel">
+  <div class="panel-resize"></div>
+  <div class="panel-inner" id="panel-inner"></div>
+  <button class="panel-close" id="panel-close">✕</button>
+</div>
+
+<div id="status-bar">
+  <span id="status-text">Ready</span>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════
+// CONSTANTS & CONFIG
+// ═══════════════════════════════════════════
+
+const FRAME_REGIONS = {
+  thresholds: [200, 350, 500, 625, 665, 715, 765, 900, 1100],
+  names: ['narrow', 'minor-third', 'major-third', 'diminished', 'subperfect', 'perfect', 'superperfect', 'augmented', 'wide', 'octave']
+};
+
+const HARDNESS_TIERS = [
+  { min: 2.0, prefix: 'hyper' },
+  { min: 1.75, prefix: 'ultra' },
+  { min: 1.5, prefix: 'super' },
+];
+
+const KNOWN_CHORDS = {
+  // === octave span (1200c) ===
+  '2:3:4':    'open fifth',
+  '3:4:6':    'open fourth',
+  '3:5:6':    'open major sixth',
+  '4:5:8':    'open major third',
+  '5:6:10':   'open minor third',
+  '5:8:10':   'open minor sixth',
+  '4:7:8':    'open harmonic seventh',
+  '5:7:10':   'open tritone',
+  '6:7:12':   'open septimal second',
+  '6:11:12':  'open undecimal fourth',
+  '7:8:14':   'open septimal second (inv)',
+  '8:9:16':   'open whole tone',
+  '9:16:18':  'open whole tone (inv)',
+  // === wide span (900–1100c) ===
+  '3:4:5':    'major add4',
+  '12:15:20': 'minor add4',
+  '5:6:8':    'minor third + fourth',
+  '15:20:24': 'fourth + minor third',
+  '4:5:7':    'major + nat7',
+  '20:28:35': 'nat7 + major',
+  '4:6:7':    'fifth + septimal second',
+  '12:14:21': 'septimal second + fifth',
+  '7:8:12':   '',
+  '7:10:12':  '',
+  '14:21:24': '',
+  '35:42:60': '',
+  '9:10:14':  '',
+  '9:12:14':  '',
+  '18:21:28': '',
+  '45:63:70': '',
+  '9:10:15':  '',
+  '6:9:10':   '',
+  '7:9:12':   '',
+  '21:28:36': '',
+  '8:9:14':   '',
+  '36:56:63': '',
+  '9:10:16':  '',
+  '9:12:16':  'neutral sus4',
+  '9:14:16':  '',
+  '5:6:9':    'minor third + fifth',
+  '10:15:18': 'fifth + minor third',
+  '5:7:9':    '',
+  '35:45:63': '',
+  '5:8:9':    '',
+  '40:45:72': '',
+  // === augmented span (765–900c) ===
+  '16:20:25': 'augmented triad',
+  '7:8:11':   '',
+  '56:77:88': '',
+  '7:9:11':   '',
+  '63:77:99': '',
+  '7:10:11':  '',
+  '8:10:13':  '',
+  '40:52:65': '',
+  '8:11:13':  '',
+  '8:12:13':  '',
+  '24:26:39': '',
+  '11:13:18': '',
+  '11:14:18': '',
+  '11:16:18': '',
+  '22:33:36': '',
+  // === superperfect span (715–765c) ===
+  '14:18:21': 'supermajor',
+  '9:11:14':  '',
+  '9:13:14':  '',
+  '10:13:16': '',
+  '13:14:20': '',
+  '52:65:80': '',
+  '13:16:20': '',
+  '13:18:20': '',
+  // === perfect span (665–715c) ===
+  '4:5:6':    'major',
+  '10:12:15': 'minor',
+  '6:7:9':    'subminor',
+  '10:13:15': 'ultramajor',
+  '26:30:39': 'ultraminor',
+  '16:21:24': 'hypermajor',
+  '14:16:21': 'hyperminor',
+  '18:22:27': 'neutral',
+  '10:14:15': '',
+  '14:15:21': '',
+  '22:30:33': '',
+  '10:11:15': '',
+  '12:13:18': '',
+  '26:36:39': '',
+  '6:8:9':    'sus2',
+  '8:9:12':   'sus4',
+  '15:16:22': '',
+  '15:18:22': '',
+  '15:20:22': '',
+  '30:33:44': '',
+  '45:55:66': '',
+  '16:17:24': '',
+  '34:36:51': '',
+  '34:48:51': '',
+  '12:17:18': '',
+  '16:19:24': '',
+  '38:48:57': '',
+  '14:17:21': '',
+  '14:19:21': '',
+  '14:20:21': '',
+  '20:21:30': '',
+  '34:42:51': '',
+  '38:42:57': '',
+  // === subperfect span (625–665c) ===
+  '9:11:13':  '',
+  '11:14:17': '',
+  '9:10:13':  '',
+  '36:39:52': '',
+  '11:13:16': '',
+  '15:17:22': '',
+  '15:19:22': '',
+  '13:15:18': '',
+  '18:21:26': '',
+  '63:78:91': '',
+  '17:21:26': '',
+  // === diminished span (500–625c) ===
+  '5:6:7':    '',
+  '30:35:42': '',
+  '7:8:10':   '',
+  '28:35:40': '',
+  '8:9:11':   '',
+  '40:44:55': '',
+  '8:10:11':  '',
+  '10:11:14': '',
+  '55:70:77': '',
+  '11:12:16': '',
+  '33:44:48': '',
+  '11:14:16': '',
+  '11:12:15': '',
+  '11:13:15': '',
+  '11:14:15': '',
+  '44:55:60': '',
+  '13:15:17': '',
+  '12:14:17': '',
+  '60:68:85': '',
+  '12:15:17': '',
+  '14:17:20': '',
+  '13:17:18': '',
+  '15:17:20': '',
+  '51:60:68': '',
+  '17:18:22': '',
+  '17:20:22': '',
+  '19:21:26': '',
+  '13:14:17': '',
+  '16:19:22': '',
+  '19:21:24': '',
+  '15:16:21': '',
+  '15:17:21': '',
+  '15:19:21': '',
+  '15:20:21': '',
+  '20:21:28': '',
+  '16:17:22': '',
+  '16:21:22': '',
+  // === major-third span (350–500c) ===
+  '8:9:10':   '',
+  '36:40:45': '',
+  '6:7:8':    '',
+  '21:24:28': '',
+  '7:8:9':    '',
+  '56:63:72': '',
+  '9:10:12':  '',
+  '15:18:20': '',
+  '10:11:12': '',
+  '55:60:66': '',
+  '9:10:11':  '',
+  '11:12:14': '',
+  '12:13:14': '',
+  '12:13:15': '',
+  '52:60:65': '',
+  '12:14:15': '',
+  '28:30:35': '',
+  '9:11:12':  '',
+  '33:36:44': '',
+  '13:14:16': '',
+  '14:15:18': '',
+  '35:42:45': '',
+  '12:15:16': '',
+  '15:16:20': '',
+  '11:13:14': '',
+  '16:17:20': '',
+  '14:15:16': '',
+  '13:14:15': '',
+  '14:17:18': '',
+  '15:16:18': '',
+  '40:45:48': '',
+  '13:15:16': '',
+  '16:17:18': '',
+  '15:17:18': '',
+  '16:18:19': '',
+  '16:19:20': '',
+  '17:18:20': '',
+  '17:19:20': '',
+  '15:16:19': '',
+  '15:17:19': '',
+  '15:18:19': '',
+  '19:20:24': '',
+  '19:22:24': '',
+  '17:19:22': '',
+  '16:17:19': '',
+  '18:19:22': '',
+  '18:21:22': '',
+  '63:66:77': '',
+  '19:21:22': '',
+  '19:20:22': '',
+  '18:19:21': '',
+  '18:20:21': '',
+  '60:63:70': '',
+  '21:22:26': '',
+  '21:24:26': '',
+  '20:21:24': '',
+  '35:40:42': '',
+  '17:18:21': '',
+  '17:19:21': '',
+  '17:20:21': '',
+  '21:22:24': '',
+  // === narrow span (0–200c) ===
+  '20:21:22': '',
+  '19:20:21': '',
+  '18:19:20': '',
+  '17:18:19': '',
+  '40:42:45': '',
+  '56:60:63': '',
+};
+
+const CURATED_THIRDS = [
+  [6,5], [5,4], [7,6], [9,7], [11,9], [13,11], [13,10], [8,7],
+  [11,10], [7,5], [10,9], [12,11], [14,13], [15,13], [9,8],
+  [16,13], [11,8], [14,11], [15,14], [10,7],
+];
+
+const EDO_RANGE = { min: 5, max: 72 };
+const EDO_MAX_RMS_REL = 15;
+
+const CONTOUR_COLORS = {
+  bright: '#f5a623',
+  neutral: '#8888aa',
+  dark: '#6eb5ff',
+};
+
+const REGION_BAND_COLORS = [
+  'rgba(80, 60, 107, 0.12)',
+  'rgba(60, 80, 107, 0.12)',
+  'rgba(60, 107, 90, 0.12)',
+  'rgba(107, 60, 60, 0.12)',
+  'rgba(80, 80, 107, 0.12)',
+  'rgba(60, 90, 80, 0.12)',
+  'rgba(80, 80, 107, 0.12)',
+  'rgba(107, 60, 60, 0.12)',
+  'rgba(60, 107, 90, 0.12)',
+  'rgba(80, 60, 107, 0.12)',
+];
+
+// ═══════════════════════════════════════════
+// MATH
+// ═══════════════════════════════════════════
+
+function gcd(a, b) { while (b) { [a, b] = [b, a % b]; } return a; }
+function gcd3(a, b, c) { return gcd(gcd(a, b), c); }
+function ratioToCents(n, d) { return 1200 * Math.log2(n / d); }
+
+function oddLimit(n, d) {
+  let g = gcd(n, d);
+  n /= g; d /= g;
+  while (n % 2 === 0) n /= 2;
+  while (d % 2 === 0) d /= 2;
+  return Math.max(n, d);
+}
+
+function chordOddLimit(p, q, r) {
+  return Math.max(oddLimit(q, p), oddLimit(r, q), oddLimit(r, p));
+}
+
+function chordComplementKey(p, q, r) {
+  const a = p * q, b = p * r, c = q * r;
+  const g = gcd3(a, b, c);
+  return `${a / g}:${b / g}:${c / g}`;
+}
+
+function chordInversionKeys(p, q, r) {
+  const voicings = [
+    [p, q, r],
+    [q, r, 2 * p],
+    [r, 2 * p, 2 * q],
+  ];
+  const keys = [];
+  for (const [a, b, c] of voicings) {
+    const g = gcd3(a, b, c);
+    const key = `${a / g}:${b / g}:${c / g}`;
+    if (key !== `${p}:${q}:${r}`) keys.push(key);
+  }
+  return keys;
+}
+
+function frameRegion(F) {
+  const t = FRAME_REGIONS.thresholds;
+  for (let i = 0; i < t.length; i++) {
+    if (F < t[i]) return FRAME_REGIONS.names[i];
+  }
+  return FRAME_REGIONS.names[t.length];
+}
+
+function computeChord(p, q, r) {
+  const a = ratioToCents(q, p);
+  const b = ratioToCents(r, q);
+  const F = ratioToCents(r, p);
+  const diff = a - b;
+  let contour;
+  if (Math.abs(diff) < 3) contour = 'neutral';
+  else if (diff > 0) contour = 'bright';
+  else contour = 'dark';
+
+  const H = Math.max(a, b) / Math.min(a, b);
+  const signedH = contour === 'dark' ? -(H - 1) : (H - 1);
+  const region = frameRegion(F);
+  const ol = chordOddLimit(p, q, r);
+  const product = p * q * r;
+
+  const key = `${p}:${q}:${r}`;
+  let name = KNOWN_CHORDS[key];
+  if (name === undefined) name = null;
+
+  let genericName = contour + ' ' + region;
+  const regionsPerfectish = ['subperfect', 'perfect', 'superperfect'];
+  if (regionsPerfectish.includes(region) && contour !== 'neutral') {
+    for (const tier of HARDNESS_TIERS) {
+      if (H >= tier.min) {
+        genericName = tier.prefix + (contour === 'bright' ? 'major' : 'minor');
+        break;
+      }
+    }
+    if (H < 1.5) genericName = contour === 'bright' ? 'major' : 'minor';
+  } else if (region === 'major-third' || region === 'minor-third') {
+    genericName = contour + ' ' + region;
+  } else if (region === 'octave') {
+    genericName = contour + ' octave';
+  }
+
+  const displayName = name || null;
+
+  // Pre-compute HSL color at generation time
+  let brightHue;
+  if (F <= 700) {
+    brightHue = 30 + (F - 500) * 25 / 200;
+  } else {
+    brightHue = 55 - (F - 700) * 55 / 114;
+  }
+  brightHue = ((brightHue % 360) + 360) % 360;
+  const contourOffset = contour === 'bright' ? 0 : contour === 'dark' ? 180 : 270;
+  const ch = (brightHue + contourOffset) % 360;
+  const cs = Math.max(30, 75 - ol * 0.5);
+  const cl = Math.min(80, 45 + 20 / Math.sqrt(ol));
+  const invSqrtOl = 1 / Math.sqrt(ol);
+
+  return {
+    p, q, r, key, a, b, F,
+    contour, H, signedH, region, ol, product,
+    name, genericName, displayName,
+    pitchCents: [0, a, F],
+    ch, cs, cl, invSqrtOl,
+  };
+}
+
+// ═══════════════════════════════════════════
+// ENUMERATION
+// ═══════════════════════════════════════════
+
+function enumerateChords(maxR, frameMin, frameMax, maxOdd) {
+  const chords = [];
+  for (let p = 1; p <= maxR - 2; p++) {
+    for (let q = p + 1; q <= maxR - 1; q++) {
+      for (let r = q + 1; r <= maxR; r++) {
+        if (gcd3(p, q, r) !== 1) continue;
+        const F = ratioToCents(r, p);
+        if (F < frameMin || F > frameMax) continue;
+        const ol = chordOddLimit(p, q, r);
+        if (ol > maxOdd) continue;
+        chords.push(computeChord(p, q, r));
+      }
+    }
+  }
+  return chords;
+}
+
+function enumerateThirdsMode(frameMin, frameMax, maxOdd) {
+  const chords = [];
+  const seen = new Set();
+  for (const [n1, d1] of CURATED_THIRDS) {
+    for (const [n2, d2] of CURATED_THIRDS) {
+      const pRaw = d1 * d2, qRaw = n1 * d2, rRaw = n1 * n2;
+      const g = gcd3(pRaw, qRaw, rRaw);
+      const p = pRaw / g, q = qRaw / g, r = rRaw / g;
+      if (p >= q || q >= r) continue;
+      const key = `${p}:${q}:${r}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const F = ratioToCents(r, p);
+      if (F < frameMin || F > frameMax) continue;
+      const ol = chordOddLimit(p, q, r);
+      if (ol > maxOdd) continue;
+      chords.push(computeChord(p, q, r));
+    }
+  }
+  return chords;
+}
+
+// ═══════════════════════════════════════════
+// EDO APPROXIMATION
+// ═══════════════════════════════════════════
+
+function edoApproximate(chord, edoMin, edoMax, maxRmsRel) {
+  const results = [];
+  for (let n = edoMin; n <= edoMax; n++) {
+    const stepSize = 1200 / n;
+    const steps = chord.pitchCents.map(c => Math.round(c / stepSize));
+    const approxCents = steps.map(s => s * stepSize);
+    const errors = chord.pitchCents.map((c, i) => approxCents[i] - c);
+
+    const nNotes = errors.length;
+    const mean = errors.reduce((s, e) => s + e, 0) / nNotes;
+    const sqSum = errors.reduce((s, e) => { const d = e - mean; return s + d * d; }, 0);
+    const rmsCents = Math.sqrt(sqSum / nNotes);
+    const rmsRel = (rmsCents / stepSize) * 100;
+
+    if (rmsRel > maxRmsRel) continue;
+
+    results.push({
+      edo: n, steps, approxCents, errors,
+      meanOffset: mean, rmsCents, rmsRel,
+    });
+  }
+  results.sort((a, b) => a.edo - b.edo);
+  return results;
+}
+
+// ═══════════════════════════════════════════
+// EDO OVERLAY
+// ═══════════════════════════════════════════
+
+let edoOverlayTriads = [];
+let edoOverlayN = 0;
+let hoveredEdoTriad = -1;
+
+function generateEdoTriads(n) {
+  const triads = [];
+  if (!n || n < 2) return triads;
+  const stepSize = 1200 / n;
+  for (let x = 1; x < n; x++) {
+    for (let y = x + 1; y <= n; y++) {
+      const a = x * stepSize;
+      const b = (y - x) * stepSize;
+      const F = y * stepSize;
+      const diff = a - b;
+      let contour;
+      if (Math.abs(diff) < 3) contour = 'neutral';
+      else if (diff > 0) contour = 'bright';
+      else contour = 'dark';
+      const H = Math.max(a, b) / Math.min(a, b);
+      const signedH = contour === 'dark' ? -(H - 1) : (H - 1);
+      triads.push({
+        steps: [0, x, y], edo: n,
+        a, b, F, contour, H, signedH,
+        pitchCents: [0, a, F],
+        label: `${n}edo [0,${x},${y}]`,
+      });
+    }
+  }
+  return triads;
+}
+
+// ═══════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════
+
+let audioCtx = null;
+let activeOscillators = [];
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function stopAll() {
+  const now = getAudioCtx().currentTime;
+  for (const { osc, gain } of activeOscillators) {
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.05);
+    osc.stop(now + 0.06);
+  }
+  activeOscillators = [];
+}
+
+function playFreqs(freqs, waveform, arpeggio, duration) {
+  stopAll();
+  const ctx = getAudioCtx();
+  const master = ctx.createGain();
+  master.gain.value = 0.30;
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -24; comp.knee.value = 12;
+  comp.ratio.value = 12; comp.attack.value = 0.003; comp.release.value = 0.1;
+  comp.connect(master);
+  master.connect(ctx.destination);
+  if (arpeggio) {
+    const arpDelay = 0.12;
+    const hold = 0.04;
+    const release = 1.2;
+    const allFreqs = [];
+    for (let oct = 0; oct < 3; oct++) {
+      const mul = Math.pow(2, oct);
+      for (const f of freqs) allFreqs.push(f * mul);
+    }
+    allFreqs.forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = waveform || 'triangle';
+      osc.frequency.value = f;
+      osc.connect(gain);
+      gain.connect(comp);
+      const t = ctx.currentTime + i * arpDelay;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(1, t + 0.01);
+      gain.gain.setValueAtTime(1, t + hold);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + hold + release);
+      osc.start(t);
+      osc.stop(t + hold + release + 0.01);
+      activeOscillators.push({ osc, gain });
+    });
+  } else {
+    const dur = duration || 1.5;
+    freqs.forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = waveform || 'triangle';
+      osc.frequency.value = f;
+      osc.connect(gain);
+      gain.connect(comp);
+      const t = ctx.currentTime;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(1, t + 0.02);
+      gain.gain.setValueAtTime(1, t + dur);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur + 1.5);
+      osc.start(t);
+      osc.stop(t + dur + 1.51);
+      activeOscillators.push({ osc, gain });
+    });
+  }
+}
+
+function playChord(chord, rootHz, waveform, arpeggio) {
+  const freqs = [1, chord.q / chord.p, chord.r / chord.p].map(r => rootHz * r);
+  playFreqs(freqs, waveform, arpeggio);
+}
+
+function playEdoApprox(approx, rootHz, waveform) {
+  const freqs = approx.approxCents.map(c => rootHz * Math.pow(2, c / 1200));
+  playFreqs(freqs, waveform, false);
+}
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+
+let allChords = [];
+let filteredChords = [];
+let selectedChordKey = null;
+let selectedInversionKeys = new Set();
+let hoveredIdx = -1;
+let synthRootHz = 220;
+let synthWaveform = 'triangle';
+
+// ═══════════════════════════════════════════
+// VIEW / ZOOM / PAN
+// ═══════════════════════════════════════════
+
+const canvas = document.getElementById('plot-canvas');
+const plotCtx = canvas.getContext('2d');
+let dpr = window.devicePixelRatio || 1;
+let W = 0, H = 0;
+
+const PADDING = { top: 30, right: 30, bottom: 50, left: 60 };
+
+// rAF coalescing — prevents multiple redraws per frame
+let _rafPending = false;
+let _rafResize = false;
+function scheduleRedraw(shouldResize) {
+  if (shouldResize) _rafResize = true;
+  if (_rafPending) return;
+  _rafPending = true;
+  requestAnimationFrame(() => {
+    _rafPending = false;
+    const resize = _rafResize;
+    _rafResize = false;
+    drawPlot(resize);
+  });
+}
+
+// Aura sprite cache — one offscreen canvas per unique (h,s,l) triple
+const _auraCache = new Map();
+const _auraSpriteSize = 128;
+function getAuraSprite(h, s, l) {
+  const key = (h << 16) | (s << 8) | l;
+  let sprite = _auraCache.get(key);
+  if (sprite) return sprite;
+  const size = _auraSpriteSize;
+  const off = new OffscreenCanvas(size * 2, size * 2);
+  const octx = off.getContext('2d');
+  const grad = octx.createRadialGradient(size, size, 0, size, size, size);
+  grad.addColorStop(0, `hsla(${h},${s}%,${l}%,1)`);
+  grad.addColorStop(0.15, `hsla(${h},${s}%,${l}%,0.6)`);
+  grad.addColorStop(0.4, `hsla(${h},${s}%,${l}%,0.25)`);
+  grad.addColorStop(0.7, `hsla(${h},${s}%,${l}%,0.07)`);
+  grad.addColorStop(1, `hsla(${h},${s}%,${l}%,0)`);
+  octx.fillStyle = grad;
+  octx.fillRect(0, 0, size * 2, size * 2);
+  _auraCache.set(key, off);
+  return off;
+}
+
+// Cached draw-pass data for hover reuse
+let _visNodeCache = null;
+
+let viewFrameMin, viewFrameMax, viewSignedMin, viewSignedMax;
+let homeFrameMin, homeFrameMax, homeSignedMin, homeSignedMax;
+let refArea = 9600;
+
+function computeViewBounds() {
+  viewFrameMin = 550;
+  viewFrameMax = 850;
+  viewSignedMin = -4;
+  viewSignedMax = 4;
+  homeFrameMin = viewFrameMin;
+  homeFrameMax = viewFrameMax;
+  homeSignedMin = viewSignedMin;
+  homeSignedMax = viewSignedMax;
+
+  if (filteredChords.length > 0) {
+    let fMin = Infinity, fMax = -Infinity, sMax = 0;
+    for (const c of filteredChords) {
+      if (c.F < fMin) fMin = c.F;
+      if (c.F > fMax) fMax = c.F;
+      if (Math.abs(c.signedH) > sMax) sMax = Math.abs(c.signedH);
+    }
+    refArea = (fMax - fMin + 20) * (sMax * 2 + 0.2);
+  }
+}
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  dpr = window.devicePixelRatio || 1;
+  W = rect.width * dpr;
+  H = rect.height * dpr;
+  canvas.width = W;
+  canvas.height = H;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+}
+
+function plotX(F) {
+  return PADDING.left * dpr + (F - viewFrameMin) / (viewFrameMax - viewFrameMin) * (W - (PADDING.left + PADDING.right) * dpr);
+}
+
+function plotY(sH) {
+  return PADDING.top * dpr + (1 - (sH - viewSignedMin) / (viewSignedMax - viewSignedMin)) * (H - (PADDING.top + PADDING.bottom) * dpr);
+}
+
+function canvasToFrame(cx) {
+  return viewFrameMin + (cx * dpr - PADDING.left * dpr) / (W - (PADDING.left + PADDING.right) * dpr) * (viewFrameMax - viewFrameMin);
+}
+
+function canvasToSigned(cy) {
+  return viewSignedMax - (cy * dpr - PADDING.top * dpr) / (H - (PADDING.top + PADDING.bottom) * dpr) * (viewSignedMax - viewSignedMin);
+}
+
+// ── Zoom (scroll) ──
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+
+  const focusF = canvasToFrame(cx);
+  const focusS = canvasToSigned(cy);
+
+  const zoomFactor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
+
+  const fRange = viewFrameMax - viewFrameMin;
+  const sRange = viewSignedMax - viewSignedMin;
+
+  const ratioF = (focusF - viewFrameMin) / fRange;
+  const ratioS = (focusS - viewSignedMin) / sRange;
+
+  const newFRange = fRange * zoomFactor;
+  const newSRange = sRange * zoomFactor;
+
+  viewFrameMin = focusF - ratioF * newFRange;
+  viewFrameMax = focusF + (1 - ratioF) * newFRange;
+
+  viewSignedMin = focusS - ratioS * newSRange;
+  viewSignedMax = focusS + (1 - ratioS) * newSRange;
+
+  scheduleRedraw(false);
+}, { passive: false });
+
+// ── Pan (drag) & Y-axis zoom drag ──
+let isDragging = false;
+let isYAxisDrag = false;
+let dragStartX = 0, dragStartY = 0;
+let dragStartFrameMin = 0, dragStartFrameMax = 0;
+let dragStartSignedMin = 0, dragStartSignedMax = 0;
+
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+
+  if (cx < PADDING.left && cy >= PADDING.top && cy <= rect.height - PADDING.bottom) {
+    isYAxisDrag = true;
+    dragStartY = e.clientY;
+    dragStartSignedMin = viewSignedMin;
+    dragStartSignedMax = viewSignedMax;
+    canvas.style.cursor = 'ns-resize';
+    e.preventDefault();
+    return;
+  }
+
+  const idx = findNearestChord(cx, cy);
+  if (idx >= 0) return;
+  isDragging = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  dragStartFrameMin = viewFrameMin;
+  dragStartFrameMax = viewFrameMax;
+  dragStartSignedMin = viewSignedMin;
+  dragStartSignedMax = viewSignedMax;
+  canvas.style.cursor = 'grabbing';
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (isYAxisDrag) {
+    const dy = e.clientY - dragStartY;
+    const rect = canvas.getBoundingClientRect();
+    const plotH = rect.height - PADDING.top - PADDING.bottom;
+    const scale = Math.pow(2, dy / plotH);
+    const sRange = dragStartSignedMax - dragStartSignedMin;
+    const center = (dragStartSignedMax + dragStartSignedMin) / 2;
+    const newRange = sRange * scale;
+    viewSignedMin = center - newRange / 2;
+    viewSignedMax = center + newRange / 2;
+    scheduleRedraw(false);
+    return;
+  }
+  if (!isDragging) return;
+  const dx = e.clientX - dragStartX;
+  const dy = e.clientY - dragStartY;
+
+  const rect = canvas.getBoundingClientRect();
+  const plotW = rect.width - PADDING.left - PADDING.right;
+  const plotH = rect.height - PADDING.top - PADDING.bottom;
+
+  const fRange = dragStartFrameMax - dragStartFrameMin;
+  const sRange = dragStartSignedMax - dragStartSignedMin;
+
+  const dF = -dx / plotW * fRange;
+  const dS = dy / plotH * sRange;
+
+  viewFrameMin = dragStartFrameMin + dF;
+  viewFrameMax = dragStartFrameMax + dF;
+  viewSignedMin = dragStartSignedMin + dS;
+  viewSignedMax = dragStartSignedMax + dS;
+
+  scheduleRedraw(false);
+});
+
+window.addEventListener('mouseup', () => {
+  if (isDragging) {
+    isDragging = false;
+    canvas.style.cursor = 'default';
+  }
+  if (isYAxisDrag) {
+    isYAxisDrag = false;
+    canvas.style.cursor = 'default';
+  }
+});
+
+// ── Reset view ──
+document.getElementById('btn-reset-view').addEventListener('click', () => {
+  viewFrameMin = homeFrameMin;
+  viewFrameMax = homeFrameMax;
+  viewSignedMin = homeSignedMin;
+  viewSignedMax = homeSignedMax;
+  drawPlot(false);
+});
+
+// ═══════════════════════════════════════════
+// DRAW
+// ═══════════════════════════════════════════
+
+function drawPlot(shouldResize) {
+  if (shouldResize !== false) resizeCanvas();
+  const ctx = plotCtx;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, W, H);
+
+  const pL = PADDING.left * dpr, pR = PADDING.right * dpr;
+  const pT = PADDING.top * dpr, pB = PADDING.bottom * dpr;
+  const plotW = W - pL - pR;
+  const plotH = H - pT - pB;
+
+  // Half-shading
+  const yCenter = plotY(0);
+  const yTop = Math.max(pT, Math.min(H - pB, yCenter));
+  const yBot = Math.max(pT, Math.min(H - pB, yCenter));
+  if (yCenter > pT && yCenter < H - pB) {
+    ctx.fillStyle = 'rgba(245, 166, 35, 0.04)';
+    ctx.fillRect(pL, pT, plotW, yCenter - pT);
+    ctx.fillStyle = 'rgba(110, 181, 255, 0.04)';
+    ctx.fillRect(pL, yCenter, plotW, H - pB - yCenter);
+  } else if (yCenter <= pT) {
+    ctx.fillStyle = 'rgba(110, 181, 255, 0.04)';
+    ctx.fillRect(pL, pT, plotW, plotH);
+  } else {
+    ctx.fillStyle = 'rgba(245, 166, 35, 0.04)';
+    ctx.fillRect(pL, pT, plotW, plotH);
+  }
+
+  // Region bands
+  const thresholds = [viewFrameMin, ...FRAME_REGIONS.thresholds, viewFrameMax];
+  for (let i = 0; i < FRAME_REGIONS.names.length; i++) {
+    const left = Math.max(thresholds[i], viewFrameMin);
+    const right = Math.min(thresholds[i + 1], viewFrameMax);
+    if (left >= viewFrameMax || right <= viewFrameMin) continue;
+    const x0 = plotX(left), x1 = plotX(right);
+    ctx.fillStyle = REGION_BAND_COLORS[i];
+    ctx.fillRect(x0, pT, x1 - x0, plotH);
+
+    ctx.save();
+    ctx.font = `${11 * dpr}px 'Segoe UI', system-ui, sans-serif`;
+    ctx.fillStyle = 'rgba(160,160,192,0.25)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(FRAME_REGIONS.names[i], (x0 + x1) / 2, pT + 4 * dpr);
+    ctx.restore();
+  }
+
+  // Center axis (signedH = 0)
+  if (viewSignedMin <= 0 && viewSignedMax >= 0) {
+    const y0 = plotY(0);
+    ctx.strokeStyle = 'rgba(136,136,170,0.35)';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(pL, y0);
+    ctx.lineTo(W - pR, y0);
+    ctx.stroke();
+
+    ctx.font = `${10 * dpr}px 'Segoe UI', system-ui, sans-serif`;
+    ctx.fillStyle = 'rgba(136,136,170,0.5)';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('H = 1.0 (equal thirds)', pL + 4 * dpr, y0 - 3 * dpr);
+  }
+
+  // Hardness = 2.5 reference lines (plotted at ±1.5 since origin is H=1)
+  for (const sH of [1.5, -1.5]) {
+    if (viewSignedMin <= sH && viewSignedMax >= sH) {
+      const y = plotY(sH);
+      ctx.strokeStyle = 'rgba(187,134,252,0.2)';
+      ctx.lineWidth = 1 * dpr;
+      ctx.setLineDash([6 * dpr, 4 * dpr]);
+      ctx.beginPath();
+      ctx.moveTo(pL, y);
+      ctx.lineTo(W - pR, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.font = `${9 * dpr}px 'Segoe UI', system-ui, sans-serif`;
+      ctx.fillStyle = 'rgba(187,134,252,0.35)';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = sH > 0 ? 'bottom' : 'top';
+      ctx.fillText('H = 2.5', W - pR - 4 * dpr, y + (sH > 0 ? -2 : 2) * dpr);
+    }
+  }
+
+  // Bright/dark labels
+  const yCenterClamped = Math.max(pT, Math.min(H - pB, plotY(0)));
+  ctx.save();
+  ctx.font = `bold ${11 * dpr}px 'Segoe UI', system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  if (yCenterClamped - pT > 30 * dpr) {
+    ctx.fillStyle = 'rgba(245, 166, 35, 0.35)';
+    ctx.textBaseline = 'top';
+    ctx.fillText('bright ↑', pL + 30 * dpr, pT + 4 * dpr);
+  }
+  if (H - pB - yCenterClamped > 30 * dpr) {
+    ctx.fillStyle = 'rgba(110, 181, 255, 0.35)';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('dark ↓', pL + 24 * dpr, H - pB - 4 * dpr);
+  }
+  ctx.restore();
+
+  // Grid
+  ctx.strokeStyle = 'rgba(42,58,90,0.5)';
+  ctx.lineWidth = dpr * 0.5;
+
+  const xTicks = niceTicksLinear(viewFrameMin, viewFrameMax, 16);
+  for (const v of xTicks) {
+    const x = plotX(v);
+    if (x < pL || x > W - pR) continue;
+    ctx.beginPath(); ctx.moveTo(x, pT); ctx.lineTo(x, H - pB); ctx.stroke();
+  }
+
+  const yTicksAll = niceTicksLinear(viewSignedMin, viewSignedMax, 8);
+
+  for (const v of yTicksAll) {
+    const y = plotY(v);
+    if (y < pT || y > H - pB || Math.abs(v) < 0.001) continue;
+    ctx.beginPath(); ctx.moveTo(pL, y); ctx.lineTo(W - pR, y); ctx.stroke();
+  }
+
+  // X tick labels
+  ctx.font = `${11 * dpr}px monospace`;
+  ctx.fillStyle = '#8888aa';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (const v of xTicks) {
+    const x = plotX(v);
+    if (x < pL || x > W - pR) continue;
+    ctx.fillText(v.toFixed(1), x, H - pB + 6 * dpr);
+  }
+
+  // Y tick labels
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (const v of yTicksAll) {
+    const y = plotY(v);
+    if (y < pT || y > H - pB || Math.abs(v) < 0.001) continue;
+    ctx.fillStyle = v > 0 ? 'rgba(245,166,35,0.7)' : 'rgba(110,181,255,0.7)';
+    ctx.fillText((Math.abs(v) + 1).toFixed(2), pL - 6 * dpr, y);
+  }
+
+  // Axis titles
+  ctx.font = `${12 * dpr}px 'Segoe UI', system-ui, sans-serif`;
+  ctx.fillStyle = '#a0a0c0';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('Frame (¢)', pL + plotW / 2, H - 14 * dpr);
+
+  ctx.save();
+  ctx.translate(16 * dpr, pT + plotH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Hardness', 0, 0);
+  ctx.restore();
+
+  // Plot border
+  ctx.strokeStyle = '#0f3460';
+  ctx.lineWidth = dpr;
+  ctx.strokeRect(pL, pT, plotW, plotH);
+
+  // Nodes — two-pass: auras first, then dots on top
+  const viewFRange = viewFrameMax - viewFrameMin;
+  const viewSRange = viewSignedMax - viewSignedMin;
+  const viewArea = viewFRange * viewSRange;
+  const zoomRatio = refArea / Math.max(viewArea, 0.01);
+
+  // Pre-compute visible nodes (reused by hover detection)
+  const hasSearch = document.getElementById('flt-search').value.trim() !== '';
+  const reveal = +document.getElementById('flt-reveal').value;
+  const revealScale = 0.2 + 1.8 * ((100 - reveal) / 100);
+  const threshold = 3.75 + 1.8 * Math.pow(zoomRatio, 0.46) * revealScale;
+  const fadeRange = Math.max(threshold * 2.75, 7.5);
+  const fadeEnd = threshold + fadeRange;
+
+  // Inline plotX/plotY coefficient
+  const xScale = (W - pL - pR) / (viewFrameMax - viewFrameMin);
+
+  const visNodes = [];
+  for (let i = 0; i < filteredChords.length; i++) {
+    const c = filteredChords[i];
+    const isSelected = c.key === selectedChordKey;
+    const isInversion = selectedInversionKeys.has(c.key);
+    let vis;
+    if (isSelected || isInversion || hasSearch) {
+      vis = 1;
+    } else if (c.ol <= threshold) {
+      vis = 1;
+    } else if (c.ol > fadeEnd) {
+      continue;
+    } else {
+      const t = (c.ol - threshold) / fadeRange;
+      vis = Math.pow(1 - t, 3.5);
+      if (vis <= 0) continue;
+    }
+    const x = pL + (c.F - viewFrameMin) * xScale;
+    const y = pT + (1 - (c.signedH - viewSignedMin) / (viewSignedMax - viewSignedMin)) * (H - pT - pB);
+    const auraR = Math.max(10, 100 * c.invSqrtOl) * vis * dpr;
+    if (x < pL - auraR || x > W - pR + auraR || y < pT - auraR || y > H - pB + auraR) continue;
+    visNodes.push({ i, c, x, y, vis, auraR, isSelected, isInversion });
+  }
+
+  // Cache for hover reuse
+  _visNodeCache = { visNodes, zoomRatio, hasSearch, reveal };
+
+  // Sort by color to minimize fillStyle/strokeStyle state changes
+  visNodes.sort((a, b) => {
+    const ac = a.c, bc = b.c;
+    return (ac.ch - bc.ch) || (ac.cs - bc.cs) || (ac.cl - bc.cl) || (a.vis - b.vis);
+  });
+
+  const nodeCount = visNodes.length;
+  const auraLimit = 300;
+  const skipAuras = nodeCount > auraLimit;
+  const skipRings = nodeCount > 600;
+
+  // Pass 1: auras (skip when too many nodes — they just blend into mush)
+  if (!skipAuras) {
+    for (const n of visNodes) {
+      const c = n.c;
+      const alpha = n.vis * 0.9;
+      const auraAlpha = alpha * Math.min(0.6, 5 / c.ol);
+      const sprite = getAuraSprite(c.ch | 0, c.cs | 0, c.cl | 0);
+      const size = n.auraR * 2;
+      ctx.globalAlpha = auraAlpha;
+      ctx.drawImage(sprite, n.x - n.auraR, n.y - n.auraR, size, size);
+    }
+    ctx.globalAlpha = 1;
+  } else {
+    // Only draw auras for selected/hovered/low-complexity nodes
+    for (const n of visNodes) {
+      if (!n.isSelected && !n.isInversion && n.i !== hoveredIdx && n.c.ol > 15) continue;
+      const c = n.c;
+      const alpha = n.vis * 0.9;
+      const auraAlpha = alpha * Math.min(0.6, 5 / c.ol);
+      const sprite = getAuraSprite(c.ch | 0, c.cs | 0, c.cl | 0);
+      const size = n.auraR * 2;
+      ctx.globalAlpha = auraAlpha;
+      ctx.drawImage(sprite, n.x - n.auraR, n.y - n.auraR, size, size);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Pass 2: dots, rings, labels
+  const zoomScale = 1 + Math.log2(Math.max(1, zoomRatio)) * 0.3;
+
+  // Batch dots by color: group into buckets by rounded (h,s,l,alpha) to minimize fillStyle changes
+  const TWO_PI = Math.PI * 2;
+  const ringWidth = 0.75 * dpr;
+  let lastFill = '', lastStroke = '';
+
+  for (const n of visNodes) {
+    const h = n.c.ch, s = n.c.cs, l = n.c.cl;
+    const isHovered = n.i === hoveredIdx;
+    const alpha = n.vis * 0.9;
+
+    const complexScale = Math.max(0.6, 3 * n.c.invSqrtOl);
+    const visScale = 0.15 + 0.85 * n.vis;
+    const baseDot = 2 * complexScale * zoomScale * visScale;
+    const dotR = Math.min(baseDot, 20) * dpr;
+
+    // Filled core
+    const fill = `hsla(${h},${s}%,${l}%,${alpha})`;
+    if (fill !== lastFill) { ctx.fillStyle = fill; lastFill = fill; }
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, dotR, 0, TWO_PI);
+    ctx.fill();
+
+    // Edge ring — skip when there are tons of nodes and dot is small
+    if (!skipRings || dotR > 3 * dpr || isHovered || n.isSelected || n.isInversion) {
+      const stroke = `hsla(${h},${s}%,${Math.min(95, l + 25)}%,${alpha * 0.5})`;
+      if (stroke !== lastStroke) { ctx.strokeStyle = stroke; lastStroke = stroke; }
+      ctx.lineWidth = ringWidth;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, dotR, 0, TWO_PI);
+      ctx.stroke();
+    }
+
+    if (n.isSelected) {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, dotR + 4 * dpr, 0, TWO_PI);
+      ctx.strokeStyle = '#e94560';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.stroke();
+      lastStroke = '';
+    } else if (n.isInversion) {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, dotR + 4 * dpr, 0, TWO_PI);
+      ctx.strokeStyle = '#e9456088';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.setLineDash([3 * dpr, 3 * dpr]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      lastStroke = '';
+    } else if (isHovered) {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, dotR + 3 * dpr, 0, TWO_PI);
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1 * dpr;
+      ctx.stroke();
+      lastStroke = '';
+    }
+
+    if (isHovered || n.isSelected || n.isInversion) {
+      ctx.font = `bold ${11 * dpr}px monospace`;
+      ctx.fillStyle = '#e0e0e0';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(n.c.key, n.x + dotR + 4 * dpr, n.y - 2 * dpr);
+      lastFill = '';
+    }
+  }
+
+  // EDO overlay triads
+  if (edoOverlayTriads.length > 0) {
+    const edoR = 3.5 * dpr;
+    for (let i = 0; i < edoOverlayTriads.length; i++) {
+      const t = edoOverlayTriads[i];
+      const x = plotX(t.F);
+      const y = plotY(t.signedH);
+      if (x < pL - edoR || x > W - pR + edoR || y < pT - edoR || y > H - pB + edoR) continue;
+      const isHov = i === hoveredEdoTriad;
+
+      ctx.beginPath();
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.PI / 4);
+      ctx.rect(-edoR, -edoR, edoR * 2, edoR * 2);
+      ctx.restore();
+      ctx.strokeStyle = isHov ? '#ffffff' : 'rgba(80,200,120,0.7)';
+      ctx.lineWidth = (isHov ? 2 : 1.2) * dpr;
+      ctx.stroke();
+
+      if (isHov) {
+        ctx.beginPath();
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(Math.PI / 4);
+        ctx.rect(-edoR, -edoR, edoR * 2, edoR * 2);
+        ctx.restore();
+        ctx.fillStyle = 'rgba(80,200,120,0.25)';
+        ctx.fill();
+
+        ctx.font = `bold ${11 * dpr}px monospace`;
+        ctx.fillStyle = '#50c878';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(t.label, x + edoR + 4 * dpr, y - 2 * dpr);
+      }
+    }
+  }
+}
+
+
+
+function hexWithAlpha(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function niceTicksLinear(min, max, approxCount) {
+  const range = max - min;
+  if (range <= 0) return [min];
+  const rawStep = range / approxCount;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  let step;
+  const norm = rawStep / mag;
+  if (norm < 1.5) step = mag;
+  else if (norm < 3.5) step = 2 * mag;
+  else if (norm < 7.5) step = 5 * mag;
+  else step = 10 * mag;
+  const start = Math.ceil(min / step) * step;
+  const ticks = [];
+  for (let v = start; v <= max + step * 0.01; v += step) {
+    ticks.push(Math.round(v * 1e6) / 1e6);
+  }
+  return ticks;
+}
+
+// ═══════════════════════════════════════════
+// INTERACTION
+// ═══════════════════════════════════════════
+
+function findNearestChord(cx, cy) {
+  if (!_visNodeCache) return -1;
+  const mx = cx * dpr, my = cy * dpr;
+  let bestIdx = -1, bestDist = Infinity;
+  const { visNodes, zoomRatio } = _visNodeCache;
+  const zoomScale = 1 + Math.log2(Math.max(1, zoomRatio)) * 0.3;
+
+  for (let j = 0; j < visNodes.length; j++) {
+    const n = visNodes[j];
+    if (n.vis < 0.15) continue;
+    const dx = mx - n.x, dy = my - n.y;
+    const d2 = dx * dx + dy * dy;
+    const complexScale = Math.max(0.6, 3 * n.c.invSqrtOl);
+    const visScale = 0.15 + 0.85 * n.vis;
+    const dotR = Math.min(2 * complexScale * zoomScale * visScale, 20) * dpr;
+    const hitR = Math.max(dotR + 4 * dpr, 8 * dpr * visScale);
+    if (d2 < hitR * hitR && d2 < bestDist) {
+      bestDist = d2;
+      bestIdx = n.i;
+    }
+  }
+  return bestIdx;
+}
+
+function findNearestEdoTriad(cx, cy) {
+  if (edoOverlayTriads.length === 0) return -1;
+  const mx = cx * dpr, my = cy * dpr;
+  let bestIdx = -1, bestDist = Infinity;
+  const hitR = 8 * dpr;
+  for (let i = 0; i < edoOverlayTriads.length; i++) {
+    const t = edoOverlayTriads[i];
+    const x = plotX(t.F);
+    const y = plotY(t.signedH);
+    const dx = mx - x, dy = my - y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < hitR && dist < bestDist) {
+      bestDist = dist;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+canvas.addEventListener('mousemove', (e) => {
+  if (isDragging || isYAxisDrag) return;
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+
+  if (cx < PADDING.left && cy >= PADDING.top && cy <= rect.height - PADDING.bottom) {
+    canvas.style.cursor = 'ns-resize';
+    if (hoveredIdx !== -1 || hoveredEdoTriad !== -1) { hoveredIdx = -1; hoveredEdoTriad = -1; drawPlot(false); }
+    document.getElementById('tooltip').style.display = 'none';
+    return;
+  }
+
+  const idx = findNearestChord(cx, cy);
+  const edoIdx = idx < 0 ? findNearestEdoTriad(cx, cy) : -1;
+
+  if (idx !== hoveredIdx || edoIdx !== hoveredEdoTriad) {
+    hoveredIdx = idx;
+    hoveredEdoTriad = edoIdx;
+    drawPlot(false);
+  }
+
+  const tooltip = document.getElementById('tooltip');
+  if (idx >= 0) {
+    const c = filteredChords[idx];
+    canvas.style.cursor = 'pointer';
+    tooltip.innerHTML = `
+      <div class="tt-ratio">${c.key}</div>${c.displayName ? `
+      <div class="tt-name">${c.displayName}</div>` : ''}
+      <div class="tt-detail">lower <span>${c.a.toFixed(1)}¢</span> · upper <span>${c.b.toFixed(1)}¢</span></div>
+      <div class="tt-detail">frame <span style="color:#f5a623">${c.F.toFixed(1)}¢</span> · hardness <span style="color:#bb86fc">${c.H.toFixed(3)}</span></div>
+      <div class="tt-detail">odd-limit <span style="color:#50c878">${c.ol}</span></div>
+    `;
+    tooltip.style.display = 'block';
+  } else if (edoIdx >= 0) {
+    const t = edoOverlayTriads[edoIdx];
+    canvas.style.cursor = 'pointer';
+    tooltip.innerHTML = `
+      <div class="tt-ratio" style="color:#50c878">${t.label}</div>
+      <div class="tt-detail">steps <span style="color:#50c878">${t.steps.join('–')}</span></div>
+      <div class="tt-detail">lower <span>${t.a.toFixed(1)}¢</span> · upper <span>${t.b.toFixed(1)}¢</span></div>
+      <div class="tt-detail">frame <span style="color:#f5a623">${t.F.toFixed(1)}¢</span> · hardness <span style="color:#bb86fc">${t.H.toFixed(3)}</span></div>
+    `;
+    tooltip.style.display = 'block';
+  } else {
+    canvas.style.cursor = 'grab';
+    tooltip.style.display = 'none';
+  }
+
+  if (tooltip.style.display === 'block') {
+    let tx = e.clientX + 14, ty = e.clientY - 10;
+    const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+    if (tx + tw > window.innerWidth - 8) tx = e.clientX - tw - 14;
+    if (ty + th > window.innerHeight - 8) ty = e.clientY - th - 10;
+    if (ty < 4) ty = 4;
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top = ty + 'px';
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  if (!isDragging) {
+    hoveredIdx = -1;
+    hoveredEdoTriad = -1;
+    drawPlot(false);
+    document.getElementById('tooltip').style.display = 'none';
+    canvas.style.cursor = 'default';
+  }
+});
+
+canvas.addEventListener('click', (e) => {
+  if (isDragging) return;
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+  const idx = findNearestChord(cx, cy);
+  if (idx >= 0) {
+    selectChord(idx);
+  } else {
+    const ei = findNearestEdoTriad(cx, cy);
+    if (ei >= 0) {
+      const t = edoOverlayTriads[ei];
+      const freqs = t.pitchCents.map(c => 220 * Math.pow(2, c / 1200));
+      playFreqs(freqs, 'triangle', false);
+    }
+  }
+});
+
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const idx = findNearestChord(cx, cy);
+  if (idx >= 0) {
+    playChord(filteredChords[idx], 220, 'triangle', true);
+  } else {
+    const ei = findNearestEdoTriad(cx, cy);
+    if (ei >= 0) {
+      const t = edoOverlayTriads[ei];
+      const rootHz = 220;
+      const freqs = t.pitchCents.map(c => rootHz * Math.pow(2, c / 1200));
+      playFreqs(freqs, 'triangle', true);
+    }
+  }
+});
+
+window.addEventListener('resize', () => scheduleRedraw(true));
+new ResizeObserver(() => scheduleRedraw(true)).observe(canvas.parentElement);
+
+// ═══════════════════════════════════════════
+// BOTTOM INFO PANEL
+// ═══════════════════════════════════════════
+
+let selectedChordIdx = -1;
+
+function selectChord(idx) {
+  selectedChordIdx = idx;
+  const c = filteredChords[idx];
+  if (!c) return;
+
+  selectedChordKey = c.key;
+  selectedInversionKeys = new Set(chordInversionKeys(c.p, c.q, c.r));
+  history.replaceState(null, '', '#' + c.key);
+  playChord(c, 220, 'triangle', false);
+  showPanel(c);
+  drawPlot();
+}
+
+function showPanel(c) {
+  const panel = document.getElementById('info-panel');
+  const inner = document.getElementById('panel-inner');
+  panel.classList.add('open');
+
+  const edoResults = edoApproximate(c, EDO_RANGE.min, EDO_RANGE.max, EDO_MAX_RMS_REL);
+  const invKeys = chordInversionKeys(c.p, c.q, c.r);
+  const invChords = invKeys.map(k => filteredChords.find(fc => fc.key === k) || allChords.find(ac => ac.key === k)).filter(Boolean);
+  const compKey = chordComplementKey(c.p, c.q, c.r);
+  const compChord = compKey !== c.key ? (filteredChords.find(fc => fc.key === compKey) || allChords.find(ac => ac.key === compKey)) : null;
+  const wikiUrl = `https://en.xen.wiki/w/${c.p}%3A${c.q}%3A${c.r}`;
+
+  const nameHtml = c.displayName || '';
+  const genericLine = '';
+
+  function fmtErr(v) { return (v >= 0 ? '+' : '') + v.toFixed(1); }
+
+  const edoRows = edoResults.map((e, ei) => {
+    const stepsStr = e.steps.join('–');
+    const centsStr = e.approxCents.map(c => c.toFixed(1)).join(', ');
+    const errsStr = e.errors.map(fmtErr).join(', ');
+    return `<tr data-edo="${e.edo}" data-rms-rel="${e.rmsRel}">
+      <td><button class="edo-play-btn" data-ei="${ei}" title="Play in ${e.edo}edo">▶</button></td>
+      <td>${e.edo}</td>
+      <td>${stepsStr}</td>
+      <td>${centsStr}</td>
+      <td>${errsStr}</td>
+      <td>${e.rmsCents.toFixed(2)}</td>
+      <td>${e.rmsRel.toFixed(1)}</td>
+    </tr>`;
+  }).join('');
+
+  inner.innerHTML = `
+    <div class="panel-header-col">
+      <div class="panel-ratio">${c.key}</div>
+      <div class="panel-name">${nameHtml}</div>
+      ${genericLine}
+      <div class="panel-wiki"><a href="${wikiUrl}" target="_blank" rel="noopener">Xen Wiki →</a></div>
+      <div class="panel-audio">
+        <label>Hz</label>
+        <input type="number" id="p-root" value="${synthRootHz}" min="20" max="2000">
+        <select id="p-wave">
+          <option value="triangle"${synthWaveform === 'triangle' ? ' selected' : ''}>tri</option>
+          <option value="sine"${synthWaveform === 'sine' ? ' selected' : ''}>sin</option>
+          <option value="sawtooth"${synthWaveform === 'sawtooth' ? ' selected' : ''}>saw</option>
+          <option value="square"${synthWaveform === 'square' ? ' selected' : ''}>sq</option>
+        </select>
+      </div>
+      <div class="panel-audio">
+        <button class="panel-play-btn" id="p-play">▶ Play</button>
+        <button class="panel-play-btn" id="p-arp">▶ Arp</button>
+        <button class="panel-stop-btn" id="p-stop">■</button>
+      </div>
+    </div>
+
+    <div class="panel-desc-col">
+      <div class="panel-desc-row">
+        <div class="panel-section">
+          <div class="panel-section-title">Intervals</div>
+          <div class="panel-row">
+            <span class="panel-row-label">Lower</span>
+            <span class="panel-row-value" style="color:#6eb5ff">${c.q}/${c.p}</span>
+            <span class="panel-row-value" style="color:#e94560">${c.a.toFixed(1)}¢</span>
+          </div>
+          <div class="panel-row">
+            <span class="panel-row-label">Upper</span>
+            <span class="panel-row-value" style="color:#f5a623">${c.r}/${c.q}</span>
+            <span class="panel-row-value" style="color:#e94560">${c.b.toFixed(1)}¢</span>
+          </div>
+          <div class="panel-row">
+            <span class="panel-row-label">Frame</span>
+            <span class="panel-row-value" style="color:#bb86fc">${c.r}/${c.p}</span>
+            <span class="panel-row-value" style="color:#f5a623">${c.F.toFixed(1)}¢</span>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-section-title">Properties</div>
+          <div class="panel-row">
+            <span class="panel-row-label">Contour</span>
+            <span class="panel-row-value" style="color:${CONTOUR_COLORS[c.contour]}">${c.contour}</span>
+          </div>
+          <div class="panel-row">
+            <span class="panel-row-label">Hardness</span>
+            <span class="panel-row-value" style="color:#bb86fc">${c.H.toFixed(4)}</span>
+          </div>
+          <div class="panel-row">
+            <span class="panel-row-label">Region</span>
+            <span class="panel-row-value">${c.region}</span>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-section-title">Complexity</div>
+          <div class="panel-row">
+            <span class="panel-row-label">Odd-limit</span>
+            <span class="panel-row-value" style="color:#50c878">${c.ol}</span>
+          </div>
+          <div class="panel-row">
+            <span class="panel-row-label">p·q·r</span>
+            <span class="panel-row-value" style="color:#888">${c.product}</span>
+          </div>
+          <div class="panel-row">
+            <span class="panel-row-label">Dyad limits</span>
+            <span class="panel-row-value" style="color:#888;font-size:12px">${oddLimit(c.q,c.p)} · ${oddLimit(c.r,c.q)} · ${oddLimit(c.r,c.p)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-desc-row">
+        ${invChords.length > 0 ? `
+        <div class="panel-section">
+          <div class="panel-section-title">Inversions</div>
+          ${invChords.map(ic => `<div class="panel-row">
+            <a href="#" class="inv-link" data-key="${ic.key}" style="color:#e94560;text-decoration:none;cursor:pointer">${ic.key}</a>
+            ${ic.displayName ? `<span class="panel-row-value" style="color:#888;font-size:12px">${ic.displayName}</span>` : ''}
+          </div>`).join('')}
+        </div>` : ''}
+
+        ${compChord ? `
+        <div class="panel-section">
+          <div class="panel-section-title">Complement</div>
+          <div class="panel-row">
+            <a href="#" class="inv-link" data-key="${compChord.key}" style="color:#e94560;text-decoration:none;cursor:pointer">${compChord.key}</a>
+            ${compChord.displayName ? `<span class="panel-row-value" style="color:#888;font-size:12px">${compChord.displayName}</span>` : ''}
+          </div>
+        </div>` : `
+        <div class="panel-section">
+          <div class="panel-section-title">Complement</div>
+          <div class="panel-row">
+            <span class="panel-row-value" style="color:#888">${compKey}</span>
+          </div>
+        </div>`}
+      </div>
+    </div>
+
+    <div class="panel-edo-col">
+      <div class="panel-edo-title">Nearby EDOs <span style="color:#606080;font-weight:400;font-size:10px">(${edoResults.length} within ${EDO_MAX_RMS_REL}% RMS)</span></div>
+      <table class="panel-edo-table" id="edo-approx-table">
+        <thead><tr>
+          <th data-col="play"></th>
+          <th data-col="edo" data-sort="number" class="sort-asc">EDO</th>
+          <th data-col="steps">Steps</th>
+          <th data-col="cents">Cents</th>
+          <th data-col="errors">Errors ¢</th>
+          <th data-col="rmsCents" data-sort="number">RMS ¢</th>
+          <th data-col="rmsRel" data-sort="number">RMS %</th>
+        </tr></thead>
+        <tbody>${edoRows}</tbody>
+      </table>
+    </div>
+  `;
+
+  const getAudio = () => ({
+    rootHz: +document.getElementById('p-root').value || 220,
+    waveform: document.getElementById('p-wave').value,
+  });
+
+  document.getElementById('p-root').addEventListener('change', e => { synthRootHz = +e.target.value || 220; });
+  document.getElementById('p-wave').addEventListener('change', e => { synthWaveform = e.target.value; });
+
+  document.getElementById('p-play').onclick = () => { const a = getAudio(); playChord(c, a.rootHz, a.waveform, false); };
+  document.getElementById('p-arp').onclick = () => { const a = getAudio(); playChord(c, a.rootHz, a.waveform, true); };
+  document.getElementById('p-stop').onclick = stopAll;
+
+  inner.querySelectorAll('.edo-play-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const a = getAudio();
+      playEdoApprox(edoResults[+btn.dataset.ei], a.rootHz, a.waveform);
+    });
+  });
+
+  inner.querySelectorAll('.inv-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const key = link.dataset.key;
+      const idx = filteredChords.findIndex(fc => fc.key === key);
+      if (idx >= 0) selectChord(idx);
+    });
+  });
+
+  const edoTable = document.getElementById('edo-approx-table');
+  if (edoTable) {
+    edoTable.querySelectorAll('th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const tbody = edoTable.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const colIdx = Array.from(th.parentNode.children).indexOf(th);
+        const wasAsc = th.classList.contains('sort-asc');
+        const dir = wasAsc ? -1 : 1;
+        edoTable.querySelectorAll('th').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+        th.classList.add(dir === 1 ? 'sort-asc' : 'sort-desc');
+        rows.sort((a, b) => {
+          const av = parseFloat(a.children[colIdx].textContent);
+          const bv = parseFloat(b.children[colIdx].textContent);
+          return (av - bv) * dir;
+        });
+        rows.forEach(r => tbody.appendChild(r));
+      });
+    });
+  }
+
+  requestAnimationFrame(drawPlot);
+}
+
+function closePanel() {
+  document.getElementById('info-panel').classList.remove('open');
+  selectedChordKey = null;
+  selectedInversionKeys = new Set();
+  selectedChordIdx = -1;
+  history.replaceState(null, '', location.pathname + location.search);
+  stopAll();
+  drawPlot();
+}
+
+document.getElementById('panel-close').addEventListener('click', closePanel);
+
+// Panel resize drag
+{
+  const panel = document.getElementById('info-panel');
+  const handle = panel.querySelector('.panel-resize');
+  let resizing = false, resizeStartY = 0, resizeStartH = 0;
+
+  handle.addEventListener('mousedown', (e) => {
+    resizing = true;
+    resizeStartY = e.clientY;
+    resizeStartH = panel.offsetHeight;
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!resizing) return;
+    const dy = resizeStartY - e.clientY;
+    const newH = Math.max(100, Math.min(window.innerHeight * 0.7, resizeStartH + dy));
+    panel.style.height = newH + 'px';
+    scheduleRedraw(true);
+  });
+
+  window.addEventListener('mouseup', () => { resizing = false; });
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('info-panel').classList.contains('open')) closePanel();
+  }
+});
+
+// ═══════════════════════════════════════════
+// FILTERS
+// ═══════════════════════════════════════════
+
+function applyFilters() {
+  const region = document.getElementById('flt-region').value;
+  const contour = document.getElementById('flt-contour').value;
+  const maxR = +document.getElementById('flt-max-r').value || 128;
+  const maxOdd = +document.getElementById('flt-max-odd').value || 100;
+  const maxHard = +document.getElementById('flt-max-hard').value || 99;
+  const search = document.getElementById('flt-search').value.trim().toLowerCase();
+
+  document.getElementById('flt-max-r-val').textContent = maxR;
+  document.getElementById('flt-max-odd-val').textContent = maxOdd;
+
+  filteredChords = allChords.filter(c => {
+    if (region && c.region !== region) return false;
+    if (contour && c.contour !== contour) return false;
+    if (c.r > maxR) return false;
+    if (c.ol > maxOdd) return false;
+    if (c.H > maxHard) return false;
+    if (search) {
+      if (!c.key.includes(search) &&
+          !(c.displayName && c.displayName.toLowerCase().includes(search)) &&
+          !(c.name && c.name.toLowerCase().includes(search)) &&
+          !c.genericName.toLowerCase().includes(search)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('chord-count').textContent = `${filteredChords.length} chords`;
+  drawPlot();
+}
+
+// ═══════════════════════════════════════════
+// GENERATION + WIRING
+// ═══════════════════════════════════════════
+
+function generate() {
+  const maxR = +document.getElementById('cfg-max-r').value || 64;
+  const fMinEl = document.getElementById('cfg-frame-min');
+  const fMaxEl = document.getElementById('cfg-frame-max');
+  const fMin = fMinEl.value !== '' ? +fMinEl.value : 0;
+  const fMax = fMaxEl.value !== '' ? +fMaxEl.value : 1199;
+  const maxOdd = +document.getElementById('cfg-max-odd').value || 100;
+  const mode = document.getElementById('cfg-gen-mode').value;
+
+  const t0 = performance.now();
+  if (mode === 'thirds') {
+    allChords = enumerateThirdsMode(fMin, fMax, maxOdd);
+  } else {
+    allChords = enumerateChords(maxR, fMin, fMax, maxOdd);
+  }
+  const dt = (performance.now() - t0).toFixed(0);
+  document.getElementById('status-text').textContent =
+    `Generated ${allChords.length} chords in ${dt}ms (${mode} mode, r≤${maxR})`;
+  const fltR = document.getElementById('flt-max-r');
+  fltR.max = maxR;
+  fltR.value = maxR;
+  filteredChords = allChords;
+  computeViewBounds();
+  applyFilters();
+}
+
+document.getElementById('btn-regenerate').addEventListener('click', generate);
+
+['flt-region', 'flt-contour', 'flt-max-r', 'flt-max-odd', 'flt-max-hard', 'flt-search'].forEach(id => {
+  document.getElementById(id).addEventListener('input', applyFilters);
+});
+
+document.getElementById('flt-reveal').addEventListener('input', () => {
+  document.getElementById('flt-reveal-val').textContent = document.getElementById('flt-reveal').value;
+  scheduleRedraw(false);
+});
+
+document.getElementById('flt-edo-overlay').addEventListener('input', () => {
+  const val = +document.getElementById('flt-edo-overlay').value;
+  if (val >= 2 && val <= 200) {
+    edoOverlayN = val;
+    edoOverlayTriads = generateEdoTriads(val);
+  } else {
+    edoOverlayN = 0;
+    edoOverlayTriads = [];
+  }
+  hoveredEdoTriad = -1;
+  requestAnimationFrame(drawPlot);
+});
+
+// ═══════════════════════════════════════════
+// URL HASH STATE
+// ═══════════════════════════════════════════
+
+function openFromHash() {
+  const hash = location.hash.replace('#', '').trim();
+  if (!hash) return;
+  let idx = filteredChords.findIndex(c => c.key === hash);
+  if (idx < 0) {
+    document.getElementById('flt-region').value = '';
+    document.getElementById('flt-contour').value = '';
+    document.getElementById('flt-max-odd').value = '100';
+    document.getElementById('flt-max-hard').value = '99';
+    document.getElementById('flt-reveal').value = '80';
+    document.getElementById('flt-reveal-val').textContent = '80';
+    document.getElementById('flt-search').value = '';
+    applyFilters();
+    idx = filteredChords.findIndex(c => c.key === hash);
+  }
+  if (idx >= 0) selectChord(idx);
+}
+
+generate();
+openFromHash();
+window.addEventListener('hashchange', openFromHash);
+</script>
+</body>
+</html>
