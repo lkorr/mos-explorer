@@ -2280,6 +2280,21 @@ function drawMOSCircle(ctx, W, H) {
   function getStepColor(step) {
     return stepColorMap[stepBucket(step)] || '#50c878';
   }
+  const stepLabelMap = {};
+  if (uniqueSteps.length === 1) {
+    stepLabelMap[uniqueSteps[0]] = 'L';
+  } else {
+    stepLabelMap[uniqueSteps[0]] = 'L';
+    stepLabelMap[uniqueSteps[uniqueSteps.length - 1]] = 's';
+    const mids = uniqueSteps.slice(1, -1);
+    const midLetters = 'MNOPQRTUVWXYZABCDEFGHIJKmno';
+    for (let i = 0; i < mids.length; i++) {
+      stepLabelMap[mids[i]] = midLetters[i] || ('m' + i);
+    }
+  }
+  function getStepLabel(step) {
+    return stepLabelMap[stepBucket(step)] || '?';
+  }
 
   // Pie slices
   for (let i = 0; i < displayN; i++) {
@@ -2318,7 +2333,7 @@ function drawMOSCircle(ctx, W, H) {
       ctx.font = 'bold ' + Math.max(6, pieFontSize) + 'px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(stretchCents(step).toFixed(0) + '¢', lx, ly);
+      ctx.fillText(getStepLabel(step), lx, ly);
     }
   }
 
@@ -3277,6 +3292,7 @@ function handleClick() {
       }
     }
     S.generatorCents = edoMarker.cents;
+    scaleGenSequence(S.generatorCents);
     updatePanel();
     render();
     return;
@@ -3293,6 +3309,7 @@ function handleClick() {
       const reps = getPeriodRepetitions();
       const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
       S.generatorCents = Math.max(S.selected.lowCents, Math.min(S.selected.highCents, reduced));
+      scaleGenSequence(S.generatorCents);
       updatePanel();
       render();
     } else {
@@ -3301,6 +3318,7 @@ function handleClick() {
       const reps = getPeriodRepetitions();
       const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
       S.generatorCents = Math.max(S.hovered.lowCents, Math.min(S.hovered.highCents, reduced));
+      scaleGenSequence(S.generatorCents);
       updatePanel();
       render();
     }
@@ -3311,6 +3329,7 @@ function handleClick() {
     const reduced = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
     if (reduced >= S.selected.lowCents && reduced <= S.selected.highCents) {
       S.generatorCents = reduced;
+      scaleGenSequence(S.generatorCents);
       updatePanel();
       render();
     } else {
@@ -3476,6 +3495,7 @@ function setGenFromScreenX(mx) {
     if (adj) {
       S.selected = adj;
       S.generatorCents = Math.max(adj.lowCents, Math.min(adj.highCents, clamped));
+      scaleGenSequence(S.generatorCents);
       updatePanel();
       render();
       return;
@@ -3483,6 +3503,7 @@ function setGenFromScreenX(mx) {
   }
 
   S.generatorCents = Math.max(sel.lowCents, Math.min(sel.highCents, cc));
+  scaleGenSequence(S.generatorCents);
   updatePanel();
   render();
 }
@@ -3511,6 +3532,7 @@ function updateInfo() {
 const SYNTH_DEFAULTS = {
   waveform: 'triangle', octaveShift: 0, volume: 1.0,
   attack: 0.015, decay: 0.1, sustain: 1.0, release: 4,
+  lpfCutoff: 22050,
   keyboardMode: true, kbdContinuous: false, kbdLatch: false,
 };
 const SYNTH_KEYS = Object.keys(SYNTH_DEFAULTS);
@@ -3543,6 +3565,7 @@ const SYNTH = {
   decay: 0.1,
   sustain: 1.0,
   release: 1.5,
+  lpfCutoff: 22050,
   _activeKeys: {},
   _glows: {},
   _glowAnimating: false,
@@ -3665,10 +3688,16 @@ function getAudioCtx() {
     comp.ratio.value = 12;
     comp.attack.value = 0.003;
     comp.release.value = 0.1;
+    const lpf = SYNTH.ctx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.value = SYNTH.lpfCutoff;
+    lpf.Q.value = 0.7071;
     const vol = SYNTH.ctx.createGain();
     vol.gain.value = SYNTH.volume;
-    comp.connect(vol);
+    comp.connect(lpf);
+    lpf.connect(vol);
     vol.connect(SYNTH.ctx.destination);
+    SYNTH._lpfNode = lpf;
     SYNTH._volumeNode = vol;
     SYNTH._master = comp;
   }
@@ -3700,6 +3729,12 @@ function adsrLabel(param, val) {
   if (param === 'release') return val.toFixed(2) + 's';
   return val >= 1 ? val.toFixed(2) + 's' : (val * 1000).toFixed(0) + 'ms';
 }
+const LPF_MIN = 20, LPF_MAX = 22050;
+function lpfToSlider(freq) { return Math.log(freq / LPF_MIN) / Math.log(LPF_MAX / LPF_MIN); }
+function lpfFromSlider(t) { return LPF_MIN * Math.pow(LPF_MAX / LPF_MIN, t); }
+function lpfLabel(freq) {
+  return freq >= 1000 ? (freq / 1000).toFixed(1) + 'kHz' : freq.toFixed(0) + 'Hz';
+}
 
 function renderPlaybackControls() {
   const el = document.getElementById('synth-body');
@@ -3718,6 +3753,7 @@ function renderPlaybackControls() {
   h += '</select>';
 
   h += `<div class="adsr-row"><label>Vol</label><input type="range" class="volume-slider" min="0" max="1" step="0.01" value="${SYNTH.volume}"><span class="adsr-val volume-val">${(SYNTH.volume * 100).toFixed(0)}%</span></div>`;
+  h += `<div class="adsr-row"><label>LPF</label><input type="range" class="lpf-slider" min="0" max="1" step="0.002" value="${lpfToSlider(SYNTH.lpfCutoff)}"><span class="adsr-val lpf-val">${lpfLabel(SYNTH.lpfCutoff)}</span></div>`;
   h += '<div class="synth-sliders-row">';
   h += '<div class="synth-sliders-left">';
   h += `<div class="octave-row"><label>Oct</label><input type="range" class="octave-slider" min="-2" max="2" step="1" value="${SYNTH.octaveShift || 0}"><span class="octave-val">${SYNTH.octaveShift > 0 ? '+' : ''}${SYNTH.octaveShift || 0}</span></div>`;
@@ -3748,6 +3784,12 @@ function renderPlaybackControls() {
     SYNTH.volume = +e.target.value;
     if (SYNTH._volumeNode) SYNTH._volumeNode.gain.value = SYNTH.volume;
     el.querySelector('.volume-val').textContent = (SYNTH.volume * 100).toFixed(0) + '%';
+    saveSynthSettings();
+  });
+  el.querySelector('.lpf-slider').addEventListener('input', e => {
+    SYNTH.lpfCutoff = lpfFromSlider(+e.target.value);
+    if (SYNTH._lpfNode) SYNTH._lpfNode.frequency.value = SYNTH.lpfCutoff;
+    el.querySelector('.lpf-val').textContent = lpfLabel(SYNTH.lpfCutoff);
     saveSynthSettings();
   });
   el.querySelector('.kbd-btn:not(.kbd-mode-btn):not(.kbd-latch-btn)').addEventListener('click', () => {
@@ -5272,6 +5314,7 @@ function setup() {
     if (S.selected && hitSlider(mx, my)) {
       S.sliderDragging = true;
       S.generatorCents = sliderXToGen(mx);
+      scaleGenSequence(S.generatorCents);
       cvs.style.cursor = 'ew-resize';
       render();
       return;
@@ -5331,6 +5374,7 @@ function setup() {
       if (reduced >= S.selected.lowCents && reduced <= S.selected.highCents) {
         S.genDragging = true;
         S.generatorCents = reduced;
+        scaleGenSequence(S.generatorCents);
         cvs.style.cursor = 'ew-resize';
         render();
         return;
@@ -5415,6 +5459,7 @@ function setup() {
 
     if (S.sliderDragging) {
       S.generatorCents = sliderXToGen(mx);
+      scaleGenSequence(S.generatorCents);
       updatePanel();
       render();
       return;
@@ -5575,6 +5620,7 @@ function setup() {
         Math.abs(r.highCents - region.highCents) < 0.01
       ) || region;
       S.generatorCents = target;
+      scaleGenSequence(S.generatorCents);
       updatePanel();
       render();
     }
@@ -5699,6 +5745,7 @@ function setup() {
       } else if (S.selected && hitSlider(mx, my)) {
         S.sliderDragging = true;
         S.generatorCents = sliderXToGen(mx);
+        scaleGenSequence(S.generatorCents);
         render();
       } else if (hitMOSCirclePanel(mx, my)) {
         // absorb touch on circle panel — don't start drag
@@ -5709,6 +5756,7 @@ function setup() {
         if (cc >= S.selected.lowCents && cc <= S.selected.highCents) {
           S.genDragging = true;
           S.generatorCents = cc;
+          scaleGenSequence(S.generatorCents);
           render();
         } else {
           S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax; S.dragMinSize0 = S.minSize;
@@ -5733,6 +5781,7 @@ function setup() {
         setSizeFromScrollbarY(my);
       } else if (S.sliderDragging) {
         S.generatorCents = sliderXToGen(mx);
+        scaleGenSequence(S.generatorCents);
         updateHeldNotes();
         render();
       } else if (S.genDragging) {
@@ -6146,7 +6195,8 @@ function restoreFromURL() {
       if (gen !== null && !isNaN(gen)) {
         S.generatorCents = Math.max(region.lowCents, Math.min(region.highCents, gen));
       }
-      if (mode && !isNaN(mode)) S.modeRotation = mode;
+      if (!isNaN(mode)) S.modeRotation = mode;
+      S._edoTableKey = region.key;
       if (modmosStr) {
         S.modmos = modmosStr.split(',').map(Number);
       }
