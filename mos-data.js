@@ -150,7 +150,7 @@ const TEMPERAMENTS = [
   { name: 'Machine', mos: ['1L_4s', '5L_1s', '6L_5s'], genRange: [208.7, 218.18],
     commas: ['16807/16384'], commaNames: ['cloudy comma'],
     wikiUrl: 'https://en.xen.wiki/w/Subgroup_temperaments#Machine',
-    description: '2.7 subgroup. Generator is a flat 8/7. Five generators = octave minus a comma. <br> <br> Imagine if we took the wholetone-like temperament of baldi but tuned it a bit better; now we have fifths at  Now you have 4/3 and 3/2 after 8 and 9 generators, and the melodic spacing between the steps feels less stupid!' },
+    description: '2.7 subgroup. Generator is a flat 8/7. Five generators = octave minus a comma. <br> <br> Imagine if we took the wholetone-like temperament of baldi but tuned it a bit better;  Now you have both 4/3 and 3/2 after 8 and 9 generators, and the melodic spacing between the steps feels less stupid!' },
 
   { name: 'Kumonga', mos: ['1L_4s', '5L_1s', '5L_6s'], genRange: [218.18, 222.22],
     commas: ['126/125'], commaNames: ['starling comma'],
@@ -191,7 +191,7 @@ const TEMPERAMENTS = [
   { name: 'Neptune', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [582.86, 587.76],
     commas: ['2401/2400'], commaNames: ['breedsma'],
     wikiUrl: 'https://en.xen.wiki/w/Gammic_family#Neptune',
-    description: 'Gammic family. 7 bright generator stacks give you a fifth. Generator is a flat 7/5 tritone (~585¢). <br> <br> Named neptune because triton. Tritone. Trident. Get it? Anyways, this temperament is notable because its built on a near-just 7/5; otherwise, it is just terrible to compose in. All of your intervals end up being like 30c apart. Hats off to you if you make this one work.' },
+    description: 'Gammic family. 7 bright generator stacks give you a fifth. Generator is a flat 7/5 tritone (~585¢). <br> <br> Named neptune because triton. Tritone. Trident. At least thats the only way it makes sense to me. Anyways, this temperament is notable because its built on a near-just 7/5; otherwise, it is just terrible to compose in. All of your intervals end up being like 30c apart. Hats off to you if you make this one work.' },
 
   { name: 'Tritonic', mos: ['2L_1s', '2L_3s', '2L_5s'], genRange: [617.14, 624.0],
     commas: ['225/224'], commaNames: ['marvel comma'],
@@ -228,7 +228,7 @@ const TEMPERAMENTS = [
   { name: 'Hemikleismic', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [156.502, 160.0],
     commas: ['4000/3969', '15625/15552'], commaNames: ['4000/3969', 'kleisma'],
     wikiUrl: 'https://en.xen.wiki/w/Kleismic_family#Hemikleismic',
-    description: 'Kleismic family. Splits 6/5 in half, generating a neutral second of 35/32.Two neutral seconds = one minor third. The resulting melodic landscape of ~155¢ steps doesn\'t map to anything in 12edo.' },
+    description: 'Kleismic family. Splits 6/5 in half, generating a neutral second of 35/32. Two neutral seconds = one minor third. The resulting melodic landscape of ~155¢ steps doesn\'t map to anything in 12edo.' },
 
   { name: 'Porcupine', mos: ['1L_6s', '7L_1s', '7L_8s', '8L_7s'], genRange: [160.0, 166.67],
     commas: ['250/243'], commaNames: ['porcupine comma'],

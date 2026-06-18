@@ -51,6 +51,7 @@ body {
   flex: 1;
   position: relative;
   overflow: hidden;
+  touch-action: none;
 }
 
 canvas { display: block; width: 100%; height: 100%; }
@@ -764,7 +765,9 @@ canvas { display: block; width: 100%; height: 100%; }
     <div style="font-size:14px;font-weight:700;color:#e94560;margin-bottom:6px;">Navigation</div>
     <table style="width:100%;font-size:12px;margin-bottom:14px;border-collapse:collapse;">
       <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Scroll</td><td style="padding:3px 8px;">Zoom in/out on the cent axis</td></tr>
+      <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Ctrl+Scroll</td><td style="padding:3px 8px;">Zoom vertically — make MOS rows taller/shorter</td></tr>
       <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Drag</td><td style="padding:3px 8px;">Pan the cent axis left/right</td></tr>
+      <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Pinch (touch)</td><td style="padding:3px 8px;">Pinch horizontally to zoom the cent axis; pinch vertically to grow/shrink rows</td></tr>
       <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Click band</td><td style="padding:3px 8px;">Select a MOS scale to explore</td></tr>
       <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Click number line</td><td style="padding:3px 8px;">Set the generator to that cent value</td></tr>
       <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Right-click number line</td><td style="padding:3px 8px;">Divide/multiply generator menu</td></tr>
@@ -797,7 +800,7 @@ canvas { display: block; width: 100%; height: 100%; }
   <span>|</span>
   <span>Cursor: <span class="hl" id="cursor-display">—</span></span>
   <span>|</span>
-  <span>Scroll: zoom &middot; Drag: pan &middot; Click: select MOS</span>
+  <span>Scroll: zoom &middot; Ctrl+Scroll: vertical zoom &middot; Drag: pan &middot; Click: select MOS</span>
 </div>
 
 <div id="canvas-container">
@@ -1204,6 +1207,7 @@ function getEqualizedEnd(region) {
 
 const S = {
   viewMin: 0, viewMax: 1200,
+  rowScale: 1,
   period: 1200, viewLimit: 1200, octaveStretch: 0,
   maxSize: 18, maxEDO: 53, minSize: 2,
   regions: [], colorMap: {}, edos: [],
@@ -1615,8 +1619,10 @@ function drawAxis(ctx, W, H, vr) {
 function drawMOS(ctx, W, H, vr) {
   const tempSpace = S.selected && S._tempRows ? S._tempRows * 16 + 8 : 0;
   const startY = S.selected ? 120 + tempSpace : 64;
-  const rowH = 20;
-  const gap = 2;
+  const vs = S.rowScale || 1;
+  const rowH = Math.round(20 * vs);
+  const gap = Math.max(2, Math.round(2 * vs));
+  const fs = Math.min(vs, 2);
 
   const allSizes = [];
   for (let n = S.minSize; n <= S.maxSize; n++) allSizes.push(n);
@@ -1678,18 +1684,29 @@ function drawMOS(ctx, W, H, vr) {
         ctx.fillStyle = grayed ? '#444' : '#fff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        const maxTextW = w - 6;
+        // Shrink font until the text fits the band width
+        const fitFont = (text, size, bold) => {
+          size = Math.round(size);
+          ctx.font = `${bold ? 'bold ' : ''}${size}px monospace`;
+          const tw = ctx.measureText(text).width;
+          if (tw > maxTextW) {
+            size = Math.max(5, Math.floor(size * maxTextW / tw));
+            ctx.font = `${bold ? 'bold ' : ''}${size}px monospace`;
+          }
+        };
 
         if (w > 110 && fname && !grayed) {
-          ctx.font = 'bold 11px monospace';
-          ctx.fillText(`${label} (${fname})`, x1 + w/2, y + rowH/2 - 4);
-          ctx.font = '8px monospace';
+          fitFont(`${label} (${fname})`, 11 * fs, true);
+          ctx.fillText(`${label} (${fname})`, x1 + w/2, y + rowH/2 - 4 * fs);
           ctx.fillStyle = '#bbb';
-          ctx.fillText(`${r.lowCents.toFixed(1)}¢–${r.highCents.toFixed(1)}¢`, x1 + w/2, y + rowH/2 + 7);
+          fitFont(`${r.lowCents.toFixed(1)}¢–${r.highCents.toFixed(1)}¢`, 8 * fs, false);
+          ctx.fillText(`${r.lowCents.toFixed(1)}¢–${r.highCents.toFixed(1)}¢`, x1 + w/2, y + rowH/2 + 7 * fs);
         } else if (w > 50) {
-          ctx.font = grayed ? '9px monospace' : 'bold 10px monospace';
+          fitFont(label, grayed ? 9 * fs : 10 * fs, !grayed);
           ctx.fillText(label, x1 + w/2, y + rowH/2);
         } else {
-          ctx.font = '8px monospace';
+          fitFont(label, 8 * fs, false);
           ctx.fillText(label, x1 + w/2, y + rowH/2);
         }
       }
@@ -1702,7 +1719,7 @@ function drawMOS(ctx, W, H, vr) {
   }
 
   ctx.fillStyle = '#556';
-  ctx.font = '9px monospace';
+  ctx.font = `${Math.round(9 * fs)}px monospace`;
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   for (const n of allSizes) {
@@ -4984,10 +5001,10 @@ function setupRulerGlobalHandlers() {
   if (S._rulerGlobalInit) return;
   S._rulerGlobalInit = true;
 
-  document.addEventListener('mousemove', e => {
+  const rulerDragMove = clientX => {
     if (S._genSeqDrag && S.selected && hasGenSequence()) {
       const d = S._genSeqDrag;
-      const dx = e.clientX - d.startX;
+      const dx = clientX - d.startX;
       let newGenVal = d.startCents - dx / 30;
       if (d.edoSnaps && d.edoSnaps.length) {
         const degreeCents = d.priorSum + newGenVal;
@@ -5017,12 +5034,12 @@ function setupRulerGlobalHandlers() {
       return;
     }
     if (!S._rulerDragging || !S.selected) return;
-    const dx = e.clientX - S._rulerDragStartX;
+    const dx = clientX - S._rulerDragStartX;
     const g = S._rulerDragGenDist || 1;
     rulerSetGenFromCents(S._rulerDragStartCents - dx / (30 * g));
-  });
+  };
 
-  document.addEventListener('mouseup', () => {
+  const rulerDragEnd = () => {
     if (S._genSeqDrag) {
       S._genSeqDrag = null;
       document.querySelectorAll('.seq-degree .interval-ruler-track').forEach(t => t.style.cursor = 'grab');
@@ -5036,6 +5053,17 @@ function setupRulerGlobalHandlers() {
     S._rulerDragGenDist = 1;
     document.querySelectorAll('.gen-track, .interval-ruler-track').forEach(t => t.style.cursor = 'grab');
     pushUndo();
+  };
+
+  document.addEventListener('mousemove', e => rulerDragMove(e.clientX));
+  document.addEventListener('mouseup', rulerDragEnd);
+  document.addEventListener('touchmove', e => {
+    if (!S._rulerDragging && !S._genSeqDrag) return;
+    e.preventDefault();
+    rulerDragMove(e.touches[0].clientX);
+  }, { passive: false });
+  document.addEventListener('touchend', () => {
+    if (S._rulerDragging || S._genSeqDrag) rulerDragEnd();
   });
 }
 
@@ -5129,15 +5157,16 @@ function setupRulerInteraction(edoEl) {
     });
   }
 
-  track.addEventListener('mousedown', e => {
+  const startTrackDrag = clientX => {
     if (!S.selected) return;
     S._rulerDragging = true;
-    S._rulerDragStartX = e.clientX;
+    S._rulerDragStartX = clientX;
     S._rulerDragStartCents = S.generatorCents !== null ? S.generatorCents : (S.selected.lowCents + S.selected.highCents) / 2;
     S._rulerDragGenDist = 1;
     track.style.cursor = 'grabbing';
-    e.preventDefault();
-  });
+  };
+  track.addEventListener('mousedown', e => { startTrackDrag(e.clientX); e.preventDefault(); });
+  track.addEventListener('touchstart', e => { startTrackDrag(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
 
   track.addEventListener('wheel', e => {
     if (!S.selected) return;
@@ -5155,22 +5184,23 @@ function setupRulerInteraction(edoEl) {
       const boundGenDist = parseInt(boundRuler.dataset.genDist, 10);
       if (boundTrack && boundGenDist) {
         boundTrack.style.cursor = 'grab';
-        boundTrack.addEventListener('mousedown', e => {
+        const startBoundDrag = clientX => {
           if (!S.selected || !hasGenSequence()) return;
           const seqIdx = boundGenDist - 1;
           let priorSum = 0;
           for (let si = 0; si < seqIdx; si++) priorSum += S.genSequence[si % S.genSequence.length];
           S._genSeqDrag = {
             genDistIdx: seqIdx,
-            startX: e.clientX,
+            startX: clientX,
             startCents: S.genSequence[seqIdx % S.genSequence.length],
             startGenCents: S.generatorCents,
             isBoundary: true,
             priorSum,
           };
           boundTrack.style.cursor = 'grabbing';
-          e.preventDefault();
-        });
+        };
+        boundTrack.addEventListener('mousedown', e => { startBoundDrag(e.clientX); e.preventDefault(); });
+        boundTrack.addEventListener('touchstart', e => { startBoundDrag(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
       }
     }
     const seqRulers = scrollArea.querySelectorAll('.interval-ruler.seq-degree');
@@ -5179,7 +5209,7 @@ function setupRulerInteraction(edoEl) {
       if (!seqTrack) return;
       const genDist = parseInt(ruler.dataset.genDist, 10);
       seqTrack.style.cursor = 'grab';
-      seqTrack.addEventListener('mousedown', e => {
+      const startSeqDrag = clientX => {
         if (!S.selected || !hasGenSequence()) return;
         const seqEndRuler = scrollArea.querySelector(`.interval-ruler[data-gen-dist="${S.genSequenceLength}"]`);
         const seqEndCentsEl = seqEndRuler && seqEndRuler.querySelector('.degree-cents');
@@ -5208,15 +5238,16 @@ function setupRulerInteraction(edoEl) {
         S._genSeqDrag = {
           genDistIdx: seqIdx,
           nextIdx,
-          startX: e.clientX,
+          startX: clientX,
           startCents: S.genSequence[seqIdx],
           startNextCents: S.genSequence[nextIdx],
           edoSnaps,
           priorSum,
         };
         seqTrack.style.cursor = 'grabbing';
-        e.preventDefault();
-      });
+      };
+      seqTrack.addEventListener('mousedown', e => { startSeqDrag(e.clientX); e.preventDefault(); });
+      seqTrack.addEventListener('touchstart', e => { startSeqDrag(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
     });
   }
 
@@ -5227,15 +5258,16 @@ function setupRulerInteraction(edoEl) {
       const genDist = parseInt(ruler.dataset.genDist, 10);
       if (!genDist || genDist < 1) return;
       degTrack.style.cursor = 'grab';
-      degTrack.addEventListener('mousedown', e => {
+      const startDegDrag = clientX => {
         if (!S.selected || hasGenSequence()) return;
         S._rulerDragging = true;
-        S._rulerDragStartX = e.clientX;
+        S._rulerDragStartX = clientX;
         S._rulerDragStartCents = S.generatorCents !== null ? S.generatorCents : (S.selected.lowCents + S.selected.highCents) / 2;
         S._rulerDragGenDist = genDist;
         degTrack.style.cursor = 'grabbing';
-        e.preventDefault();
-      });
+      };
+      degTrack.addEventListener('mousedown', e => { startDegDrag(e.clientX); e.preventDefault(); });
+      degTrack.addEventListener('touchstart', e => { startDegDrag(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
     });
   }
 }
@@ -5253,6 +5285,13 @@ function setup() {
     if (e.target.closest('.sp-info')) return;
     e.preventDefault();
     if (S.genDragging || S.sliderDragging) return;
+    if (e.ctrlKey || e.metaKey) {
+      // Vertical zoom — make MOS rows taller/shorter
+      const vzf = e.deltaY > 0 ? 1/1.15 : 1.15;
+      S.rowScale = Math.max(0.5, Math.min(4, (S.rowScale || 1) * vzf));
+      render();
+      return;
+    }
     const rect = cvs.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const mc = x2c(mx);
@@ -5723,7 +5762,9 @@ function setup() {
   });
 
   // Touch
-  let t0x = 0, t0y = 0, pinchD0 = 0, pinchMin0 = 0, pinchMax0 = 0;
+  let t0x = 0, t0y = 0;
+  let pinch = null;       // active two-finger gesture state
+  let tapStart = null;    // {x, y} client coords of a potential tap
   cntr.addEventListener('touchstart', e => {
     if (e.touches.length === 1) {
       const rect = cvs.getBoundingClientRect();
@@ -5731,8 +5772,10 @@ function setup() {
       const my = e.touches[0].clientY - rect.top;
       t0x = e.touches[0].clientX;
       t0y = e.touches[0].clientY;
+      tapStart = null;
 
       const touchModeAction = hitModeButton(mx, my);
+      const touchDot = touchModeAction ? null : hitCircleDot(mx, my);
       if (touchModeAction) {
         handleModeButton(touchModeAction);
       } else if (hitSizeScrollbar(mx, my)) {
@@ -5747,6 +5790,8 @@ function setup() {
         S.generatorCents = sliderXToGen(mx);
         scaleGenSequence(S.generatorCents);
         render();
+      } else if (touchDot) {
+        playCircleDot(touchDot);
       } else if (hitMOSCirclePanel(mx, my)) {
         // absorb touch on circle panel — don't start drag
       } else if (S.selected && isOnAxisBar(my)) {
@@ -5760,15 +5805,27 @@ function setup() {
           render();
         } else {
           S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax; S.dragMinSize0 = S.minSize;
+          tapStart = { x: t0x, y: t0y };
         }
       } else {
         S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax; S.dragMinSize0 = S.minSize;
+        tapStart = { x: t0x, y: t0y };
       }
     } else if (e.touches.length === 2) {
       S.sliderDragging = false;
       S.genDragging = false;
-      pinchD0 = Math.hypot(e.touches[1].clientX-e.touches[0].clientX, e.touches[1].clientY-e.touches[0].clientY);
-      pinchMin0 = S.viewMin; pinchMax0 = S.viewMax;
+      S.sizeSbDragging = false;
+      tapStart = null;
+      const rect = cvs.getBoundingClientRect();
+      const dx = e.touches[1].clientX - e.touches[0].clientX;
+      const dy = e.touches[1].clientY - e.touches[0].clientY;
+      pinch = {
+        vertical: Math.abs(dy) > Math.abs(dx),
+        d0: Math.hypot(dx, dy) || 1,
+        rowScale0: S.rowScale || 1,
+        min0: S.viewMin, max0: S.viewMax,
+        midCents: x2c((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left),
+      };
     }
     e.preventDefault();
   }, { passive: false });
@@ -5789,6 +5846,7 @@ function setup() {
       } else {
         const dx = e.touches[0].clientX - t0x;
         const dy = e.touches[0].clientY - t0y;
+        if (tapStart && Math.hypot(dx, dy) > 8) tapStart = null;
         const cpp = (S.dragMax0 - S.dragMin0) / S.W;
         S.viewMin = S.dragMin0 - dx * cpp;
         S.viewMax = S.dragMax0 - dx * cpp;
@@ -5803,23 +5861,62 @@ function setup() {
           updateInfo(); render();
         }
       }
-    } else if (e.touches.length === 2) {
-      const d = Math.hypot(e.touches[1].clientX-e.touches[0].clientX, e.touches[1].clientY-e.touches[0].clientY);
-      const sc = pinchD0 / d;
-      const mid = (pinchMin0 + pinchMax0) / 2;
-      const half = ((pinchMax0 - pinchMin0) / 2) * sc;
-      S.viewMin = Math.max(0, mid - half);
-      S.viewMax = Math.min(S.viewLimit, mid + half);
-      updateInfo(); render();
+    } else if (e.touches.length === 2 && pinch) {
+      const dx = e.touches[1].clientX - e.touches[0].clientX;
+      const dy = e.touches[1].clientY - e.touches[0].clientY;
+      const d = Math.hypot(dx, dy) || 1;
+      if (pinch.vertical) {
+        // Vertical pinch — make MOS rows taller/shorter
+        S.rowScale = Math.max(0.5, Math.min(4, pinch.rowScale0 * d / pinch.d0));
+        render();
+      } else {
+        // Horizontal pinch — zoom cent axis, anchored at finger midpoint, pans with fingers
+        const rect = cvs.getBoundingClientRect();
+        const range0 = pinch.max0 - pinch.min0;
+        const nr = Math.min(S.viewLimit, Math.max(0.3, range0 * pinch.d0 / d));
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const ratio = Math.max(0, Math.min(1, midX / S.W));
+        S.viewMin = pinch.midCents - ratio * nr;
+        S.viewMax = pinch.midCents + (1 - ratio) * nr;
+        clampView();
+        updateInfo(); render();
+      }
     }
     e.preventDefault();
   }, { passive: false });
-  cntr.addEventListener('touchend', () => {
+  cntr.addEventListener('touchend', e => {
     const wasDragging = S.sliderDragging || S.genDragging;
     if (S.sizeSbDragging) S.sizeSbDragging = false;
     if (S.sliderDragging) S.sliderDragging = false;
     if (S.genDragging) S.genDragging = false;
     if (wasDragging) { clearTimeout(_chordTrailingTimer); _chordLastRenderTime = 0; renderChordsPanel(); }
+    if (pinch && e.touches.length < 2) pinch = null;
+    if (e.touches.length === 1) {
+      // Re-baseline remaining finger so pan doesn't jump after a pinch
+      t0x = e.touches[0].clientX;
+      t0y = e.touches[0].clientY;
+      S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax; S.dragMinSize0 = S.minSize;
+      tapStart = null;
+    }
+    if (tapStart && e.touches.length === 0) {
+      // Tap — select MOS region / EDO marker / set generator, like a click
+      const rect = cvs.getBoundingClientRect();
+      const mx = tapStart.x - rect.left;
+      const my = tapStart.y - rect.top;
+      let found = null;
+      for (const dr of (S._drawnRegions || [])) {
+        const x1 = c2x(dr.oLow), x2 = c2x(dr.oHigh);
+        if (mx >= x1 && mx <= x2 && my >= dr.y && my <= dr.y + dr.h) {
+          if (!found || dr.region.perPeriodSize > found.perPeriodSize) found = dr.region;
+        }
+      }
+      S.hovered = found;
+      S._lastClickX = mx;
+      S._lastClickY = my;
+      handleClick();
+      S.hovered = null;
+      tapStart = null;
+    }
   });
 
   // Resize
@@ -6075,6 +6172,7 @@ function setup() {
 
   document.getElementById('reset-zoom').addEventListener('click', () => {
     S.viewMin = 0; S.viewMax = S.viewLimit;
+    S.rowScale = 1;
     updateInfo(); render();
   });
   document.getElementById('selected-panel').addEventListener('mousedown', e => {
