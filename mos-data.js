@@ -198,10 +198,10 @@ const TEMPERAMENTS = [
     description: 'Related to Bohlen-Pierce with octave period. 13 generators = 3rd harmonic, 19 = 5th, 23 = 7th. <br> <br> Basically someone took the bohlen pierce scale, where you divide 3/1 into 13 even steps, and fudged it up so that it fits into an octave. Fun stuff.' },
 
 
-  { name: 'Neptune', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [582.86, 587.76],
+  { name: 'Pluto', mos: ['2L_1s', '2L_3s', '2L_5s', '2L_7s'], genRange: [582.86, 587.76],
     commas: ['2401/2400'], commaNames: ['breedsma'],
-    wikiUrl: 'https://en.xen.wiki/w/Gammic_family#Neptune',
-    description: 'Gammic family. 7 bright generator stacks give you a fifth. Generator is a flat 7/5 tritone (~585¢). <br> <br> Named neptune because triton. Tritone. Trident. At least thats the only way it makes sense to me. Anyways, this temperament is notable because its built on a near-just 7/5; otherwise, it is just terrible to compose in. All of your intervals end up being like 30c apart. Hats off to you if you make this one work.' },
+    wikiUrl: 'https://en.xen.wiki/w/Octagar_temperaments#Pluto',
+    description: 'Pluto&#39;s back, and with a vengeance. Similar to its dwarf-planet namesake, nobody really cares about it. <br> <br> 7 bright generator stacks give you a fifth. Generator is a flat 7/5 tritone (~585¢). <br> <br> This temperament is notable because its built on a near-just 10/7; otherwise, it is just terrible to compose in. All of your intervals end up being like 30c apart. Hats off to you if you make this one work.' },
 
   { name: 'Tritonic', mos: ['2L_1s', '2L_3s', '2L_5s'], genRange: [617.14, 624.0],
     commas: ['225/224'], commaNames: ['marvel comma'],
@@ -442,7 +442,7 @@ const TEMP_COLORS = {
   'Neominor': '#7fbfdf', 'Lovecraft': '#6a9fbf', 'Orwell': '#87ceeb', 'Semaphore': '#6495ed',
   'Augmented': '#87ceeb', 'August': '#6bb8d8', 'Triforce': '#5aadcc', 'Diminished': '#cd5c5c',
   'Tetracot': '#66cdaa', 'Didacus': '#4ab8a0', 'Emka': '#3ea090',
-  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Neptune': '#4169e1', 'Tritonic': '#c4b896', 'Alphatricot': '#d4aa70', 'Buzzard': '#c89e64', 'Thuja': '#b8944e', 'Kleismic': '#b0864c',
+  'Baldi': '#d4b48e', 'Machine': '#e8c89e', 'Kumonga': '#d8b888', 'Hemisensi': '#d0a868', 'Tricot / Slendric': '#deb887', 'Glacier / Pentacot': '#c4a67a',   'Pluto': '#4169e1', 'Tritonic': '#c4b896', 'Alphatricot': '#d4aa70', 'Buzzard': '#c89e64', 'Thuja': '#b8944e', 'Kleismic': '#b0864c',
   'Aurora': '#f0e68c', 'A-team': '#e8d44d', 'Squares': '#e0825a', 'Hamity': '#d4724a', 'Bug': '#cd853f',
   'Chromatic Pyth.': '#ffd700',
   'Pajara': '#ff8c00', 'Srutal': '#e07800', 'Diaschismic': '#c86800',
