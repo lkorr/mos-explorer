@@ -41,10 +41,20 @@ const TEMPERAMENTS = [
  //   description: 'Tempers out the schisma. Nearly pure fifths. Eight fourths = 10/1.' },
 
   // === ANTI-DIATONIC (2L 5s) ===
-  { name: 'Mavila', mos: ['2L_5s', '7L_2s', '7L_9s'], genRange: [666.667, 685.7],
+  { name: 'Mavila', mos: ['2L_5s', '7L_2s', '7L_9s'], genRange: [675.0, 685.7],
     commas: ['135/128'], commaNames: ['major chroma'],
     wikiUrl: 'https://en.xen.wiki/w/Mavila',
     description: 'Anti-diatonic. The bees knees. Very flat fifths, four fifths = 6/5 instead of 5/4. <br> <br> In this range, major chords invert into minor chords and vice versa. Diminished chords become augmented chords. Timbre matters a lot here to compensate and navigate around the fact that your 3/2 is so flat. <br> Approximates some Gamelan tunings as well. <br> <br> Note: sharp of 680¢, six flat fifths produce a more in-tune 4/3 than a single fourth.' },
+
+  { name: 'Trismegistus', mos: ['2L_5s', '7L_2s', '9L_7s'], genRange: [672.0, 675.0],
+    commas: ['1029/1024', '3125/3072'], commaNames: ['gamelisma', 'magic comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Mabilic_and_trismegistus',
+    description: 'The 7-limit extension of mabilic, where 5/2 splits into three generators. Simultaneously a magic temperament (3 is 15 generators away, so five near-major-thirds stack up) and a slendric one (8/7 at 5 generators). <br> <br> 25edo, 41edo, and 66edo are the sweet spots. The 9L 7s MOS is where it comes alive — 3/2 shows up as the "augmented" flavor of the generator. Flatter than mavila, so the fifth has drifted even further from home.' },
+
+  { name: 'Amavil', mos: ['2L_5s', '7L_2s', '9L_7s'], genRange: [666.667, 672.0],
+    commas: ['225/224', '17496/16807'], commaNames: ['marvel comma', 'amavil comma'],
+    wikiUrl: 'https://en.xen.wiki/w/Mabila_family#Amavil',
+    description: 'Named by Petr Pařízek (2011). Tempers out the marvel comma 225/224, generator a flat ~35/24 (~670¢). The 9 &amp; 43 temperament. <br> <br> The flattest corner of the antidiatonic fifth before it stops being a fifth at all. 43edo is the go-to tuning; nudging the generator this far down buys you marvel-accurate 7-limit harmony out of scales that barely look like they should support it.' },
 
   //{ name: 'Mabila', mos: ['2L_5s', '2L_7s', '9L_7s'], genRange: [666.667, 670.0],
   //  commas: ['268435456/263671875'], commaNames: ['mabila comma'],
@@ -424,7 +434,7 @@ const TEMPERAMENTS = [
 const TEMP_COLORS = {
   'Meantone': '#50c878', 'Flattone': '#3da86a', 'Deeptone': '#2d8a55',
   'Pythagorean': '#ffe341de', 'Parapyth': '#ffb340', 'Ultrapyth': '#ff6347', 'Superpyth': '#ff8247',
-  'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Mabila': '#178a84', 'Wilsec': '#1aaa96', 'Casablanca': '#15968a',
+  'Schismatic': '#da70d6', 'Mavila': '#20b2aa', 'Trismegistus': '#38c4bc', 'Amavil': '#4fd6c2', 'Mabila': '#178a84', 'Wilsec': '#1aaa96', 'Casablanca': '#15968a',
   'Rarity': '#6a8aaa', 'Sixix': '#b080b0', 'Amity': '#c490c4', 'Mohajira': '#dda0dd', 'Hemififths': '#d4b0d4',
   'Suhajira': '#e8b4e8', 'Magic': '#ff69b4',
   'Hanson': '#98fb98', 'Myna': '#7ecf7e', 'Superkleismic': '#5aad5a', 'Orgone': '#4a9a6a',
