@@ -326,6 +326,14 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   font-family: monospace;
   outline: none;
 }
+/* Readonly = scrub mode: drag to change, double-click to type. */
+.sp-playback .root-row .root-freq-input[readonly] {
+  cursor: ew-resize;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.sp-playback .root-row .root-freq-input:not([readonly]) { cursor: text; }
 .sp-playback .root-row .root-freq-input:focus { border-color: #4a6a9a; }
 
 
@@ -3945,7 +3953,7 @@ function renderPlaybackControls() {
   }
   h += '</select>';
 
-  h += `<div class="adsr-row root-row"><label title="Root frequency of the 0¢ scale degree">Root</label><input type="number" class="root-freq-input" min="20" max="20000" step="1" value="${(+SYNTH.baseFreq).toFixed(2).replace(/\.?0+$/, '')}"><span class="adsr-val">Hz</span></div>`;
+  h += `<div class="adsr-row root-row"><label title="Root frequency of the 0¢ scale degree">Root</label><input type="text" inputmode="decimal" class="root-freq-input" readonly title="Drag to scrub · double-click to type" value="${(+SYNTH.baseFreq).toFixed(2).replace(/\.?0+$/, '')}"><span class="adsr-val">Hz</span></div>`;
   h += `<div class="adsr-row"><label>Vol</label><input type="range" class="volume-slider" min="0" max="1" step="0.01" value="${SYNTH.volume}"><span class="adsr-val volume-val">${(SYNTH.volume * 100).toFixed(0)}%</span></div>`;
   h += `<div class="adsr-row"><label>LPF</label><input type="range" class="lpf-slider" min="0" max="1" step="0.002" value="${lpfToSlider(SYNTH.lpfCutoff)}"><span class="adsr-val lpf-val">${lpfLabel(SYNTH.lpfCutoff)}</span></div>`;
   h += '<div class="synth-sliders-row">';
@@ -3987,12 +3995,14 @@ function renderPlaybackControls() {
     saveSynthSettings();
   });
   const rootInput = el.querySelector('.root-freq-input');
-  const applyRootFreq = () => {
-    let v = parseFloat(rootInput.value);
+  const ROOT_MIN = 20, ROOT_MAX = 20000;
+  const fmtRoot = v => (+v).toFixed(2).replace(/\.?0+$/, '');
+  // Set the root frequency and retune any notes currently sounding, so scrubbing
+  // while a note is held changes its pitch in real time.
+  const setRootFreq = (v, updateDisplay) => {
     if (!isFinite(v)) return;
-    v = Math.min(20000, Math.max(20, v));
+    v = Math.min(ROOT_MAX, Math.max(ROOT_MIN, v));
     SYNTH.baseFreq = v;
-    // Retune any notes currently sounding so the change is audible immediately.
     const actx = SYNTH.ctx;
     if (actx) {
       const now = actx.currentTime;
@@ -4003,14 +4013,58 @@ function renderPlaybackControls() {
         }
       }
     }
+    if (updateDisplay) rootInput.value = fmtRoot(SYNTH.baseFreq);
     saveSynthSettings();
   };
-  rootInput.addEventListener('change', () => {
-    applyRootFreq();
-    // Normalize the displayed value to the clamped result.
-    rootInput.value = (+SYNTH.baseFreq).toFixed(2).replace(/\.?0+$/, '');
+
+  // Drag-to-scrub. Logarithmic feel: each pixel of horizontal drag multiplies the
+  // frequency, so the sensitivity is even across the whole 20–20000 Hz range.
+  // A double-click (two presses in quick succession without dragging) switches to
+  // manual text entry instead. Double-click is detected here rather than via the
+  // dblclick event, because preventDefault() on pointerdown suppresses it.
+  let scrub = null, lastPressTime = 0;
+  const PX_PER_OCTAVE = 220, DBLCLICK_MS = 400;
+  const enterEditMode = () => {
+    rootInput.readOnly = false;
+    rootInput.focus();
+    rootInput.select();
+  };
+  rootInput.addEventListener('pointerdown', e => {
+    // In edit mode (not readonly) the field behaves as a normal text box.
+    if (!rootInput.readOnly) return;
+    e.preventDefault(); // don't focus the input, so keyboard notes still work while dragging
+    const t = performance.now();
+    if (t - lastPressTime < DBLCLICK_MS) { lastPressTime = 0; enterEditMode(); return; }
+    lastPressTime = t;
+    scrub = { startX: e.clientX, startFreq: SYNTH.baseFreq, moved: false };
+    try { rootInput.setPointerCapture(e.pointerId); } catch {}
   });
-  rootInput.addEventListener('input', applyRootFreq);
+  rootInput.addEventListener('pointermove', e => {
+    if (!scrub) return;
+    const dx = e.clientX - scrub.startX;
+    if (Math.abs(dx) > 2) scrub.moved = true;
+    setRootFreq(scrub.startFreq * Math.pow(2, dx / PX_PER_OCTAVE), true);
+  });
+  const endScrub = e => {
+    if (!scrub) return;
+    try { rootInput.releasePointerCapture(e.pointerId); } catch {}
+    scrub = null;
+  };
+  rootInput.addEventListener('pointerup', endScrub);
+  rootInput.addEventListener('pointercancel', endScrub);
+
+  const commitEdit = () => {
+    const v = parseFloat(rootInput.value);
+    setRootFreq(isFinite(v) ? v : SYNTH.baseFreq, false);
+    rootInput.value = fmtRoot(SYNTH.baseFreq);
+    rootInput.readOnly = true;
+  };
+  rootInput.addEventListener('blur', () => { if (!rootInput.readOnly) commitEdit(); });
+  rootInput.addEventListener('keydown', e => {
+    if (rootInput.readOnly) return;
+    if (e.key === 'Enter') { e.preventDefault(); rootInput.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); rootInput.value = fmtRoot(SYNTH.baseFreq); rootInput.blur(); }
+  });
   el.querySelector('.kbd-btn:not(.kbd-mode-btn):not(.kbd-latch-btn)').addEventListener('click', () => {
     SYNTH.keyboardMode = !SYNTH.keyboardMode;
     saveSynthSettings();
