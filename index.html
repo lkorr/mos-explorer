@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#16213e">
 <title>MOS / Temperament Finder</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body {
   background: #1a1a2e;
@@ -15,6 +16,14 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  overscroll-behavior: none;
+}
+@supports (height: 100dvh) {
+  body { height: 100dvh; }
+}
+
+#controls, #info-bar, #selected-panel, #ctx-menu, #help-modal {
+  touch-action: manipulation;
 }
 
 #controls {
@@ -51,10 +60,11 @@ body {
   flex: 1;
   position: relative;
   overflow: hidden;
-  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-canvas { display: block; width: 100%; height: 100%; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
 #tooltip {
   position: fixed;
@@ -66,7 +76,7 @@ canvas { display: block; width: 100%; height: 100%; }
   pointer-events: none;
   display: none;
   z-index: 100;
-  max-width: 320px;
+  max-width: min(320px, calc(100vw - 16px));
   line-height: 1.5;
 }
 
@@ -695,6 +705,113 @@ canvas { display: block; width: 100%; height: 100%; }
   color: #555;
   z-index: 50;
 }
+
+/* ---------- Touch devices: bigger targets, no iOS focus-zoom ---------- */
+@media (pointer: coarse) {
+  #controls .ctrl-group { min-height: 36px; }
+  #controls label, #controls .value-display { font-size: 14px; }
+  #controls input[type="range"] { min-height: 32px; }
+  #controls input[type="number"], #controls select { font-size: 16px !important; min-height: 32px; }
+  #controls #octave-stretch { width: 76px !important; }
+  #stretch-range-min, #stretch-range-max { width: 58px !important; }
+  #controls #help-btn { width: 32px !important; height: 32px !important; }
+  #controls #undo-btn, #controls #redo-btn { font-size: 22px !important; padding: 0 4px; }
+  #controls #share-btn { padding: 6px 12px !important; }
+
+  #ctx-menu { font-size: 15px; min-width: 210px; }
+  #ctx-menu .ctx-item { padding: 12px 14px; }
+  #ctx-menu input[type="number"] { font-size: 16px !important; min-height: 34px; }
+  #ctx-menu button { min-width: 36px; min-height: 34px; }
+
+  .sp-playback select { font-size: 16px; padding: 6px; }
+  .sp-playback .kbd-btn { font-size: 13px; padding: 8px 10px; }
+  .sp-playback .kbd-btn.kbd-mode-btn { font-size: 12px; padding: 7px 8px; }
+  .sp-playback .octave-row { min-height: 32px; font-size: 12px; }
+  .sp-playback .adsr-row { min-height: 32px; font-size: 12px; }
+  .sp-playback .adsr-row input[type="range"] { height: 6px; }
+  .sp-playback .adsr-row input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; }
+  .sp-playback .adsr-row input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; }
+  .sp-playback .adsr-val { font-size: 11px; min-width: 36px; }
+
+  #selected-panel .sp-chords-filter input[type="range"] { height: 32px; }
+  #selected-panel .sp-chords-filter .cf-toggle { padding: 6px 10px; font-size: 12px; }
+  .ruler-sort-btn { font-size: 12px; padding: 6px 10px; }
+  .chord-matrix { font-size: 12px; }
+  .chord-matrix .cm-dot { padding: 8px 10px; font-size: 15px; }
+  .chord-matrix .cm-invert { padding: 6px 9px; font-size: 15px; }
+
+  #selected-panel .sp-resize-handle { height: 24px; }
+  #selected-panel .sp-resize-handle::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 7px;
+    transform: translateX(-50%);
+    width: 48px;
+    height: 5px;
+    border-radius: 3px;
+    background: #4a5a7a;
+  }
+  #selected-panel { padding-top: 26px; }
+  #selected-panel .sp-close { top: 8px; right: 12px; font-size: 26px; padding: 2px 8px; }
+
+  body.touch .ib-cursor, body.touch .ib-sep-cursor { display: none; }
+}
+
+/* ---------- Narrow screens: stacked panel, swipeable control bar ---------- */
+@media (max-width: 700px) {
+  #controls {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 8px 10px;
+    gap: 14px;
+    scrollbar-width: none;
+  }
+  #controls::-webkit-scrollbar { display: none; }
+  #controls .ctrl-group { flex-shrink: 0; }
+  #controls .ctrl-group:last-child {
+    position: sticky;
+    right: 0;
+    background: #16213e;
+    padding-left: 8px;
+    box-shadow: -10px 0 10px -2px #16213e;
+  }
+
+  #info-bar { padding: 5px 10px; gap: 10px; white-space: nowrap; overflow: hidden; }
+
+  #selected-panel { padding-left: 10px; padding-right: 10px; }
+  #selected-panel .sp-layout {
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #selected-panel .sp-synth-col {
+    width: 100%;
+    overflow: visible;
+    order: 3;
+    flex-shrink: 1;
+  }
+  #selected-panel .sp-info {
+    width: auto;
+    overflow: visible;
+    border-left: none;
+    padding-left: 0;
+    order: 1;
+    flex-shrink: 1;
+  }
+  #selected-panel .sp-edo-container {
+    overflow: visible;
+    border-left: none;
+    padding-left: 0;
+    order: 2;
+    flex: none;
+  }
+  #selected-panel .sp-chords-col { overflow: visible; }
+  .edo-rulers-scroll { grid-template-columns: 1fr; overflow: visible; }
+
+  #help-modal > div { padding: 16px 14px; max-height: 85vh; }
+}
 </style>
 </head>
 <body>
@@ -772,6 +889,9 @@ canvas { display: block; width: 100%; height: 100%; }
       <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Click number line</td><td style="padding:3px 8px;">Set the generator to that cent value</td></tr>
       <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Right-click number line</td><td style="padding:3px 8px;">Divide/multiply generator menu</td></tr>
       <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Right-click ruler degree</td><td style="padding:3px 8px;">Teleport generator to that interval</td></tr>
+      <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Long-press number line (touch)</td><td style="padding:3px 8px;">Divide/multiply generator menu</td></tr>
+      <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Long-press band (touch)</td><td style="padding:3px 8px;">Show MOS info popup</td></tr>
+      <tr><td style="padding:3px 8px;color:#6eb5ff;white-space:nowrap;">Drag panel top edge</td><td style="padding:3px 8px;">Resize the bottom panel</td></tr>
     </table>
 
     <div style="font-size:14px;font-weight:700;color:#e94560;margin-bottom:6px;">Hotkeys <span style="font-size:11px;color:#888;font-weight:400;">(when a MOS is selected)</span></div>
@@ -797,10 +917,10 @@ canvas { display: block; width: 100%; height: 100%; }
 
 <div id="info-bar">
   <span>View: <span class="hl" id="range-display">0.00¢ — 1200.00¢</span></span>
-  <span>|</span>
-  <span>Cursor: <span class="hl" id="cursor-display">—</span></span>
-  <span>|</span>
-  <span>Scroll: zoom &middot; Ctrl+Scroll: vertical zoom &middot; Drag: pan &middot; Click: select MOS</span>
+  <span class="ib-sep ib-sep-cursor">|</span>
+  <span class="ib-cursor">Cursor: <span class="hl" id="cursor-display">—</span></span>
+  <span class="ib-sep">|</span>
+  <span id="nav-hints">Scroll: zoom &middot; Ctrl+Scroll: vertical zoom &middot; Drag: pan &middot; Click: select MOS</span>
 </div>
 
 <div id="canvas-container">
@@ -838,25 +958,28 @@ function getTemperamentsForMOS(key, regionLow, regionHigh) {
     const mosList = Array.isArray(t.mos) ? t.mos : [t.mos];
     const directMatch = mosList.includes(key) || mosList.some(m => isDescendantMOS(key, m));
     const ancestorMatch = !directMatch && mosList.some(m => isDescendantMOS(m, key));
-    if (!directMatch && !ancestorMatch) continue;
     const period = t.period || 1200;
     const mirror = [period - t.genRange[1], period - t.genRange[0]];
 
-    if (ancestorMatch) {
-      const directIn = t.genRange[0] < regionHigh && t.genRange[1] > regionLow;
-      const mirrorIn = mirror[0] < regionHigh && mirror[1] > regionLow;
-      results.push({ ...t, effectiveRange: directIn ? t.genRange : mirror, _idx: i });
-    } else {
-      const directOverlap = regionLow === undefined ||
-        (t.genRange[0] < regionHigh && t.genRange[1] > regionLow);
-      const mirrorOverlap = regionLow !== undefined &&
-        mirror[0] < regionHigh && mirror[1] > regionLow;
-      if (directOverlap) {
-        results.push({ ...t, effectiveRange: t.genRange, _idx: i });
-      }
-      if (mirrorOverlap) {
-        results.push({ ...t, effectiveRange: mirror, _idx: i });
-      }
+    // A temperament belongs to the selected MOS if its generator range (or its
+    // octave-mirror) overlaps the region governed by that MOS — regardless of how
+    // the temperament's `mos` list is tagged. Sibling MOSes (e.g. 4L3s / 3L4s)
+    // share a generator region, so range overlap is the authoritative test and
+    // ensures e.g. Sixix/Amity show up under 4L3s. The `mos`-tag match is only
+    // needed when no region is supplied (regionLow === undefined).
+    const directOverlap = regionLow === undefined
+      ? (directMatch || ancestorMatch)
+      : (t.genRange[0] < regionHigh && t.genRange[1] > regionLow);
+    const mirrorOverlap = regionLow !== undefined &&
+      mirror[0] < regionHigh && mirror[1] > regionLow;
+
+    if (!directOverlap && !mirrorOverlap) continue;
+
+    if (directOverlap) {
+      results.push({ ...t, effectiveRange: t.genRange, _idx: i });
+    }
+    if (mirrorOverlap) {
+      results.push({ ...t, effectiveRange: mirror, _idx: i });
     }
   }
   return results;
@@ -877,6 +1000,16 @@ function getModeName(key, genCents, modeRotation) {
   const modeIdx = dark ? (n - 1 - rootGenIndex) : rootGenIndex;
   if (modeIdx < modes.length) return modes[modeIdx];
   return null;
+}
+
+// ================================================================
+//  DATA — Device / layout helpers
+// ================================================================
+
+const IS_COARSE = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+function isMobileLayout() {
+  return S.W < 700;
 }
 
 // ================================================================
@@ -1207,7 +1340,7 @@ function getEqualizedEnd(region) {
 
 const S = {
   viewMin: 0, viewMax: 1200,
-  rowScale: 1,
+  rowScale: 1.32,
   period: 1200, viewLimit: 1200, octaveStretch: 0,
   maxSize: 18, maxEDO: 53, minSize: 2,
   regions: [], colorMap: {}, edos: [],
@@ -1564,7 +1697,7 @@ function drawAxis(ctx, W, H, vr) {
     ctx.beginPath(); ctx.moveTo(x, Y); ctx.lineTo(x, H); ctx.stroke();
   }
 
-  const barH = 16;
+  const barH = 22;
   ctx.fillStyle = '#3a3a5c';
   ctx.fillRect(0, Y - barH/2, W, barH);
   ctx.strokeStyle = '#556';
@@ -1572,16 +1705,16 @@ function drawAxis(ctx, W, H, vr) {
   ctx.strokeRect(0, Y - barH/2, W, barH);
 
   ctx.fillStyle = '#8888aa';
-  ctx.font = '11px monospace';
+  ctx.font = '13px monospace';
   ctx.textAlign = 'center';
   for (let c = start; c <= S.viewMax; c += tick) {
     const x = c2x(c);
     if (x < -20 || x > W + 20) continue;
     ctx.strokeStyle = '#667';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(x, Y - barH/2 - 6); ctx.lineTo(x, Y + barH/2 + 6); ctx.stroke();
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x, Y - barH/2 - 7); ctx.lineTo(x, Y + barH/2 + 7); ctx.stroke();
     const sc = stretchCents(c);
-    ctx.fillText(vr > 30 ? Math.round(sc) + '¢' : sc.toFixed(1) + '¢', x, Y - barH/2 - 10);
+    ctx.fillText(vr > 30 ? Math.round(sc) + '¢' : sc.toFixed(1) + '¢', x, Y - barH/2 - 11);
   }
 
   const sub = tick / 5;
@@ -1591,8 +1724,8 @@ function drawAxis(ctx, W, H, vr) {
       const x = c2x(c);
       if (x < 0 || x > W) continue;
       ctx.strokeStyle = '#4a4a6a';
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x, Y - barH/2 - 2); ctx.lineTo(x, Y + barH/2 + 2); ctx.stroke();
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, Y - barH/2 - 3); ctx.lineTo(x, Y + barH/2 + 3); ctx.stroke();
     }
   }
 
@@ -1617,7 +1750,7 @@ function drawAxis(ctx, W, H, vr) {
 // ================================================================
 
 function drawMOS(ctx, W, H, vr) {
-  const tempSpace = S.selected && S._tempRows ? S._tempRows * 16 + 8 : 0;
+  const tempSpace = S.selected && S._tempRows ? S._tempRows * 20 + 8 : 0;
   const startY = S.selected ? 120 + tempSpace : 64;
   const vs = S.rowScale || 1;
   const rowH = Math.round(20 * vs);
@@ -1806,7 +1939,7 @@ function drawTemperaments(ctx, W, H) {
   S._tempBars = [];
   if (!temps.length) return;
 
-  const barH = 14;
+  const barH = 18;
   const barGap = 2;
   const baseY = 120;
   const reps = getPeriodRepetitions();
@@ -1924,6 +2057,20 @@ function drawGeneratorMarker(ctx, W, H) {
 // ================================================================
 
 function getMOSCircleLayout(W, H) {
+  if (isMobileLayout()) {
+    // Panel sits full-width at the bottom; center the circle in the space above it
+    const availH = Math.max(180, H - (S.selected ? getPanelHeightPx() : 0));
+    // Keep the circle's backing panel below the cent axis (top ~58px)
+    const maxR = Math.max(48, Math.min(W * 0.32, (availH - 182) / 2));
+    const radius = S._circleRadius ? Math.max(45, Math.min(S._circleRadius, maxR)) : maxR;
+    const cx = W / 2;
+    const cy = availH - radius - 30;
+    const sliderW = radius * 2 + 16;
+    const sliderH = IS_COARSE ? 20 : 14;
+    const sliderX = cx - sliderW / 2;
+    const sliderY = cy - radius - 56;
+    return { radius, cx, cy, sliderW, sliderH, sliderX, sliderY };
+  }
   const defaultR = Math.min(170, Math.min(W, H) * 0.22);
   const maxR = Math.min(Math.min(W, H) * 0.45, (H - 130) / 2);
   const radius = S._circleRadius ? Math.max(60, Math.min(S._circleRadius, maxR)) : defaultR;
@@ -2792,8 +2939,8 @@ function hitCircleResizeGrip(mx, my) {
   const panelPad = 28;
   const panelTop = sliderY - 38;
   const panelRight = cx + radius + panelPad;
-  const hitSize = 16;
-  return mx >= panelRight - hitSize && mx <= panelRight + 4 && my >= panelTop - 4 && my <= panelTop + hitSize;
+  const hitSize = IS_COARSE ? 30 : 16;
+  return mx >= panelRight - hitSize && mx <= panelRight + (IS_COARSE ? 12 : 4) && my >= panelTop - (IS_COARSE ? 12 : 4) && my <= panelTop + hitSize;
 }
 
 function hitMOSCirclePanel(mx, my) {
@@ -2809,10 +2956,15 @@ function hitMOSCirclePanel(mx, my) {
 
 function hitModeButton(mx, my) {
   if (!S._modeButtons) return null;
+  const pad = IS_COARSE ? 8 : 0;
+  let best = null, bestDist = Infinity;
   for (const b of S._modeButtons) {
-    if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) return b.action;
+    if (mx >= b.x - pad && mx <= b.x + b.w + pad && my >= b.y - pad && my <= b.y + b.h + pad) {
+      const d = Math.hypot(mx - (b.x + b.w / 2), my - (b.y + b.h / 2));
+      if (d < bestDist) { bestDist = d; best = b.action; }
+    }
   }
-  return null;
+  return best;
 }
 
 function getRotationDegreeMap(genCents, n, rotation, period) {
@@ -2856,7 +3008,7 @@ function handleModeButton(action) {
 
 function hitCircleArrow(mx, my) {
   if (!S.selected) return null;
-  const pad = 10;
+  const pad = IS_COARSE ? 18 : 10;
   if (S._parentArrow) {
     const a = S._parentArrow;
     if (Math.abs(mx - a.x) < a.r + pad && Math.abs(my - a.y) < a.r + pad) return 'parent';
@@ -2878,7 +3030,7 @@ function hitEDOMarker(mx, my) {
 
 function hitCircleDot(mx, my) {
   if (!S._circleDots) return null;
-  const hitR = 12;
+  const hitR = IS_COARSE ? 18 : 12;
   for (const dot of S._circleDots) {
     const dx = mx - dot.x, dy = my - dot.y;
     if (dx * dx + dy * dy <= hitR * hitR) return dot;
@@ -3254,13 +3406,23 @@ function hitTest(mx, my, e) {
       S.selected.key === found.key &&
       Math.abs(S.selected.lowCents - found.lowCents) < 0.01 &&
       Math.abs(S.selected.highCents - found.highCents) < 0.01;
-    html += `<div style="color:#444;font-size:10px;margin-top:3px">${isSelRegion ? 'Click/drag to set generator' : 'Click to select'}</div>`;
+    html += `<div style="color:#444;font-size:10px;margin-top:3px">${isSelRegion ? (IS_COARSE ? 'Tap/drag axis to set generator' : 'Click/drag to set generator') : (IS_COARSE ? 'Tap to select' : 'Click to select')}</div>`;
     tip.innerHTML = html;
     tip.style.display = 'block';
 
-    let tx = e.clientX + 15, ty = e.clientY + 15;
-    if (tx + 330 > window.innerWidth) tx = e.clientX - 340;
-    if (ty + 200 > window.innerHeight) ty = e.clientY - 210;
+    let tx, ty;
+    if (e.touch) {
+      // Place above the finger so it isn't hidden by the hand
+      tx = e.clientX - tip.offsetWidth / 2;
+      ty = e.clientY - tip.offsetHeight - 28;
+    } else {
+      tx = e.clientX + 15;
+      ty = e.clientY + 15;
+      if (tx + tip.offsetWidth > window.innerWidth) tx = e.clientX - tip.offsetWidth - 20;
+      if (ty + tip.offsetHeight > window.innerHeight) ty = e.clientY - tip.offsetHeight - 10;
+    }
+    tx = Math.max(4, Math.min(tx, window.innerWidth - tip.offsetWidth - 4));
+    ty = Math.max(4, Math.min(ty, window.innerHeight - tip.offsetHeight - 4));
     tip.style.left = tx + 'px';
     tip.style.top = ty + 'px';
 
@@ -3488,7 +3650,7 @@ function isOnAxisBar(my) {
 function hitSlider(mx, my) {
   if (!S.selected) return false;
   const lay = getMOSCircleLayout(S.W, S.H);
-  const pad = 6;
+  const pad = IS_COARSE ? 14 : 6;
   return mx >= lay.sliderX - pad && mx <= lay.sliderX + lay.sliderW + pad &&
          my >= lay.sliderY - pad && my <= lay.sliderY + lay.sliderH + pad;
 }
@@ -4369,20 +4531,29 @@ function _renderCombinedSlots(label) {
 //  UI — Selected panel
 // ================================================================
 
+function getPanelHeightPx() {
+  if (!S.selected) return 0;
+  if (S._panelHeight) return Math.max(80, Math.min(S.H - 40, S._panelHeight));
+  if (isMobileLayout()) return Math.min(Math.round(S.H * 0.48), 420);
+  const { sliderY } = getMOSCircleLayout(S.W, S.H);
+  return (S.H - (sliderY - 38)) * 0.70;
+}
+
 function positionPanel() {
   const panel = document.getElementById('selected-panel');
   if (!panel || panel.style.display === 'none') return;
-  const { radius, cx, cy, sliderY } = getMOSCircleLayout(S.W, S.H);
-  const panelPad = 28;
-  const circleRight = cx + radius + panelPad + 8;
-  const defaultHeight = (S.H - (sliderY - 38)) * 0.70;
-  const height = S._panelHeight ? Math.max(80, Math.min(S.H - 40, S._panelHeight)) : defaultHeight;
-  panel.style.left = circleRight + 'px';
+  const height = getPanelHeightPx();
+  if (isMobileLayout()) {
+    panel.style.left = '0px';
+  } else {
+    const { radius, cx } = getMOSCircleLayout(S.W, S.H);
+    const panelPad = 28;
+    panel.style.left = (cx + radius + panelPad + 8) + 'px';
+  }
   panel.style.top = '';
   panel.style.bottom = '0';
   panel.style.height = height + 'px';
   panel.style.display = 'flex';
-
 }
 
 function updatePanel() {
@@ -5082,6 +5253,10 @@ document.addEventListener('mousedown', e => {
   if (Date.now() - _ctxOpenTime < 100) return;
   if (!e.target.closest('#ctx-menu')) hideCtxMenu();
 }, true);
+document.addEventListener('touchstart', e => {
+  if (Date.now() - _ctxOpenTime < 100) return;
+  if (!e.target.closest('#ctx-menu')) hideCtxMenu();
+}, true);
 
 function setupRulerInteraction(edoEl) {
   const track = edoEl.querySelector('.gen-track');
@@ -5166,7 +5341,9 @@ function setupRulerInteraction(edoEl) {
     track.style.cursor = 'grabbing';
   };
   track.addEventListener('mousedown', e => { startTrackDrag(e.clientX); e.preventDefault(); });
-  track.addEventListener('touchstart', e => { startTrackDrag(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+  // No preventDefault on touch: scrolling is blocked in the document touchmove handler
+  // while dragging, and preventDefault here would swallow the tap-click on the track
+  track.addEventListener('touchstart', e => { startTrackDrag(e.touches[0].clientX); }, { passive: true });
 
   track.addEventListener('wheel', e => {
     if (!S.selected) return;
@@ -5200,7 +5377,7 @@ function setupRulerInteraction(edoEl) {
           boundTrack.style.cursor = 'grabbing';
         };
         boundTrack.addEventListener('mousedown', e => { startBoundDrag(e.clientX); e.preventDefault(); });
-        boundTrack.addEventListener('touchstart', e => { startBoundDrag(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+        boundTrack.addEventListener('touchstart', e => { startBoundDrag(e.touches[0].clientX); }, { passive: true });
       }
     }
     const seqRulers = scrollArea.querySelectorAll('.interval-ruler.seq-degree');
@@ -5247,7 +5424,7 @@ function setupRulerInteraction(edoEl) {
         seqTrack.style.cursor = 'grabbing';
       };
       seqTrack.addEventListener('mousedown', e => { startSeqDrag(e.clientX); e.preventDefault(); });
-      seqTrack.addEventListener('touchstart', e => { startSeqDrag(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+      seqTrack.addEventListener('touchstart', e => { startSeqDrag(e.touches[0].clientX); }, { passive: true });
     });
   }
 
@@ -5267,7 +5444,7 @@ function setupRulerInteraction(edoEl) {
         degTrack.style.cursor = 'grabbing';
       };
       degTrack.addEventListener('mousedown', e => { startDegDrag(e.clientX); e.preventDefault(); });
-      degTrack.addEventListener('touchstart', e => { startDegDrag(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+      degTrack.addEventListener('touchstart', e => { startDegDrag(e.touches[0].clientX); }, { passive: true });
     });
   }
 }
@@ -5666,27 +5843,11 @@ function setup() {
     hideCtxMenu();
   }
 
-  cntr.addEventListener('contextmenu', e => {
-    if (S._modmosDrag) {
-      e.preventDefault();
-      const d = S._modmosDrag;
-      const n = S.selected.perPeriodSize;
-      while (S.modmos.length < n) S.modmos.push(0);
-      S.modmos[d.origDeg] = d.startOffset;
-      S._modmosDrag = null;
-      cvs.style.cursor = '';
-      updatePanel();
-      render();
-      return;
-    }
+  function openGenCtxMenu(clientX, clientY) {
     const rect = cvs.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
+    const mx = clientX - rect.left;
     const cc = x2c(mx);
-
-    if (!isOnAxisBar(my) || cc < 0 || cc > S.viewLimit) return;
-    e.preventDefault();
+    if (cc < 0 || cc > S.viewLimit) return false;
 
     const reps = getPeriodRepetitions();
     const baseCC = reps > 1 ? ((cc % S.period) + S.period) % S.period : cc;
@@ -5718,17 +5879,20 @@ function setup() {
 
     const menuW = ctxMenu.offsetWidth;
     const menuH = ctxMenu.offsetHeight;
-    let left = e.clientX;
-    let top = e.clientY;
+    let left = clientX;
+    let top = clientY;
     if (left + menuW > window.innerWidth) left = window.innerWidth - menuW - 4;
     if (top + menuH > window.innerHeight) top = window.innerHeight - menuH - 4;
     ctxMenu.style.left = left + 'px';
-    ctxMenu.style.top = top + 'px';
+    ctxMenu.style.top = Math.max(4, top) + 'px';
 
-    const firstInput = ctxMenu.querySelector('input');
-    setTimeout(() => { firstInput.focus(); firstInput.select(); }, 0);
+    if (!IS_COARSE) {
+      // Auto-focusing on touch pops the on-screen keyboard — only do it for mouse
+      const firstInput = ctxMenu.querySelector('input');
+      setTimeout(() => { firstInput.focus(); firstInput.select(); }, 0);
+    }
 
-    ctxMenu.addEventListener('input', ev => {
+    ctxMenu.oninput = ev => {
       const input = ev.target.closest('input[data-op]');
       if (!input) return;
       const op = input.dataset.op;
@@ -5736,7 +5900,7 @@ function setup() {
       const preview = ctxMenu.querySelector(`.ctx-preview[data-op="${op}"]`);
       const res = computeResult(op, val);
       preview.textContent = res !== null ? res.toFixed(1) + '¢' : '';
-    });
+    };
 
     function applyOp(op, val) {
       if (isNaN(val) || val === 0) return;
@@ -5746,26 +5910,59 @@ function setup() {
       teleportTo(computeResult(op, val));
     }
 
-    ctxMenu.addEventListener('keydown', ev => {
+    ctxMenu.onkeydown = ev => {
       if (ev.key !== 'Enter') return;
       const input = ev.target.closest('input');
       if (!input) return;
       applyOp(input.dataset.op, parseFloat(input.value));
-    });
+    };
 
-    ctxMenu.addEventListener('click', ev => {
+    ctxMenu.onclick = ev => {
       const btn = ev.target.closest('button[data-op]');
       if (!btn) return;
       const input = btn.parentElement.querySelector('input');
       applyOp(btn.dataset.op, parseFloat(input.value));
-    });
+    };
+    return true;
+  }
+
+  cntr.addEventListener('contextmenu', e => {
+    if (S._modmosDrag) {
+      e.preventDefault();
+      const d = S._modmosDrag;
+      const n = S.selected.perPeriodSize;
+      while (S.modmos.length < n) S.modmos.push(0);
+      S.modmos[d.origDeg] = d.startOffset;
+      S._modmosDrag = null;
+      cvs.style.cursor = '';
+      updatePanel();
+      render();
+      return;
+    }
+    const rect = cvs.getBoundingClientRect();
+    const my = e.clientY - rect.top;
+    if (!isOnAxisBar(my)) return;
+    if (openGenCtxMenu(e.clientX, e.clientY)) e.preventDefault();
   });
 
   // Touch
   let t0x = 0, t0y = 0;
   let pinch = null;       // active two-finger gesture state
   let tapStart = null;    // {x, y} client coords of a potential tap
+  let lpTimer = null;     // long-press timer
+  let lpStart = null;     // client coords where the press started
+  let lpFired = false;    // long-press consumed this touch
+  const cancelLongPress = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+
   cntr.addEventListener('touchstart', e => {
+    // Touches that start on the bottom panel belong to the panel (scroll, buttons, sliders)
+    if (e.target.closest('#selected-panel')) return;
+    lpFired = false;
+    if (S.hovered) {
+      S.hovered = null;
+      document.getElementById('tooltip').style.display = 'none';
+      render();
+    }
     if (e.touches.length === 1) {
       const rect = cvs.getBoundingClientRect();
       const mx = e.touches[0].clientX - rect.left;
@@ -5778,6 +5975,19 @@ function setup() {
       const touchDot = touchModeAction ? null : hitCircleDot(mx, my);
       if (touchModeAction) {
         handleModeButton(touchModeAction);
+      } else if (hitCircleResizeGrip(mx, my)) {
+        const nowT = Date.now();
+        if (S._lastGripTap && nowT - S._lastGripTap < 400) {
+          // Double-tap the grip resets the circle size (like double-click)
+          S._circleRadius = null;
+          render();
+        } else {
+          S.circleResizing = true;
+          S.circleResizeStartX = t0x;
+          S.circleResizeStartY = t0y;
+          S.circleResizeStartR = getMOSCircleLayout(S.W, S.H).radius;
+        }
+        S._lastGripTap = nowT;
       } else if (hitSizeScrollbar(mx, my)) {
         S.sizeSbDragging = true;
         setSizeFromScrollbarY(my);
@@ -5792,9 +6002,8 @@ function setup() {
         render();
       } else if (touchDot) {
         playCircleDot(touchDot);
-      } else if (hitMOSCirclePanel(mx, my)) {
-        // absorb touch on circle panel — don't start drag
       } else if (S.selected && isOnAxisBar(my)) {
+        // Axis takes priority over the circle panel — on small screens they can overlap
         const ccRaw = x2c(mx);
         const treps = getPeriodRepetitions();
         const cc = treps > 1 ? ((ccRaw % S.period) + S.period) % S.period : ccRaw;
@@ -5807,14 +6016,38 @@ function setup() {
           S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax; S.dragMinSize0 = S.minSize;
           tapStart = { x: t0x, y: t0y };
         }
+      } else if (hitMOSCirclePanel(mx, my)) {
+        // absorb touch on circle panel — don't start drag
       } else {
         S.dragMin0 = S.viewMin; S.dragMax0 = S.viewMax; S.dragMinSize0 = S.minSize;
         tapStart = { x: t0x, y: t0y };
       }
+
+      // Long-press: divide/multiply menu on the number line, info popup on a MOS band
+      if (!S.circleResizing && (tapStart || S.genDragging)) {
+        lpStart = { x: t0x, y: t0y };
+        lpTimer = setTimeout(() => {
+          lpTimer = null;
+          lpFired = true;
+          S.genDragging = false;
+          tapStart = null;
+          const r2 = cvs.getBoundingClientRect();
+          const lmx = lpStart.x - r2.left;
+          const lmy = lpStart.y - r2.top;
+          if (isOnAxisBar(lmy)) {
+            openGenCtxMenu(lpStart.x, lpStart.y);
+          } else {
+            hitTest(lmx, lmy, { clientX: lpStart.x, clientY: lpStart.y, touch: true });
+          }
+          if (navigator.vibrate) navigator.vibrate(15);
+        }, 500);
+      }
     } else if (e.touches.length === 2) {
+      cancelLongPress();
       S.sliderDragging = false;
       S.genDragging = false;
       S.sizeSbDragging = false;
+      S.circleResizing = false;
       tapStart = null;
       const rect = cvs.getBoundingClientRect();
       const dx = e.touches[1].clientX - e.touches[0].clientX;
@@ -5830,11 +6063,23 @@ function setup() {
     e.preventDefault();
   }, { passive: false });
   cntr.addEventListener('touchmove', e => {
+    if (e.target.closest('#selected-panel')) return;
     if (e.touches.length === 1) {
       const rect = cvs.getBoundingClientRect();
       const mx = e.touches[0].clientX - rect.left;
       const my = e.touches[0].clientY - rect.top;
-      if (S.sizeSbDragging) {
+      if (lpTimer && lpStart &&
+          (Math.abs(e.touches[0].clientX - lpStart.x) > 10 ||
+           Math.abs(e.touches[0].clientY - lpStart.y) > 10)) {
+        cancelLongPress();
+      }
+      if (lpFired) { e.preventDefault(); return; }
+      if (S.circleResizing) {
+        const dx = e.touches[0].clientX - S.circleResizeStartX;
+        const dy = -(e.touches[0].clientY - S.circleResizeStartY);
+        S._circleRadius = S.circleResizeStartR + Math.max(dx, dy);
+        render();
+      } else if (S.sizeSbDragging) {
         setSizeFromScrollbarY(my);
       } else if (S.sliderDragging) {
         S.generatorCents = sliderXToGen(mx);
@@ -5885,6 +6130,10 @@ function setup() {
     e.preventDefault();
   }, { passive: false });
   cntr.addEventListener('touchend', e => {
+    if (e.target.closest('#selected-panel')) return;
+    cancelLongPress();
+    if (lpFired && e.touches.length === 0) { lpFired = false; tapStart = null; }
+    if (S.circleResizing) { S.circleResizing = false; render(); pushUndo(); }
     const wasDragging = S.sliderDragging || S.genDragging;
     if (S.sizeSbDragging) S.sizeSbDragging = false;
     if (S.sliderDragging) S.sliderDragging = false;
@@ -5917,6 +6166,16 @@ function setup() {
       S.hovered = null;
       tapStart = null;
     }
+  });
+  cntr.addEventListener('touchcancel', () => {
+    cancelLongPress();
+    lpFired = false;
+    tapStart = null;
+    pinch = null;
+    S.sliderDragging = false;
+    S.genDragging = false;
+    S.sizeSbDragging = false;
+    S.circleResizing = false;
   });
 
   // Resize
@@ -6190,24 +6449,46 @@ function setup() {
   const resizeHandle = document.getElementById('sp-resize-handle');
   let resizing = false, resizeStartY = 0, resizeStartH = 0;
 
-  resizeHandle.addEventListener('mousedown', e => {
+  const startPanelResize = clientY => {
     const panel = document.getElementById('selected-panel');
     if (!panel || panel.style.display === 'none') return;
     resizing = true;
-    resizeStartY = e.clientY;
+    resizeStartY = clientY;
     resizeStartH = panel.getBoundingClientRect().height;
-    e.preventDefault();
-  });
-
-  document.addEventListener('mousemove', e => {
-    if (!resizing) return;
-    const dy = resizeStartY - e.clientY;
+  };
+  const movePanelResize = clientY => {
+    const dy = resizeStartY - clientY;
     S._panelHeight = Math.max(80, Math.min(S.H - 40, resizeStartH + dy));
     positionPanel();
     renderEDOGrid();
+    // On mobile the circle diagram sits above the panel — reposition it live
+    if (isMobileLayout()) render();
+  };
+
+  resizeHandle.addEventListener('mousedown', e => {
+    startPanelResize(e.clientY);
+    e.preventDefault();
   });
+  resizeHandle.addEventListener('touchstart', e => {
+    startPanelResize(e.touches[0].clientY);
+    e.preventDefault();
+    e.stopPropagation();
+  }, { passive: false });
+
+  document.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    movePanelResize(e.clientY);
+  });
+  document.addEventListener('touchmove', e => {
+    if (!resizing) return;
+    e.preventDefault();
+    movePanelResize(e.touches[0].clientY);
+  }, { passive: false });
 
   document.addEventListener('mouseup', () => {
+    resizing = false;
+  });
+  document.addEventListener('touchend', () => {
     resizing = false;
   });
 }
@@ -6334,6 +6615,11 @@ function resizeCanvas() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  if (IS_COARSE) {
+    document.body.classList.add('touch');
+    const hints = document.getElementById('nav-hints');
+    if (hints) hints.textContent = 'Drag: pan · Pinch: zoom · Tap: select · Long-press: menu';
+  }
   loadSynthSettings();
   S.canvas = document.getElementById('main-canvas');
   S.ctx = S.canvas.getContext('2d');
