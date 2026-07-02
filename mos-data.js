@@ -248,7 +248,7 @@ const TEMPERAMENTS = [
   { name: 'Superpine', mos: ['7L_1s', '7L_8s', '8L_7s'], genRange: [166.67, 171.43],
     commas: ['250/243'], commaNames: ['porcupine comma'],
     wikiUrl: 'https://en.xen.wiki/w/Meantone_family#Superpine',
-    description: 'Like porcupine but favors flat fifths. Generator is 1/3 of a fourth (~35/32). Needs 15-tone MOS (7L 8s) for harmonics beyond 3. <br> <br> Despite looking like porcupine\'s twin, superpine is actually classified in the meantone family rather than the porcupine family. It\'s the musical equivalent of two strangers who look identical but turn out to be from completely different families.' },
+    description: 'Like porcupine but has flat fifths. Generator is 1/3 of a fourth (~35/32). Needs 15-tone MOS (7L 8s) for harmonics beyond 3. <br> <br> You can think of this as basically being the anti-diatonic version of Tetracot; 4 stacks give you an extremely flat mavila fifth. <br> <br> ' },
 
   { name: 'Ammonite', mos: ['5L_3s', '5L_8s', '13L_5s'], genRange: [744.83, 750.0],
     commas: ['250/243', '2048/2025'], commaNames: ['porcupine comma', 'diaschisma'],
@@ -322,10 +322,15 @@ const TEMPERAMENTS = [
     wikiUrl: 'https://en.xen.wiki/w/Tetracot_family#Octacot',
     description: 'Tetracot family. Eight generators = 3/2. Half of a tetracot generator. <br> <br> Continuing the trend of tetracot; dividing tetra into 2 = octa. Eight steps of 88¢ = 704¢, just 2 cents sharp of a pure 3/2. ' },
 
-  { name: 'Passion', mos: ['1L_11s', '12L_1s', '12L_13s'], genRange: [96.0, 100.0],
+  { name: 'Passion', mos: ['1L_11s', '12L_1s', '12L_13s'], genRange: [96.0, 97.959],
     commas: ['262144/253125'], commaNames: ['passion comma'],
     wikiUrl: 'https://en.xen.wiki/w/Passion_family#Passion',
     description: 'Near-12edo generator (~98¢). Twelve generators = octave minus a comma.... This would probably suck as a scale or temperament. Just use 12edo???' },
+
+  { name: 'Heptacot', mos: ['1L_11s', '11L_1s', '12L_11s'], genRange: [97.959, 102.857],
+    commas: ['703125/702464', '33554432/33480783'], commaNames: ['meter', 'garischisma'],
+    wikiUrl: 'https://en.xen.wiki/w/Garischismic_clan#Heptacot',
+    description: 'Splits the perfect fifth into seven ~100¢ semitones (the 12 &amp; 311 temperament). The natural 7-limit extension of a 5-limit temperament named by Tristan Bay in 2024; tempers out the meter. <br> <br> Absurdly accurate — 311edo and 323edo are the obvious tunings, with anything in between (like 634edo) also working. Basically a microtempered near-12edo where the "12" you thought you knew quietly gains a few hundred extra notes of precision.' },
 
   { name: 'Escape', mos: ['1L_20s', '21L_1s', '21L_22s'], genRange: [55.33, 57.2],
     commas: ['4294967296/4271484375'], commaNames: ['escapade comma'],
@@ -448,7 +453,7 @@ const TEMP_COLORS = {
   'Pajara': '#ff8c00', 'Srutal': '#e07800', 'Diaschismic': '#c86800',
   'Blackwood': '#ba55d3', 'Whitewood': '#e0c0ff', 'Injera': '#e8a060', 'Lemba': '#d2691e', 'Baladic': '#c45e1a', 'Hemipyth': '#b85818', 'Doublewide': '#a04e14', 'Hedgehog': '#8fbc8f', 'Astrology': '#7aac7a',
   'Sephiroth': '#ec7ce4',
-  'Escape': '#a8d8ea', 'Octacot': '#56c9a0', 'Passion': '#d4637a', 'Valentine': '#ff6b81', 'Miracle': '#ff4500', 'Negri': '#9370db',
+  'Escape': '#a8d8ea', 'Octacot': '#56c9a0', 'Passion': '#d4637a', 'Heptacot': '#e07b8c', 'Valentine': '#ff6b81', 'Miracle': '#ff4500', 'Negri': '#9370db',
   'Unknown Diatonic': '#c0a0e0',
 };
 
