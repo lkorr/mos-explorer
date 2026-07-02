@@ -313,6 +313,20 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   background: linear-gradient(90deg, #0f3460, #2a3a5a);
 }
 .sp-playback .adsr-val { color: #e94560; min-width: 30px; font-size: 9px; }
+.sp-playback .root-row .root-freq-input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  background: #1e2a4a;
+  color: #cfe0ff;
+  border: 1px solid #33447a;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: monospace;
+  outline: none;
+}
+.sp-playback .root-row .root-freq-input:focus { border-color: #4a6a9a; }
 
 
 #selected-panel .sp-info .temp-info {
@@ -3711,7 +3725,7 @@ function updateInfo() {
 const SYNTH_DEFAULTS = {
   waveform: 'triangle', octaveShift: 0, volume: 1.0,
   attack: 0.015, decay: 0.1, sustain: 1.0, release: 4,
-  lpfCutoff: 22050,
+  lpfCutoff: 22050, baseFreq: 440,
   keyboardMode: true, kbdContinuous: false, kbdLatch: false,
 };
 const SYNTH_KEYS = Object.keys(SYNTH_DEFAULTS);
@@ -3734,7 +3748,7 @@ const MAX_OSCILLATORS = 32;
 const SYNTH = {
   ctx: null,
   waveform: 'triangle',
-  baseFreq: 261.63, // C4
+  baseFreq: 440, // root frequency (Hz) for the 0¢ scale degree; A4 by default
   keyboardMode: true,
   kbdContinuous: false,
   kbdLatch: false,
@@ -3931,6 +3945,7 @@ function renderPlaybackControls() {
   }
   h += '</select>';
 
+  h += `<div class="adsr-row root-row"><label title="Root frequency of the 0¢ scale degree">Root</label><input type="number" class="root-freq-input" min="20" max="20000" step="1" value="${(+SYNTH.baseFreq).toFixed(2).replace(/\.?0+$/, '')}"><span class="adsr-val">Hz</span></div>`;
   h += `<div class="adsr-row"><label>Vol</label><input type="range" class="volume-slider" min="0" max="1" step="0.01" value="${SYNTH.volume}"><span class="adsr-val volume-val">${(SYNTH.volume * 100).toFixed(0)}%</span></div>`;
   h += `<div class="adsr-row"><label>LPF</label><input type="range" class="lpf-slider" min="0" max="1" step="0.002" value="${lpfToSlider(SYNTH.lpfCutoff)}"><span class="adsr-val lpf-val">${lpfLabel(SYNTH.lpfCutoff)}</span></div>`;
   h += '<div class="synth-sliders-row">';
@@ -3971,6 +3986,31 @@ function renderPlaybackControls() {
     el.querySelector('.lpf-val').textContent = lpfLabel(SYNTH.lpfCutoff);
     saveSynthSettings();
   });
+  const rootInput = el.querySelector('.root-freq-input');
+  const applyRootFreq = () => {
+    let v = parseFloat(rootInput.value);
+    if (!isFinite(v)) return;
+    v = Math.min(20000, Math.max(20, v));
+    SYNTH.baseFreq = v;
+    // Retune any notes currently sounding so the change is audible immediately.
+    const actx = SYNTH.ctx;
+    if (actx) {
+      const now = actx.currentTime;
+      for (const code in SYNTH._activeKeys) {
+        const entry = SYNTH._activeKeys[code];
+        if (entry && entry.osc && entry.currentCents !== undefined) {
+          entry.osc.frequency.setValueAtTime(SYNTH.baseFreq * Math.pow(2, stretchCents(entry.currentCents) / 1200), now);
+        }
+      }
+    }
+    saveSynthSettings();
+  };
+  rootInput.addEventListener('change', () => {
+    applyRootFreq();
+    // Normalize the displayed value to the clamped result.
+    rootInput.value = (+SYNTH.baseFreq).toFixed(2).replace(/\.?0+$/, '');
+  });
+  rootInput.addEventListener('input', applyRootFreq);
   el.querySelector('.kbd-btn:not(.kbd-mode-btn):not(.kbd-latch-btn)').addEventListener('click', () => {
     SYNTH.keyboardMode = !SYNTH.keyboardMode;
     saveSynthSettings();
